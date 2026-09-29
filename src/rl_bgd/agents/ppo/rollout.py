@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass
+from typing import Any
 
 import torch
 from torch import Tensor
@@ -220,3 +221,171 @@ class RolloutBuffer:
                 returns=self.returns[indices],
                 old_values=self.values[indices],
             )
+
+
+    def state_dict(self) -> dict[str, Any]:
+        """Serialize partial or update-ready on-policy rollout state."""
+
+        size = self.size
+        return {
+            "version": 1,
+            "capacity": self.capacity,
+            "observation_dim": int(
+                self.observations.shape[1]
+            ),
+            "action_dim": int(
+                self.actions.shape[1]
+            ),
+            "size": size,
+            "observations": self.observations[
+                :size
+            ].clone(),
+            "actions": self.actions[
+                :size
+            ].clone(),
+            "rewards": self.rewards[
+                :size
+            ].clone(),
+            "terminated": self.terminated[
+                :size
+            ].clone(),
+            "truncated": self.truncated[
+                :size
+            ].clone(),
+            "values": self.values[
+                :size
+            ].clone(),
+            "next_values": self.next_values[
+                :size
+            ].clone(),
+            "log_probs": self.log_probs[
+                :size
+            ].clone(),
+            "advantages": (
+                None
+                if self.advantages is None
+                else self.advantages.clone()
+            ),
+            "returns": (
+                None
+                if self.returns is None
+                else self.returns.clone()
+            ),
+        }
+
+    def load_state_dict(
+        self,
+        state: dict[str, Any],
+    ) -> None:
+        """Restore behavior-policy statistics without recomputing them."""
+
+        if state.get("version") != 1:
+            raise ValueError(
+                "unsupported PPO rollout checkpoint version"
+            )
+        if int(state["capacity"]) != self.capacity:
+            raise ValueError(
+                "PPO rollout checkpoint capacity mismatch"
+            )
+        if int(
+            state["observation_dim"]
+        ) != int(
+            self.observations.shape[1]
+        ):
+            raise ValueError(
+                "PPO rollout observation dimension mismatch"
+            )
+        if int(
+            state["action_dim"]
+        ) != int(
+            self.actions.shape[1]
+        ):
+            raise ValueError(
+                "PPO rollout action dimension mismatch"
+            )
+
+        size = int(state["size"])
+        if not 0 <= size <= self.capacity:
+            raise ValueError(
+                "invalid PPO rollout checkpoint size"
+            )
+        fields = {
+            "observations": self.observations,
+            "actions": self.actions,
+            "rewards": self.rewards,
+            "terminated": self.terminated,
+            "truncated": self.truncated,
+            "values": self.values,
+            "next_values": self.next_values,
+            "log_probs": self.log_probs,
+        }
+        for name, target in fields.items():
+            source = state[name]
+            if not isinstance(
+                source,
+                Tensor,
+            ):
+                raise TypeError(
+                    "PPO rollout checkpoint field "
+                    f"{name} must be a tensor"
+                )
+            if source.shape != target[:size].shape:
+                raise ValueError(
+                    "PPO rollout checkpoint shape mismatch "
+                    f"for {name}"
+                )
+            target[:size].copy_(
+                source.to(
+                    device=self.device,
+                    dtype=target.dtype,
+                )
+            )
+
+        advantages = state.get(
+            "advantages"
+        )
+        returns = state.get("returns")
+        if (
+            advantages is None
+        ) != (
+            returns is None
+        ):
+            raise ValueError(
+                "PPO rollout checkpoint must contain "
+                "both advantages and returns or neither"
+            )
+        if advantages is None:
+            self.advantages = None
+            self.returns = None
+        else:
+            if not isinstance(
+                advantages,
+                Tensor,
+            ) or not isinstance(
+                returns,
+                Tensor,
+            ):
+                raise TypeError(
+                    "PPO rollout advantages/returns "
+                    "must be tensors"
+                )
+            expected_shape = (size, 1)
+            if (
+                advantages.shape
+                != expected_shape
+                or returns.shape
+                != expected_shape
+            ):
+                raise ValueError(
+                    "PPO rollout checkpoint advantage/return "
+                    "shape mismatch"
+                )
+            self.advantages = advantages.to(
+                device=self.device,
+                dtype=torch.float32,
+            ).clone()
+            self.returns = returns.to(
+                device=self.device,
+                dtype=torch.float32,
+            ).clone()
+        self.size = size
