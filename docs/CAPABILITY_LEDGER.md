@@ -62,7 +62,12 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Adaptive surprise causal timeline runner | COMPLETE | adaptive BGD-SAC on recurring LQR + slow integration test |
 | CARL 1.1.1 strict hidden-context adapter | PARTIAL | adapter/config/unit tests; real CARL smoke pending |
 | CARL abrupt/smooth/recurring configs | PARTIAL | schedule semantics complete; real CARL smoke pending |
-| PPO + Adam/BGD | NOT STARTED | phase 9 |
+| PPO Adam baseline | COMPLETE | clipped surrogate + GAE + minibatch epochs + value clipping + checkpoint + stationary LQR learning smoke |
+| BGD-PPO actor/value/both | PARTIAL | implementation + posterior checkpoint + finite-mode tests + stationary runner; stationary BGD learning acceptance test pending |
+| BGD-PPO repeated-rollout evidence accounting | COMPLETE | first-epoch-only default plus all-epochs/normalized experimental modes + tests |
+| PPO task-agnostic recurring synthetic stream | COMPLETE | Adam/BGD recurring LQR runner + integration test without task ID/boundary input |
+| PPO rollout checkpointing | COMPLETE | partial/update-ready behavior-policy statistics + GAE state round-trip test |
+| PPO + Adam/BGD overall | PARTIAL | phase 9 core complete; close after stationary BGD-PPO learning validation |
 | Recurrent agents/sequence replay | NOT STARTED | phase 11 |
 | Continual World CW10/CW20 | NOT STARTED | phase 10 |
 | ContinualBench/CORA adapter | NOT STARTED | optional external benchmark |
