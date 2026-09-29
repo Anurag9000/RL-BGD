@@ -2,6 +2,7 @@ algorithm: ppo
 optimizer: bgd
 bayesianization: actor_and_value
 posterior_std: 0.1
+evidence_mode: first_epoch_only
 gamma: 0.99
 gae_lambda: 0.95
 clip_ratio: 0.2
