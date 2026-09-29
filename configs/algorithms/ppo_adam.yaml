@@ -1,0 +1,14 @@
+algorithm: ppo
+optimizer: adam
+gamma: 0.99
+gae_lambda: 0.95
+clip_ratio: 0.2
+value_clip_ratio: 0.2
+actor_lr: 0.0003
+value_lr: 0.001
+entropy_coef: 0.0
+value_coef: 0.5
+update_epochs: 10
+minibatch_size: 64
+gradient_clip_norm: 0.5
+normalize_advantages: true
