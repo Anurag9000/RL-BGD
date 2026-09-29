@@ -209,9 +209,13 @@ class ContinualWorldStreamEnv:
         if self.environment_step >= (
             self.total_step_limit
         ):
-            raise RuntimeError(
-                "Continual World stream is exhausted"
-            )
+            # Trainers commonly reset immediately after a final natural
+            # truncation before their outer step loop notices completion.
+            # Permit that reset, but keep any further step invalid.
+            observation, _ = self.envs[
+                self.task_index
+            ].reset(seed=seed)
+            return observation, {}
         if self._switch_on_reset:
             self._advance_task()
         observation, _ = self.envs[
