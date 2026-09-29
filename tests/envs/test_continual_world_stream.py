@@ -204,6 +204,15 @@ def test_stream_rejects_steps_after_total_budget() -> None:
     env.reset(seed=11)
     env.step(torch.zeros(1))
     env.step(torch.zeros(1))
+
+    # A trainer may issue its routine episode reset on the exact final step.
+    observation, info = env.reset()
+    torch.testing.assert_close(
+        observation,
+        torch.tensor([2.0]),
+    )
+    assert info == {}
+
     with pytest.raises(
         RuntimeError,
         match="exhausted",
