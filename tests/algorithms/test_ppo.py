@@ -163,3 +163,59 @@ def test_ppo_checkpoint_round_trip_preserves_deterministic_action() -> None:
         ),
         expected,
     )
+
+
+def test_ppo_rollout_checkpoint_round_trip() -> None:
+    torch.manual_seed(54)
+    agent = PPOAgent(
+        2,
+        1,
+        action_low=torch.tensor([-1.0]),
+        action_high=torch.tensor([1.0]),
+        hidden_dims=(16, 16),
+    )
+    rollout = make_rollout(
+        agent,
+        size=16,
+    )
+    rollout.compute_gae(
+        gamma=0.99,
+        gae_lambda=0.95,
+        normalize_advantages=False,
+    )
+    restored = RolloutBuffer(
+        16,
+        2,
+        1,
+    )
+    restored.load_state_dict(
+        rollout.state_dict()
+    )
+
+    assert restored.size == rollout.size
+    for name in (
+        "observations",
+        "actions",
+        "rewards",
+        "terminated",
+        "truncated",
+        "values",
+        "next_values",
+        "log_probs",
+    ):
+        torch.testing.assert_close(
+            getattr(restored, name)[: restored.size],
+            getattr(rollout, name)[: rollout.size],
+        )
+    assert restored.advantages is not None
+    assert rollout.advantages is not None
+    assert restored.returns is not None
+    assert rollout.returns is not None
+    torch.testing.assert_close(
+        restored.advantages,
+        rollout.advantages,
+    )
+    torch.testing.assert_close(
+        restored.returns,
+        rollout.returns,
+    )
