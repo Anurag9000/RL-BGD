@@ -10,8 +10,8 @@ import torch
 from torch import Tensor, nn
 from torch.func import functional_call
 
-from rl_bgd.bayes.diagonal_gaussian import DiagonalGaussianPosterior
 from rl_bgd.bayes.diagnostics import posterior_diagnostics
+from rl_bgd.bayes.diagonal_gaussian import DiagonalGaussianPosterior
 from rl_bgd.bayes.mc_sampling import aggregate_bgd_statistics
 from rl_bgd.bayes.tempering import temper_diagonal_gaussian
 
@@ -154,12 +154,23 @@ class BGDUpdater:
                 uncertainty_grads_tuple = grads_tuple
 
             gradients.append(
-                {name: grad for name, grad in zip(ordered_names, grads_tuple)}
+                {
+                    name: grad
+                    for name, grad in zip(
+                        ordered_names,
+                        grads_tuple,
+                        strict=True,
+                    )
+                }
             )
             uncertainty_gradients.append(
                 {
                     name: grad
-                    for name, grad in zip(ordered_names, uncertainty_grads_tuple)
+                    for name, grad in zip(
+                        ordered_names,
+                        uncertainty_grads_tuple,
+                        strict=True,
+                    )
                 }
             )
             losses.append(mean_loss.detach().float())
@@ -203,7 +214,8 @@ class BGDUpdater:
             mean_loss=torch.stack(losses).mean().item(),
             uncertainty_loss=torch.stack(uncertainty_losses).mean().item(),
             diagnostics=posterior_diagnostics(
-                self.posterior.stds, eta=self.config.eta
+                self.posterior.stds,
+                eta=self.config.eta,
             ),
             gradient_norm=gradient_norm,
             uncertainty_gradient_norm=uncertainty_gradient_norm,
@@ -227,7 +239,12 @@ class BGDUpdater:
         module_buffers = dict(module.named_buffers()) if buffers is None else dict(buffers)
 
         def objective(params: Mapping[str, Tensor]) -> Tensor | BGDLoss:
-            output = functional_call(module, (dict(params), module_buffers), args, kwargs)
+            output = functional_call(
+                module,
+                (dict(params), module_buffers),
+                args,
+                kwargs,
+            )
             mean_loss = loss_fn(output)
             if uncertainty_loss_fn is None:
                 return mean_loss
