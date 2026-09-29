@@ -46,10 +46,7 @@ def forgetting(
     if tasks < 2:
         return np.empty(0, dtype=np.float64), 0.0
     values = np.asarray(
-        [
-            matrix[index, index] - matrix[-1, index]
-            for index in range(tasks - 1)
-        ],
+        [matrix[index, index] - matrix[-1, index] for index in range(tasks - 1)],
         dtype=np.float64,
     )
     return values, float(values.mean())

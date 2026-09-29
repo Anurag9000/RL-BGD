@@ -33,13 +33,9 @@ def run_bgd_sac_lqr(
     device: str = "auto",
     bayesianization: str = "critic_only",
 ) -> dict[str, object]:
-    seed_everything(
-        seed, deterministic=True
-    )
+    seed_everything(seed, deterministic=True)
     resolved = resolve_device(device)
-    env = LinearQuadraticControlEnv(
-        horizon=30, device=resolved
-    )
+    env = LinearQuadraticControlEnv(horizon=30, device=resolved)
     agent = BGDSACAgent(
         1,
         1,
@@ -79,9 +75,7 @@ def run_bgd_sac_lqr(
             total_steps=steps,
             random_steps=64,
             batch_size=64,
-            replay_capacity=max(
-                2_000, steps
-            ),
+            replay_capacity=max(2_000, steps),
             seed=seed,
         ),
     )
@@ -95,9 +89,7 @@ def run_bgd_sac_lqr(
         "steps": steps,
         "pre_return": pre_return,
         "post_return": post_return,
-        "improvement": (
-            post_return - pre_return
-        ),
+        "improvement": (post_return - pre_return),
         "training": summary,
     }
 

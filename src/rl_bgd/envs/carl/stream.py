@@ -40,9 +40,7 @@ class CARLContextStream:
         expose_evaluation_context: bool = False,
     ) -> None:
         if strict_task_agnostic and expose_evaluation_context:
-            raise ValueError(
-                "strict task-agnostic mode cannot expose evaluation context"
-            )
+            raise ValueError("strict task-agnostic mode cannot expose evaluation context")
         self.env = env
         self.schedule = schedule
         self.device = torch.device(device)
@@ -123,15 +121,8 @@ class CARLContextStream:
         action: Tensor,
     ) -> tuple[Tensor, float, bool, bool, dict[str, Any]]:
         self._apply_context()
-        numpy_action = (
-            action.detach()
-            .to("cpu")
-            .numpy()
-            .reshape(self.env.action_space.shape)
-        )
-        observation, reward, terminated, truncated, info = self.env.step(
-            numpy_action
-        )
+        numpy_action = action.detach().to("cpu").numpy().reshape(self.env.action_space.shape)
+        observation, reward, terminated, truncated, info = self.env.step(numpy_action)
         self.environment_step += 1
         return (
             self._observation(observation),
@@ -174,9 +165,7 @@ def make_carl_pendulum_stream(
     carl_pendulum = getattr(envs, "CARLPendulum", None)
     static_selector = getattr(selectors, "StaticSelector", None)
     if carl_pendulum is None or static_selector is None:
-        raise CARLImportError(
-            "installed CARL package does not expose the 1.1.x API"
-        )
+        raise CARLImportError("installed CARL package does not expose the 1.1.x API")
 
     initial = schedule.context_at(0)
     env = carl_pendulum(

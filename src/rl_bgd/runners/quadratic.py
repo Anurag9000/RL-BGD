@@ -22,13 +22,9 @@ from rl_bgd.utils.randomness import seed_everything
 
 
 class VectorParameter(nn.Module):
-    def __init__(
-        self, dimension: int, *, device: torch.device
-    ) -> None:
+    def __init__(self, dimension: int, *, device: torch.device) -> None:
         super().__init__()
-        self.theta = nn.Parameter(
-            torch.zeros(dimension, device=device)
-        )
+        self.theta = nn.Parameter(torch.zeros(dimension, device=device))
 
 
 @dataclass(frozen=True)
@@ -51,10 +47,7 @@ def run_quadratic(
         raise ValueError("segments must be >= 2")
     seed_everything(config.seed, deterministic=True)
     device = resolve_device(config.device)
-    optima = [
-        (-1.0 if i % 2 else 1.0)
-        for i in range(config.segments)
-    ]
+    optima = [(-1.0 if i % 2 else 1.0) for i in range(config.segments)]
     tasks = [
         diagonal_quadratic(
             config.dimension,
@@ -74,9 +67,7 @@ def run_quadratic(
     posterior = DiagonalGaussianPosterior.from_module(
         model,
         prior_std=config.prior_std,
-        bounds=PosteriorBounds(
-            sigma_min=1e-6, sigma_max=5.0
-        ),
+        bounds=PosteriorBounds(sigma_min=1e-6, sigma_max=5.0),
     )
     updater = BGDUpdater(
         posterior,
@@ -87,9 +78,7 @@ def run_quadratic(
             temper_retention=config.temper_retention,
         ),
     )
-    total_steps = (
-        config.segment_steps * config.segments
-    )
+    total_steps = config.segment_steps * config.segments
     losses: list[float] = []
     boundaries: list[dict[str, float | int]] = []
     result = None
@@ -108,9 +97,7 @@ def run_quadratic(
             boundaries.append(
                 {
                     "step": step,
-                    "sigma_mean": result.diagnostics[
-                        "sigma_mean"
-                    ],
+                    "sigma_mean": result.diagnostics["sigma_mean"],
                     "loss": result.mean_loss,
                 }
             )
@@ -122,9 +109,7 @@ def run_quadratic(
         "initial_loss": losses[0],
         "final_loss": losses[-1],
         "sigma_mean": result.diagnostics["sigma_mean"],
-        "effective_lr_mean": result.diagnostics[
-            "effective_lr_mean"
-        ],
+        "effective_lr_mean": result.diagnostics["effective_lr_mean"],
         "boundaries": boundaries,
     }
 

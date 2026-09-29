@@ -69,9 +69,7 @@ def test_negative_quadratic_curvature_increases_sigma() -> None:
 def test_curvature_signal_approaches_h_sigma() -> None:
     torch.manual_seed(13)
     h = 3.0
-    updater = make_updater(
-        value=0.0, sigma=0.05, eta=0.01, samples=4000
-    )
+    updater = make_updater(value=0.0, sigma=0.05, eta=0.01, samples=4000)
     old_sigma = updater.posterior.stds["w"].item()
     eps = updater.posterior.sample_epsilons(samples=4000, antithetic=True)
     values = []

@@ -62,13 +62,9 @@ class EMASurpriseNormalizer:
             scale_before = math.sqrt(max(self.variance, self.config.epsilon))
             normalized = abs(value - self.center) / (scale_before + self.config.epsilon)
             delta = value - self.center
-            self.center = (
-                self.config.decay * self.center
-                + (1.0 - self.config.decay) * value
-            )
+            self.center = self.config.decay * self.center + (1.0 - self.config.decay) * value
             self.variance = (
-                self.config.decay * self.variance
-                + (1.0 - self.config.decay) * delta * delta
+                self.config.decay * self.variance + (1.0 - self.config.decay) * delta * delta
             )
             self.smoothed = (
                 self.config.smoothing_decay * self.smoothed

@@ -29,9 +29,5 @@ class QNetwork(nn.Module):
 
     def forward(self, observation: Tensor, action: Tensor) -> Tensor:
         if observation.shape[:-1] != action.shape[:-1]:
-            raise ValueError(
-                "observation/action batch dimensions must match"
-            )
-        return self.net(
-            torch.cat([observation, action], dim=-1)
-        )
+            raise ValueError("observation/action batch dimensions must match")
+        return self.net(torch.cat([observation, action], dim=-1))

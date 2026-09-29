@@ -16,17 +16,11 @@ class TwoWeights(nn.Module):
 
 def test_lower_sigma_produces_smaller_mean_movement() -> None:
     module = TwoWeights()
-    posterior = DiagonalGaussianPosterior.from_module(
-        module, prior_std=0.1
-    )
-    posterior.stds["w"].copy_(
-        torch.tensor([0.05, 0.5])
-    )
+    posterior = DiagonalGaussianPosterior.from_module(module, prior_std=0.1)
+    posterior.stds["w"].copy_(torch.tensor([0.05, 0.5]))
     updater = BGDUpdater(
         posterior,
-        BGDConfig(
-            eta=1.0, mc_samples=2, antithetic=True
-        ),
+        BGDConfig(eta=1.0, mc_samples=2, antithetic=True),
     )
     before = posterior.means["w"].clone()
 
@@ -36,9 +30,7 @@ def test_lower_sigma_produces_smaller_mean_movement() -> None:
         return params["w"].sum()
 
     updater.step(objective)
-    movement = (
-        posterior.means["w"] - before
-    ).abs()
+    movement = (posterior.means["w"] - before).abs()
     assert movement[1] > 50 * movement[0]
     torch.testing.assert_close(
         movement[1] / movement[0],
@@ -57,9 +49,7 @@ def test_tempering_preserves_more_uncertainty() -> None:
         posterior = DiagonalGaussianPosterior.from_module(
             module,
             prior_std=0.4,
-            bounds=PosteriorBounds(
-                sigma_min=1e-8, sigma_max=2.0
-            ),
+            bounds=PosteriorBounds(sigma_min=1e-8, sigma_max=2.0),
         )
         updater = BGDUpdater(
             posterior,
@@ -71,10 +61,7 @@ def test_tempering_preserves_more_uncertainty() -> None:
             ),
         )
         for _ in range(250):
-            updater.step(
-                lambda params: 0.5
-                * params["weight"].square().sum()
-            )
+            updater.step(lambda params: 0.5 * params["weight"].square().sum())
         return posterior.stds["weight"].item()
 
     vanilla = run(1.0)

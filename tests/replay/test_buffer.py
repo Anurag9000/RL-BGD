@@ -16,26 +16,12 @@ def test_replay_tracks_usage_freshness_and_truncation_bootstrap() -> None:
             insertion_step=i,
         )
     generator = torch.Generator().manual_seed(0)
-    batch = buffer.sample(
-        4, generator=generator
-    )
-    assert torch.all(
-        batch.usage_counts >= 1
-    )
+    batch = buffer.sample(4, generator=generator)
+    assert torch.all(batch.usage_counts >= 1)
     assert torch.all(batch.fresh)
-    mask = (
-        batch.truncated
-        & ~batch.terminated
-    )
-    assert torch.all(
-        batch.bootstrap_mask[mask] == 1
-    )
-    assert torch.all(
-        batch.bootstrap_mask[
-            batch.terminated
-        ]
-        == 0
-    )
+    mask = batch.truncated & ~batch.terminated
+    assert torch.all(batch.bootstrap_mask[mask] == 1)
+    assert torch.all(batch.bootstrap_mask[batch.terminated] == 0)
 
 
 def test_replay_checkpoint_round_trip() -> None:

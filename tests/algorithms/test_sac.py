@@ -14,20 +14,10 @@ def make_batch(
 ) -> ReplayBatch:
     torch.manual_seed(0)
     return ReplayBatch(
-        observations=torch.randn(
-            batch_size, 2
-        ),
-        actions=(
-            torch.rand(batch_size, 1)
-            * 2
-            - 1
-        ),
-        rewards=torch.randn(
-            batch_size, 1
-        ),
-        next_observations=torch.randn(
-            batch_size, 2
-        ),
+        observations=torch.randn(batch_size, 2),
+        actions=(torch.rand(batch_size, 1) * 2 - 1),
+        rewards=torch.randn(batch_size, 1),
+        next_observations=torch.randn(batch_size, 2),
         terminated=torch.zeros(
             batch_size,
             1,
@@ -38,12 +28,8 @@ def make_batch(
             1,
             dtype=torch.bool,
         ),
-        transition_ids=torch.arange(
-            batch_size
-        ).view(-1, 1),
-        insertion_steps=torch.arange(
-            batch_size
-        ).view(-1, 1),
+        transition_ids=torch.arange(batch_size).view(-1, 1),
+        insertion_steps=torch.arange(batch_size).view(-1, 1),
         usage_counts=torch.ones(
             batch_size,
             1,
@@ -74,23 +60,11 @@ def test_sac_action_bounds_and_update_finite() -> None:
             deterministic=deterministic,
         )
         assert action.shape == (1,)
-        assert torch.all(
-            action <= 1.0
-        )
-        assert torch.all(
-            action >= -1.0
-        )
-    before = [
-        p.detach().clone()
-        for p in agent.critic1.parameters()
-    ]
-    metrics = agent.update(
-        make_batch()
-    )
-    assert all(
-        math.isfinite(value)
-        for value in metrics.values()
-    )
+        assert torch.all(action <= 1.0)
+        assert torch.all(action >= -1.0)
+    before = [p.detach().clone() for p in agent.critic1.parameters()]
+    metrics = agent.update(make_batch())
+    assert all(math.isfinite(value) for value in metrics.values())
     assert any(
         not torch.equal(a, b)
         for a, b in zip(
@@ -111,20 +85,12 @@ def test_sac_checkpoint_round_trip_preserves_deterministic_action() -> None:
         hidden_dims=(16, 16),
     )
     agent = SACAgent(**kwargs)
-    agent.update(
-        make_batch(batch_size=8)
-    )
+    agent.update(make_batch(batch_size=8))
     obs = torch.tensor([0.1, 0.7])
-    expected = agent.act(
-        obs, deterministic=True
-    )
+    expected = agent.act(obs, deterministic=True)
     restored = SACAgent(**kwargs)
-    restored.load_state_dict(
-        agent.state_dict()
-    )
+    restored.load_state_dict(agent.state_dict())
     torch.testing.assert_close(
-        restored.act(
-            obs, deterministic=True
-        ),
+        restored.act(obs, deterministic=True),
         expected,
     )

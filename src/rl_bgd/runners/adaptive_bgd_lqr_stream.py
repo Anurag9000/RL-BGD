@@ -102,9 +102,7 @@ def run_adaptive_bgd_lqr_stream(
             "surprise_smoothed": metrics["surprise_smoothed"],
             "retention_lambda": metrics["retention_lambda"],
             "critic1_sigma_mean": metrics["critic1_sigma_mean"],
-            "critic1_effective_lr_mean": metrics[
-                "critic1_effective_lr_mean"
-            ],
+            "critic1_effective_lr_mean": metrics["critic1_effective_lr_mean"],
         }
         surprise_timeline.append(record)
         if metrics["surprise_normalized"] >= detection_threshold:

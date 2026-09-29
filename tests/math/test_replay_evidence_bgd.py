@@ -20,11 +20,9 @@ class Scalar(nn.Module):
 
 def make_updater() -> BGDUpdater:
     module = Scalar()
-    posterior = (
-        DiagonalGaussianPosterior.from_module(
-            module,
-            prior_std=0.2,
-        )
+    posterior = DiagonalGaussianPosterior.from_module(
+        module,
+        prior_std=0.2,
     )
     return BGDUpdater(
         posterior,
@@ -39,34 +37,20 @@ def make_updater() -> BGDUpdater:
 def test_zero_uncertainty_evidence_preserves_sigma_but_mean_still_learns() -> None:
     torch.manual_seed(40)
     updater = make_updater()
-    before_mean = (
-        updater.posterior.means["w"].clone()
-    )
-    before_sigma = (
-        updater.posterior.stds["w"].clone()
-    )
+    before_mean = updater.posterior.means["w"].clone()
+    before_sigma = updater.posterior.stds["w"].clone()
 
     def objective(
         params: dict[str, torch.Tensor],
     ) -> BGDLoss:
-        base = (
-            0.5
-            * params["w"]
-            .square()
-            .sum()
-        )
+        base = 0.5 * params["w"].square().sum()
         return BGDLoss(
             mean=base,
             uncertainty=base * 0.0,
         )
 
     updater.step(objective)
-    assert torch.all(
-        updater.posterior.means[
-            "w"
-        ].abs()
-        < before_mean.abs()
-    )
+    assert torch.all(updater.posterior.means["w"].abs() < before_mean.abs())
     torch.testing.assert_close(
         updater.posterior.stds["w"],
         before_sigma,
@@ -79,18 +63,10 @@ def _scaled_objective(
     def objective(
         params: dict[str, torch.Tensor],
     ) -> BGDLoss:
-        base = (
-            0.5
-            * params["w"]
-            .square()
-            .sum()
-        )
+        base = 0.5 * params["w"].square().sum()
         return BGDLoss(
             mean=base,
-            uncertainty=(
-                base
-                * uncertainty_weight
-            ),
+            uncertainty=(base * uncertainty_weight),
         )
 
     return objective
@@ -103,22 +79,10 @@ def test_replay_downweighting_reduces_precision_accumulation() -> None:
         torch.manual_seed(41)
         updater = make_updater()
         for use in range(1, 21):
-            weight = (
-                1.0 / use
-                if inverse_reuse
-                else 1.0
-            )
-            updater.step(
-                _scaled_objective(weight)
-            )
-        return float(
-            updater.posterior.stds["w"]
-            .item()
-        )
+            weight = 1.0 / use if inverse_reuse else 1.0
+            updater.step(_scaled_objective(weight))
+        return float(updater.posterior.stds["w"].item())
 
     all_replay_sigma = run(False)
     corrected_sigma = run(True)
-    assert (
-        corrected_sigma
-        > all_replay_sigma
-    )
+    assert corrected_sigma > all_replay_sigma

@@ -75,12 +75,7 @@ def _objective_with_evidence(
     def objective(
         params: dict[str, torch.Tensor],
     ) -> BGDLoss:
-        per_item = (
-            0.5
-            * params["w"]
-            .square()
-            .reshape(1, 1)
-        )
+        per_item = 0.5 * params["w"].square().reshape(1, 1)
         return BGDLoss(
             mean=per_item.mean(),
             uncertainty=weighted_evidence_mean(
@@ -98,9 +93,7 @@ def run_replay_evidence_demo(
     seed: int = 0,
 ) -> dict[str, float]:
     if uses < 1:
-        raise ValueError(
-            "uses must be >= 1"
-        )
+        raise ValueError("uses must be >= 1")
     outputs: dict[str, float] = {}
     for mode in (
         "all_replay",
@@ -110,11 +103,9 @@ def run_replay_evidence_demo(
     ):
         torch.manual_seed(seed)
         module = Scalar()
-        posterior = (
-            DiagonalGaussianPosterior.from_module(
-                module,
-                prior_std=0.3,
-            )
+        posterior = DiagonalGaussianPosterior.from_module(
+            module,
+            prior_std=0.3,
         )
         updater = BGDUpdater(
             posterior,
@@ -138,23 +129,9 @@ def run_replay_evidence_demo(
                     mode=mode
                 ),
             )
-            updater.step(
-                _objective_with_evidence(
-                    evidence.weights
-                )
-            )
-        outputs[
-            f"{mode}_sigma"
-        ] = float(
-            posterior.stds["w"].item()
-        )
-        outputs[
-            f"{mode}_abs_mean"
-        ] = float(
-            posterior.means["w"]
-            .abs()
-            .item()
-        )
+            updater.step(_objective_with_evidence(evidence.weights))
+        outputs[f"{mode}_sigma"] = float(posterior.stds["w"].item())
+        outputs[f"{mode}_abs_mean"] = float(posterior.means["w"].abs().item())
     return outputs
 
 

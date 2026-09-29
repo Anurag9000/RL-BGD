@@ -22,9 +22,7 @@ class ScalarParameter(nn.Module):
         self.theta = nn.Parameter(torch.tensor([initial], dtype=torch.float32))
 
 
-def run_smoke(
-    *, steps: int = 25, seed: int = 0, device: str = "auto"
-) -> dict[str, object]:
+def run_smoke(*, steps: int = 25, seed: int = 0, device: str = "auto") -> dict[str, object]:
     seed_everything(seed, deterministic=True)
     resolved = resolve_device(device)
     model = ScalarParameter().to(resolved)
@@ -33,9 +31,7 @@ def run_smoke(
         prior_std=0.5,
         bounds=PosteriorBounds(sigma_min=1e-5, sigma_max=2.0),
     )
-    updater = BGDUpdater(
-        posterior, BGDConfig(eta=0.25, mc_samples=8, antithetic=True)
-    )
+    updater = BGDUpdater(posterior, BGDConfig(eta=0.25, mc_samples=8, antithetic=True))
     target = torch.tensor([0.0], device=resolved)
 
     def objective(params: dict[str, torch.Tensor]) -> torch.Tensor:

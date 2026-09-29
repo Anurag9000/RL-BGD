@@ -207,9 +207,7 @@ class BGDUpdater:
         uncertainty_gradient_norm = torch.sqrt(
             sum(torch.sum(value.square()) for value in uncertainty_g_bar.values())
         ).item()
-        c_norm = torch.sqrt(
-            sum(torch.sum(value.square()) for value in c.values())
-        ).item()
+        c_norm = torch.sqrt(sum(torch.sum(value.square()) for value in c.values())).item()
         return BGDStepResult(
             mean_loss=torch.stack(losses).mean().item(),
             uncertainty_loss=torch.stack(uncertainty_losses).mean().item(),

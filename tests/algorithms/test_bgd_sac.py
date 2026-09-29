@@ -17,20 +17,10 @@ def make_batch(
 ) -> ReplayBatch:
     torch.manual_seed(21)
     return ReplayBatch(
-        observations=torch.randn(
-            batch_size, 2
-        ),
-        actions=(
-            torch.rand(batch_size, 1)
-            * 2
-            - 1
-        ),
-        rewards=torch.randn(
-            batch_size, 1
-        ),
-        next_observations=torch.randn(
-            batch_size, 2
-        ),
+        observations=torch.randn(batch_size, 2),
+        actions=(torch.rand(batch_size, 1) * 2 - 1),
+        rewards=torch.randn(batch_size, 1),
+        next_observations=torch.randn(batch_size, 2),
         terminated=torch.zeros(
             batch_size,
             1,
@@ -41,12 +31,8 @@ def make_batch(
             1,
             dtype=torch.bool,
         ),
-        transition_ids=torch.arange(
-            batch_size
-        ).view(-1, 1),
-        insertion_steps=torch.arange(
-            batch_size
-        ).view(-1, 1),
+        transition_ids=torch.arange(batch_size).view(-1, 1),
+        insertion_steps=torch.arange(batch_size).view(-1, 1),
         usage_counts=torch.ones(
             batch_size,
             1,
@@ -104,40 +90,25 @@ def test_bgd_sac_modes_update_without_nonfinite_values(
     torch.manual_seed(22)
     agent = make_agent(mode)
     metrics = agent.update(make_batch())
-    assert all(
-        math.isfinite(value)
-        for value in metrics.values()
-    )
+    assert all(math.isfinite(value) for value in metrics.values())
     if "critic" in mode:
-        assert (
-            metrics["critic1_sigma_mean"] > 0
-        )
-        assert (
-            metrics["critic2_sigma_mean"] > 0
-        )
+        assert metrics["critic1_sigma_mean"] > 0
+        assert metrics["critic2_sigma_mean"] > 0
     if "actor" in mode:
-        assert (
-            metrics["actor_sigma_mean"] > 0
-        )
+        assert metrics["actor_sigma_mean"] > 0
 
 
 def test_bgd_sac_checkpoint_round_trip() -> None:
     torch.manual_seed(23)
-    agent = make_agent(
-        "actor_and_critic"
-    )
+    agent = make_agent("actor_and_critic")
     agent.update(make_batch())
     state = agent.state_dict()
-    observation = torch.tensor(
-        [0.3, -0.1]
-    )
+    observation = torch.tensor([0.3, -0.1])
     expected = agent.act(
         observation,
         deterministic=True,
     )
-    restored = make_agent(
-        "actor_and_critic"
-    )
+    restored = make_agent("actor_and_critic")
     restored.load_state_dict(state)
     torch.testing.assert_close(
         restored.act(
@@ -146,18 +117,10 @@ def test_bgd_sac_checkpoint_round_trip() -> None:
         ),
         expected,
     )
-    assert (
-        restored.actor_posterior is not None
-    )
-    assert (
-        agent.actor_posterior is not None
-    )
+    assert restored.actor_posterior is not None
+    assert agent.actor_posterior is not None
     for name in agent.actor_posterior.stds:
         torch.testing.assert_close(
-            restored.actor_posterior.stds[
-                name
-            ],
-            agent.actor_posterior.stds[
-                name
-            ],
+            restored.actor_posterior.stds[name],
+            agent.actor_posterior.stds[name],
         )

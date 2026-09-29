@@ -76,7 +76,4 @@ def test_adaptive_td_surprise_checkpoint_round_trip() -> None:
     restored.load_state_dict(state)
     assert restored.td_surprise is not None
     assert agent.td_surprise is not None
-    assert (
-        restored.td_surprise.normalizer.count
-        == agent.td_surprise.normalizer.count
-    )
+    assert restored.td_surprise.normalizer.count == agent.td_surprise.normalizer.count

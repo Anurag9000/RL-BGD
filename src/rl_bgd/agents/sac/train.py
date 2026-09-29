@@ -61,37 +61,25 @@ def train_sac(
         or config.batch_size < 1
         or config.replay_capacity < config.batch_size
     ):
-        raise ValueError(
-            "invalid SAC training budget/replay configuration"
-        )
+        raise ValueError("invalid SAC training budget/replay configuration")
     if config.random_steps < 0 or config.updates_per_step < 1:
         raise ValueError("invalid SAC warmup/update configuration")
-    action_dim = int(
-        env.action_space.low.numel()
-    )
-    observation_dim = int(
-        env.observation_space.low.numel()
-    )
+    action_dim = int(env.action_space.low.numel())
+    observation_dim = int(env.observation_space.low.numel())
     replay = ReplayBuffer(
         config.replay_capacity,
         observation_dim,
         action_dim,
         storage_device=agent.device,
     )
-    generator = torch.Generator(
-        device=agent.device
-    ).manual_seed(config.seed + 17)
-    observation, _ = env.reset(
-        seed=config.seed
-    )
+    generator = torch.Generator(device=agent.device).manual_seed(config.seed + 17)
+    observation, _ = env.reset(seed=config.seed)
     episode_return = 0.0
     completed_returns: list[float] = []
     last_metrics: dict[str, float] = {}
     for step in range(config.total_steps):
         if step < config.random_steps:
-            action = env.action_space.sample(
-                generator=generator
-            )
+            action = env.action_space.sample(generator=generator)
         else:
             action = agent.act(
                 observation,
@@ -116,9 +104,7 @@ def train_sac(
         episode_return += reward
         observation = next_observation
         if terminated or truncated:
-            completed_returns.append(
-                episode_return
-            )
+            completed_returns.append(episode_return)
             if episode_observer is not None:
                 episode_observer(
                     step,
@@ -127,13 +113,8 @@ def train_sac(
             episode_return = 0.0
             observation, _ = env.reset()
 
-        if (
-            len(replay) >= config.batch_size
-            and step >= config.random_steps
-        ):
-            for _ in range(
-                config.updates_per_step
-            ):
+        if len(replay) >= config.batch_size and step >= config.random_steps:
+            for _ in range(config.updates_per_step):
                 batch = replay.sample(
                     config.batch_size,
                     generator=generator,
@@ -149,14 +130,10 @@ def train_sac(
         "steps": config.total_steps,
         "episodes": len(completed_returns),
         "mean_episode_return": (
-            sum(completed_returns)
-            / len(completed_returns)
-            if completed_returns
-            else float("nan")
+            sum(completed_returns) / len(completed_returns) if completed_returns else float("nan")
         ),
         "final_10_mean_return": (
-            sum(completed_returns[-10:])
-            / min(10, len(completed_returns))
+            sum(completed_returns[-10:]) / min(10, len(completed_returns))
             if completed_returns
             else float("nan")
         ),

@@ -46,9 +46,7 @@ class ContextScheduleConfig:
         if self.mode == "smooth" and len(self.anchors) < 2:
             raise ValueError("smooth schedules require at least two anchors")
         if self.mode == "periodic" and len(self.anchors) != 2:
-            raise ValueError(
-                "periodic schedules require center and amplitude anchors"
-            )
+            raise ValueError("periodic schedules require center and amplitude anchors")
         if self.bounds is not None:
             if set(self.bounds) != keys:
                 raise ValueError("bounds keys must match context keys")
@@ -63,9 +61,7 @@ class ContextSchedule:
     def __init__(self, config: ContextScheduleConfig) -> None:
         config.validate()
         self.config = config
-        self._random_walk_cache: list[Context] = [
-            dict(config.anchors[0])
-        ]
+        self._random_walk_cache: list[Context] = [dict(config.anchors[0])]
 
     def context_at(self, step: int) -> Context:
         if step < 0:
@@ -89,15 +85,11 @@ class ContextSchedule:
         return dict(self.config.anchors[index])
 
     def _recurring(self, step: int) -> Context:
-        index = (
-            step // self.config.phase_steps
-        ) % len(self.config.anchors)
+        index = (step // self.config.phase_steps) % len(self.config.anchors)
         return dict(self.config.anchors[index])
 
     def _smooth(self, step: int) -> Context:
-        terminal_step = self.config.phase_steps * (
-            len(self.config.anchors) - 1
-        )
+        terminal_step = self.config.phase_steps * (len(self.config.anchors) - 1)
         if step >= terminal_step:
             return dict(self.config.anchors[-1])
         segment = step // self.config.phase_steps
@@ -105,19 +97,13 @@ class ContextSchedule:
         alpha = within / self.config.phase_steps
         left = self.config.anchors[segment]
         right = self.config.anchors[segment + 1]
-        return {
-            key: (1.0 - alpha) * left[key] + alpha * right[key]
-            for key in left
-        }
+        return {key: (1.0 - alpha) * left[key] + alpha * right[key] for key in left}
 
     def _periodic(self, step: int) -> Context:
         center, amplitude = self.config.anchors
         phase = 2.0 * math.pi * step / self.config.period_steps
         oscillation = math.sin(phase)
-        return {
-            key: center[key] + amplitude[key] * oscillation
-            for key in center
-        }
+        return {key: center[key] + amplitude[key] * oscillation for key in center}
 
     def _random_walk(self, step: int) -> Context:
         while len(self._random_walk_cache) <= step:

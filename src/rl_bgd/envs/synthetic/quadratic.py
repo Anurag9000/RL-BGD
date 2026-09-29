@@ -28,9 +28,7 @@ class QuadraticTask:
         d = self.optimum.numel()
         if self.hessian.shape != (d, d):
             raise ValueError("hessian must have shape (d, d)")
-        if not torch.allclose(
-            self.hessian, self.hessian.T, atol=1e-6, rtol=1e-6
-        ):
+        if not torch.allclose(self.hessian, self.hessian.T, atol=1e-6, rtol=1e-6):
             raise ValueError("hessian must be symmetric")
         eigvals = torch.linalg.eigvalsh(self.hessian.float())
         if torch.any(eigvals <= 0):
@@ -43,25 +41,15 @@ class QuadraticTask:
     def loss(self, theta: Tensor) -> Tensor:
         if theta.shape != self.optimum.shape:
             raise ValueError("theta shape does not match task dimension")
-        delta = theta - self.optimum.to(
-            device=theta.device, dtype=theta.dtype
-        )
-        hessian = self.hessian.to(
-            device=theta.device, dtype=theta.dtype
-        )
+        delta = theta - self.optimum.to(device=theta.device, dtype=theta.dtype)
+        hessian = self.hessian.to(device=theta.device, dtype=theta.dtype)
         return 0.5 * delta @ hessian @ delta
 
     def gradient(self, theta: Tensor) -> Tensor:
         if theta.shape != self.optimum.shape:
             raise ValueError("theta shape does not match task dimension")
-        hessian = self.hessian.to(
-            device=theta.device, dtype=theta.dtype
-        )
-        return hessian @ (
-            theta - self.optimum.to(
-                device=theta.device, dtype=theta.dtype
-            )
-        )
+        hessian = self.hessian.to(device=theta.device, dtype=theta.dtype)
+        return hessian @ (theta - self.optimum.to(device=theta.device, dtype=theta.dtype))
 
 
 def diagonal_quadratic(
@@ -85,14 +73,10 @@ def diagonal_quadratic(
         if diag.shape != (dimension,):
             raise ValueError("curvature tensor has wrong shape")
     else:
-        diag = torch.full(
-            (dimension,), float(curvature), device=device
-        )
+        diag = torch.full((dimension,), float(curvature), device=device)
     if torch.any(diag <= 0):
         raise ValueError("curvature must be positive")
-    return QuadraticTask(
-        optimum=opt, hessian=torch.diag(diag), name=name
-    )
+    return QuadraticTask(optimum=opt, hessian=torch.diag(diag), name=name)
 
 
 def rotated_quadratic(
@@ -118,9 +102,7 @@ def rotated_quadratic(
     else:
         eig = eigenvalues.detach().float().cpu()
         if eig.shape != (dimension,) or torch.any(eig <= 0):
-            raise ValueError(
-                "eigenvalues must be a positive vector of length dimension"
-            )
+            raise ValueError("eigenvalues must be a positive vector of length dimension")
     hessian = (q @ torch.diag(eig) @ q.T).to(device)
     if optimum is None:
         opt = torch.zeros(dimension, device=device)
@@ -128,9 +110,7 @@ def rotated_quadratic(
         opt = optimum.detach().float().to(device)
         if opt.shape != (dimension,):
             raise ValueError("optimum tensor has wrong shape")
-    return QuadraticTask(
-        optimum=opt, hessian=hessian, name=name
-    )
+    return QuadraticTask(optimum=opt, hessian=hessian, name=name)
 
 
 class QuadraticStream:
@@ -179,12 +159,8 @@ class QuadraticStream:
         alpha = local / self.segment_steps
         left = self.tasks[index]
         right = self.tasks[index + 1]
-        optimum = (
-            (1.0 - alpha) * left.optimum + alpha * right.optimum
-        )
-        hessian = (
-            (1.0 - alpha) * left.hessian + alpha * right.hessian
-        )
+        optimum = (1.0 - alpha) * left.optimum + alpha * right.optimum
+        hessian = (1.0 - alpha) * left.hessian + alpha * right.hessian
         return QuadraticTask(
             optimum=optimum,
             hessian=hessian,

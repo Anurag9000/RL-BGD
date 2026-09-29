@@ -55,20 +55,12 @@ class DiagonalGaussianPosterior(ParameterPosterior):
             "parameter_dtypes": parameter_dtypes,
         }.items():
             if set(mapping) != keys:
-                raise ValueError(
-                    f"{mapping_name} keys do not match posterior mean keys"
-                )
+                raise ValueError(f"{mapping_name} keys do not match posterior mean keys")
 
         self.means = {k: self._state_tensor(v) for k, v in means.items()}
         self.stds = {k: self._state_tensor(v) for k, v in stds.items()}
-        self.prior_means = {
-            k: self._state_tensor(v)
-            for k, v in prior_means.items()
-        }
-        self.prior_stds = {
-            k: self._state_tensor(v)
-            for k, v in prior_stds.items()
-        }
+        self.prior_means = {k: self._state_tensor(v) for k, v in prior_means.items()}
+        self.prior_stds = {k: self._state_tensor(v) for k, v in prior_stds.items()}
         self.parameter_dtypes = dict(parameter_dtypes)
         self._validate_shapes_and_values()
         self.clamp_stds_()
@@ -88,22 +80,12 @@ class DiagonalGaussianPosterior(ParameterPosterior):
     ) -> DiagonalGaussianPosterior:
         if prior_std <= 0:
             raise ValueError("prior_std must be strictly positive")
-        named = {
-            name: param
-            for name, param in module.named_parameters()
-            if param.requires_grad
-        }
+        named = {name: param for name, param in module.named_parameters() if param.requires_grad}
         if not named:
             raise ValueError("module has no trainable parameters")
-        means = {
-            name: param.detach()
-            for name, param in named.items()
-        }
+        means = {name: param.detach() for name, param in named.items()}
         if prior_mean is None:
-            prior_means = {
-                name: param.detach()
-                for name, param in named.items()
-            }
+            prior_means = {name: param.detach() for name, param in named.items()}
         else:
             prior_means = {
                 name: torch.full_like(
@@ -126,10 +108,7 @@ class DiagonalGaussianPosterior(ParameterPosterior):
             )
             for name, param in named.items()
         }
-        dtypes = {
-            name: param.dtype
-            for name, param in named.items()
-        }
+        dtypes = {name: param.dtype for name, param in named.items()}
         return cls(
             means,
             stds,
@@ -141,14 +120,9 @@ class DiagonalGaussianPosterior(ParameterPosterior):
 
     @property
     def device(self) -> torch.device:
-        devices = {
-            tensor.device
-            for tensor in self.means.values()
-        }
+        devices = {tensor.device for tensor in self.means.values()}
         if len(devices) != 1:
-            raise RuntimeError(
-                "posterior parameters span multiple devices"
-            )
+            raise RuntimeError("posterior parameters span multiple devices")
         return next(iter(devices))
 
     def _validate_shapes_and_values(self) -> None:
@@ -159,35 +133,15 @@ class DiagonalGaussianPosterior(ParameterPosterior):
                 self.prior_stds[name],
             )
             if any(tensor.shape != mean.shape for tensor in tensors):
-                raise ValueError(
-                    f"posterior shape mismatch for {name}"
-                )
+                raise ValueError(f"posterior shape mismatch for {name}")
             if not torch.isfinite(mean).all():
-                raise ValueError(
-                    f"nonfinite posterior mean for {name}"
-                )
-            if (
-                not torch.isfinite(
-                    self.stds[name]
-                ).all()
-                or torch.any(
-                    self.stds[name] <= 0
-                )
+                raise ValueError(f"nonfinite posterior mean for {name}")
+            if not torch.isfinite(self.stds[name]).all() or torch.any(self.stds[name] <= 0):
+                raise ValueError(f"invalid posterior std for {name}")
+            if not torch.isfinite(self.prior_stds[name]).all() or torch.any(
+                self.prior_stds[name] <= 0
             ):
-                raise ValueError(
-                    f"invalid posterior std for {name}"
-                )
-            if (
-                not torch.isfinite(
-                    self.prior_stds[name]
-                ).all()
-                or torch.any(
-                    self.prior_stds[name] <= 0
-                )
-            ):
-                raise ValueError(
-                    f"invalid prior std for {name}"
-                )
+                raise ValueError(f"invalid prior std for {name}")
 
     def clamp_stds_(self) -> None:
         for name in self.stds:
@@ -198,25 +152,14 @@ class DiagonalGaussianPosterior(ParameterPosterior):
 
     def assert_finite(self) -> None:
         for name in self.means:
-            if not torch.isfinite(
-                self.means[name]
-            ).all():
-                raise FloatingPointError(
-                    f"nonfinite posterior mean for {name}"
-                )
-            if not torch.isfinite(
-                self.stds[name]
-            ).all():
-                raise FloatingPointError(
-                    f"nonfinite posterior std for {name}"
-                )
+            if not torch.isfinite(self.means[name]).all():
+                raise FloatingPointError(f"nonfinite posterior mean for {name}")
+            if not torch.isfinite(self.stds[name]).all():
+                raise FloatingPointError(f"nonfinite posterior std for {name}")
 
     def mean_parameters(self) -> dict[str, Tensor]:
         return {
-            name: value.to(
-                dtype=self.parameter_dtypes[name]
-            )
-            for name, value in self.means.items()
+            name: value.to(dtype=self.parameter_dtypes[name]) for name, value in self.means.items()
         }
 
     def sample_epsilons(
@@ -227,18 +170,10 @@ class DiagonalGaussianPosterior(ParameterPosterior):
         generator: torch.Generator | None = None,
     ) -> list[dict[str, Tensor]]:
         if samples < 1:
-            raise ValueError(
-                "samples must be >= 1"
-            )
+            raise ValueError("samples must be >= 1")
         if antithetic and samples % 2:
-            raise ValueError(
-                "antithetic sampling requires an even sample count"
-            )
-        base_count = (
-            samples // 2
-            if antithetic
-            else samples
-        )
+            raise ValueError("antithetic sampling requires an even sample count")
+        base_count = samples // 2 if antithetic else samples
         base: list[dict[str, Tensor]] = []
         for _ in range(base_count):
             base.append(
@@ -257,12 +192,7 @@ class DiagonalGaussianPosterior(ParameterPosterior):
         result: list[dict[str, Tensor]] = []
         for eps in base:
             result.append(eps)
-            result.append(
-                {
-                    name: -value
-                    for name, value in eps.items()
-                }
-            )
+            result.append({name: -value for name, value in eps.items()})
         return result
 
     def parameters_from_epsilon(
@@ -270,25 +200,11 @@ class DiagonalGaussianPosterior(ParameterPosterior):
         epsilon: Mapping[str, Tensor],
     ) -> dict[str, Tensor]:
         if set(epsilon) != set(self.means):
-            raise ValueError(
-                "epsilon keys do not match posterior"
-            )
+            raise ValueError("epsilon keys do not match posterior")
         sampled: dict[str, Tensor] = {}
         for name, mean in self.means.items():
-            theta_fp32 = (
-                mean
-                + self.stds[name]
-                * epsilon[name].to(
-                    dtype=torch.float32
-                )
-            )
-            theta = (
-                theta_fp32.to(
-                    dtype=self.parameter_dtypes[name]
-                )
-                .detach()
-                .requires_grad_(True)
-            )
+            theta_fp32 = mean + self.stds[name] * epsilon[name].to(dtype=torch.float32)
+            theta = theta_fp32.to(dtype=self.parameter_dtypes[name]).detach().requires_grad_(True)
             sampled[name] = theta
         return sampled
 
@@ -312,17 +228,10 @@ class DiagonalGaussianPosterior(ParameterPosterior):
         self,
         module: nn.Module,
     ) -> None:
-        module_parameters = dict(
-            module.named_parameters()
-        )
-        missing = set(self.means) - set(
-            module_parameters
-        )
+        module_parameters = dict(module.named_parameters())
+        missing = set(self.means) - set(module_parameters)
         if missing:
-            raise KeyError(
-                "module is missing posterior parameters: "
-                f"{sorted(missing)}"
-            )
+            raise KeyError(f"module is missing posterior parameters: {sorted(missing)}")
         with torch.no_grad():
             for name, mean in self.means.items():
                 target = module_parameters[name]
@@ -344,31 +253,17 @@ class DiagonalGaussianPosterior(ParameterPosterior):
             self.prior_stds,
         ):
             for name, value in mapping.items():
-                mapping[name] = value.to(
-                    device=device
-                )
+                mapping[name] = value.to(device=device)
         return self
 
     def state_dict(self) -> dict[str, Any]:
         return {
             "posterior_type": "diagonal_gaussian",
             "version": 1,
-            "means": {
-                key: value.detach().clone()
-                for key, value in self.means.items()
-            },
-            "stds": {
-                key: value.detach().clone()
-                for key, value in self.stds.items()
-            },
-            "prior_means": {
-                key: value.detach().clone()
-                for key, value in self.prior_means.items()
-            },
-            "prior_stds": {
-                key: value.detach().clone()
-                for key, value in self.prior_stds.items()
-            },
+            "means": {key: value.detach().clone() for key, value in self.means.items()},
+            "stds": {key: value.detach().clone() for key, value in self.stds.items()},
+            "prior_means": {key: value.detach().clone() for key, value in self.prior_means.items()},
+            "prior_stds": {key: value.detach().clone() for key, value in self.prior_stds.items()},
             "parameter_dtypes": {
                 key: str(value).replace(
                     "torch.",
@@ -386,16 +281,10 @@ class DiagonalGaussianPosterior(ParameterPosterior):
         self,
         state: Mapping[str, Any],
     ) -> None:
-        if state.get(
-            "posterior_type"
-        ) != "diagonal_gaussian":
-            raise ValueError(
-                "incompatible posterior type"
-            )
+        if state.get("posterior_type") != "diagonal_gaussian":
+            raise ValueError("incompatible posterior type")
         if state.get("version") != 1:
-            raise ValueError(
-                "unsupported posterior checkpoint version"
-            )
+            raise ValueError("unsupported posterior checkpoint version")
         for field, target in (
             ("means", self.means),
             ("stds", self.stds),
@@ -404,17 +293,10 @@ class DiagonalGaussianPosterior(ParameterPosterior):
         ):
             incoming = state[field]
             if set(incoming) != set(target):
-                raise ValueError(
-                    f"checkpoint {field} keys do not match posterior"
-                )
+                raise ValueError(f"checkpoint {field} keys do not match posterior")
             for name in target:
-                if (
-                    incoming[name].shape
-                    != target[name].shape
-                ):
-                    raise ValueError(
-                        f"checkpoint shape mismatch for {name}"
-                    )
+                if incoming[name].shape != target[name].shape:
+                    raise ValueError(f"checkpoint shape mismatch for {name}")
                 target[name].copy_(
                     incoming[name].to(
                         device=target[name].device,

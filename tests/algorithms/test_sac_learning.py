@@ -12,7 +12,4 @@ def test_sac_improves_stationary_lqr_return() -> None:
         seed=7,
         device="cpu",
     )
-    assert (
-        result["post_return"]
-        > result["pre_return"] + 0.75
-    )
+    assert result["post_return"] > result["pre_return"] + 0.75

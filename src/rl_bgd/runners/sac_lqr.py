@@ -35,9 +35,7 @@ def evaluate_sac_lqr(
         raise ValueError("episodes must be >= 1")
     returns: list[float] = []
     for index in range(episodes):
-        observation, _ = env.reset(
-            seed=seed + index
-        )
+        observation, _ = env.reset(seed=seed + index)
         total = 0.0
         while True:
             action = agent.act(
@@ -64,13 +62,9 @@ def run_sac_lqr(
     seed: int = 7,
     device: str = "auto",
 ) -> dict[str, object]:
-    seed_everything(
-        seed, deterministic=True
-    )
+    seed_everything(seed, deterministic=True)
     resolved = resolve_device(device)
-    env = LinearQuadraticControlEnv(
-        horizon=30, device=resolved
-    )
+    env = LinearQuadraticControlEnv(horizon=30, device=resolved)
     agent = SACAgent(
         1,
         1,
@@ -84,9 +78,7 @@ def run_sac_lqr(
         ),
         device=resolved,
     )
-    pre_return = evaluate_sac_lqr(
-        env, agent, seed=20_000
-    )
+    pre_return = evaluate_sac_lqr(env, agent, seed=20_000)
     summary = train_sac(
         env,
         agent,
@@ -98,16 +90,12 @@ def run_sac_lqr(
             seed=seed,
         ),
     )
-    post_return = evaluate_sac_lqr(
-        env, agent, seed=20_000
-    )
+    post_return = evaluate_sac_lqr(env, agent, seed=20_000)
     return {
         "steps": steps,
         "pre_return": pre_return,
         "post_return": post_return,
-        "improvement": (
-            post_return - pre_return
-        ),
+        "improvement": (post_return - pre_return),
         "training": summary,
     }
 

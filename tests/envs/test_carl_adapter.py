@@ -123,6 +123,4 @@ def test_evaluation_context_exposure_rejected_in_strict_mode() -> None:
         )
     except ValueError:
         return
-    raise AssertionError(
-        "strict mode should reject exposed context"
-    )
+    raise AssertionError("strict mode should reject exposed context")

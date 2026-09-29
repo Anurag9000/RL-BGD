@@ -28,9 +28,7 @@ def posterior_diagnostics(
     effective_lr = eta * sigma.square()
     entropy = 0.5 * torch.log(2.0 * math.pi * math.e * sigma.square())
     quantiles = torch.quantile(sigma, torch.tensor([0.05, 0.25, 0.5, 0.75, 0.95]))
-    lr_quantiles = torch.quantile(
-        effective_lr, torch.tensor([0.05, 0.25, 0.5, 0.75, 0.95])
-    )
+    lr_quantiles = torch.quantile(effective_lr, torch.tensor([0.05, 0.25, 0.5, 0.75, 0.95]))
     return {
         "sigma_mean": sigma.mean().item(),
         "sigma_median": sigma.median().item(),
@@ -42,9 +40,7 @@ def posterior_diagnostics(
         "sigma_q50": quantiles[2].item(),
         "sigma_q75": quantiles[3].item(),
         "sigma_q95": quantiles[4].item(),
-        "fraction_sigma_below_threshold": (
-            sigma < collapse_threshold
-        ).float().mean().item(),
+        "fraction_sigma_below_threshold": (sigma < collapse_threshold).float().mean().item(),
         "posterior_entropy_mean": entropy.mean().item(),
         "precision_mean": precision.mean().item(),
         "effective_lr_mean": effective_lr.mean().item(),
@@ -57,7 +53,4 @@ def posterior_diagnostics(
 def layerwise_posterior_diagnostics(
     stds: Mapping[str, Tensor], *, eta: float
 ) -> dict[str, dict[str, float]]:
-    return {
-        name: posterior_diagnostics({name: std}, eta=eta)
-        for name, std in stds.items()
-    }
+    return {name: posterior_diagnostics({name: std}, eta=eta) for name, std in stds.items()}

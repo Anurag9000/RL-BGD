@@ -32,9 +32,7 @@ def temper_gaussian_tensor(
     tau_prev = std32.reciprocal().square()
     tau0 = pstd32.reciprocal().square()
     tau = retention * tau_prev + (1.0 - retention) * tau0
-    tempered_mean = (
-        retention * tau_prev * mean32 + (1.0 - retention) * tau0 * pmean32
-    ) / tau
+    tempered_mean = (retention * tau_prev * mean32 + (1.0 - retention) * tau0 * pmean32) / tau
     tempered_std = torch.rsqrt(tau)
     return tempered_mean, tempered_std
 

@@ -49,9 +49,7 @@ class SquashedGaussianActor(nn.Module):
     def distribution_parameters(self, observation: Tensor) -> tuple[Tensor, Tensor]:
         features = self.backbone(observation)
         mean = self.mean_head(features)
-        log_std = self.log_std_head(features).clamp(
-            self.log_std_min, self.log_std_max
-        )
+        log_std = self.log_std_head(features).clamp(self.log_std_min, self.log_std_max)
         return mean, log_std
 
     def sample(self, observation: Tensor) -> tuple[Tensor, Tensor, Tensor]:
@@ -61,9 +59,7 @@ class SquashedGaussianActor(nn.Module):
         squashed = torch.tanh(pre_tanh)
         action = squashed * self.action_scale + self.action_bias
         correction = 2.0 * (
-            math.log(2.0)
-            - pre_tanh
-            - torch.nn.functional.softplus(-2.0 * pre_tanh)
+            math.log(2.0) - pre_tanh - torch.nn.functional.softplus(-2.0 * pre_tanh)
         )
         log_prob = normal.log_prob(pre_tanh) - correction
         log_prob = log_prob.sum(dim=-1, keepdim=True)

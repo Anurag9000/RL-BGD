@@ -22,9 +22,7 @@ class TensorBox:
         *,
         generator: torch.Generator | None = None,
     ) -> Tensor:
-        return self.low + (
-            self.high - self.low
-        ) * torch.rand(
+        return self.low + (self.high - self.low) * torch.rand(
             self.low.shape,
             device=self.low.device,
             generator=generator,
@@ -46,13 +44,9 @@ class LinearQuadraticControlEnv:
         device: torch.device | str = "cpu",
     ) -> None:
         if dimension < 1 or horizon < 1:
-            raise ValueError(
-                "dimension and horizon must be positive"
-            )
+            raise ValueError("dimension and horizon must be positive")
         if action_cost <= 0 or process_noise < 0:
-            raise ValueError(
-                "invalid cost/noise parameters"
-            )
+            raise ValueError("invalid cost/noise parameters")
         self.dimension = dimension
         self.horizon = horizon
         self.dynamics = dynamics
@@ -60,34 +54,18 @@ class LinearQuadraticControlEnv:
         self.action_cost = action_cost
         self.process_noise = process_noise
         self.device = torch.device(device)
-        low = torch.full(
-            (dimension,), -1.0, device=self.device
-        )
-        high = torch.full(
-            (dimension,), 1.0, device=self.device
-        )
-        self.action_space = TensorBox(
-            low=low, high=high
-        )
+        low = torch.full((dimension,), -1.0, device=self.device)
+        high = torch.full((dimension,), 1.0, device=self.device)
+        self.action_space = TensorBox(low=low, high=high)
         self.observation_space = TensorBox(
-            low=torch.full(
-                (dimension,), -10.0, device=self.device
-            ),
-            high=torch.full(
-                (dimension,), 10.0, device=self.device
-            ),
+            low=torch.full((dimension,), -10.0, device=self.device),
+            high=torch.full((dimension,), 10.0, device=self.device),
         )
-        self._state = torch.zeros(
-            dimension, device=self.device
-        )
+        self._state = torch.zeros(dimension, device=self.device)
         self._step = 0
-        self._generator = torch.Generator(
-            device=self.device
-        )
+        self._generator = torch.Generator(device=self.device)
 
-    def reset(
-        self, *, seed: int | None = None
-    ) -> tuple[Tensor, dict[str, object]]:
+    def reset(self, *, seed: int | None = None) -> tuple[Tensor, dict[str, object]]:
         if seed is not None:
             self._generator.manual_seed(seed)
         self._state = (
@@ -116,9 +94,7 @@ class LinearQuadraticControlEnv:
             self.action_space.high,
         )
         state_cost = self._state.square().sum()
-        control_cost = (
-            self.action_cost * action.square().sum()
-        )
+        control_cost = self.action_cost * action.square().sum()
         reward = -(state_cost + control_cost)
         noise = torch.zeros_like(self._state)
         if self.process_noise:
@@ -127,11 +103,7 @@ class LinearQuadraticControlEnv:
                 device=self.device,
                 generator=self._generator,
             )
-        self._state = (
-            self.dynamics * self._state
-            + self.control_gain * action
-            + noise
-        )
+        self._state = self.dynamics * self._state + self.control_gain * action + noise
         self._step += 1
         terminated = False
         truncated = self._step >= self.horizon

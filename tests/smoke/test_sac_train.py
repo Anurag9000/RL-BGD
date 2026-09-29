@@ -17,9 +17,7 @@ from rl_bgd.envs.synthetic.lqr import (
 
 def test_sac_training_loop_runs_on_lqr() -> None:
     torch.manual_seed(0)
-    env = LinearQuadraticControlEnv(
-        horizon=20
-    )
+    env = LinearQuadraticControlEnv(horizon=20)
     agent = SACAgent(
         1,
         1,
@@ -46,8 +44,4 @@ def test_sac_training_loop_runs_on_lqr() -> None:
     )
     assert summary["episodes"] >= 5
     assert summary["replay_size"] == 160
-    assert math.isfinite(
-        summary[
-            "last_update_metrics"
-        ]["critic_loss"]
-    )
+    assert math.isfinite(summary["last_update_metrics"]["critic_loss"])

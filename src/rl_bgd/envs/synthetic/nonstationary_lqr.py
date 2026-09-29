@@ -28,9 +28,7 @@ class ScheduledLQREnv:
         keys = set(schedule.config.anchors[0])
         unsupported = keys - _ALLOWED_CONTEXT_KEYS
         if unsupported:
-            raise ValueError(
-                f"unsupported LQR context keys: {sorted(unsupported)}"
-            )
+            raise ValueError(f"unsupported LQR context keys: {sorted(unsupported)}")
         self.base_env = base_env
         self.schedule = schedule
         self.environment_step = 0
@@ -69,8 +67,6 @@ class ScheduledLQREnv:
         action: Tensor,
     ) -> tuple[Tensor, float, bool, bool, dict[str, Any]]:
         self._apply_context()
-        observation, reward, terminated, truncated, _ = self.base_env.step(
-            action
-        )
+        observation, reward, terminated, truncated, _ = self.base_env.step(action)
         self.environment_step += 1
         return observation, reward, terminated, truncated, {}

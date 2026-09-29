@@ -44,9 +44,7 @@ def change_detection_metrics(
     delays: list[int] = []
     for change in true_steps:
         candidates = [
-            detection
-            for detection in unused
-            if change <= detection <= change + tolerance_steps
+            detection for detection in unused if change <= detection <= change + tolerance_steps
         ]
         if candidates:
             matched = min(candidates)
@@ -55,38 +53,20 @@ def change_detection_metrics(
 
     matched_count = len(delays)
     false_positives = len(detections) - matched_count
-    precision = (
-        matched_count / len(detections)
-        if detections
-        else 0.0
-    )
-    recall = (
-        matched_count / len(true_steps)
-        if true_steps
-        else 0.0
-    )
-    f1 = (
-        2.0 * precision * recall / (precision + recall)
-        if precision + recall
-        else 0.0
-    )
+    precision = matched_count / len(detections) if detections else 0.0
+    recall = matched_count / len(true_steps) if true_steps else 0.0
+    f1 = 2.0 * precision * recall / (precision + recall) if precision + recall else 0.0
     negative_steps = max(total_steps - len(true_steps), 1)
     return ChangeDetectionMetrics(
         matched_events=matched_count,
         true_events=len(true_steps),
         detected_events=len(detections),
-        mean_detection_delay=(
-            float(np.mean(delays))
-            if delays
-            else None
-        ),
+        mean_detection_delay=(float(np.mean(delays)) if delays else None),
         precision=float(precision),
         recall=float(recall),
         f1=float(f1),
         false_positive_rate=float(false_positives / negative_steps),
-        false_alarms_per_million_steps=float(
-            false_positives * 1_000_000.0 / total_steps
-        ),
+        false_alarms_per_million_steps=float(false_positives * 1_000_000.0 / total_steps),
     )
 
 
@@ -130,8 +110,5 @@ def binary_auroc(
         raise ValueError("AUROC requires both positive and negative labels")
     ranks = rankdata(score_array, method="average")
     positive_rank_sum = float(ranks[label_array == 1].sum())
-    u_statistic = (
-        positive_rank_sum
-        - positives * (positives + 1) / 2.0
-    )
+    u_statistic = positive_rank_sum - positives * (positives + 1) / 2.0
     return float(u_statistic / (positives * negatives))

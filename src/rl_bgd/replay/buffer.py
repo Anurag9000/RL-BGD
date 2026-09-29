@@ -42,9 +42,7 @@ class ReplayBuffer:
         if capacity < 1:
             raise ValueError("capacity must be >= 1")
         if observation_dim < 1 or action_dim < 1:
-            raise ValueError(
-                "observation_dim and action_dim must be positive"
-            )
+            raise ValueError("observation_dim and action_dim must be positive")
         device = torch.device(storage_device)
         self.capacity = capacity
         self.device = device
@@ -53,35 +51,19 @@ class ReplayBuffer:
             device=device,
             dtype=dtype,
         )
-        self.actions = torch.empty(
-            (capacity, action_dim), device=device, dtype=dtype
-        )
-        self.rewards = torch.empty(
-            (capacity, 1), device=device, dtype=dtype
-        )
+        self.actions = torch.empty((capacity, action_dim), device=device, dtype=dtype)
+        self.rewards = torch.empty((capacity, 1), device=device, dtype=dtype)
         self.next_observations = torch.empty(
             (capacity, observation_dim),
             device=device,
             dtype=dtype,
         )
-        self.terminated = torch.empty(
-            (capacity, 1), device=device, dtype=torch.bool
-        )
-        self.truncated = torch.empty(
-            (capacity, 1), device=device, dtype=torch.bool
-        )
-        self.transition_ids = torch.empty(
-            (capacity, 1), device=device, dtype=torch.long
-        )
-        self.insertion_steps = torch.empty(
-            (capacity, 1), device=device, dtype=torch.long
-        )
-        self.usage_counts = torch.zeros(
-            (capacity, 1), device=device, dtype=torch.long
-        )
-        self._fresh = torch.zeros(
-            (capacity, 1), device=device, dtype=torch.bool
-        )
+        self.terminated = torch.empty((capacity, 1), device=device, dtype=torch.bool)
+        self.truncated = torch.empty((capacity, 1), device=device, dtype=torch.bool)
+        self.transition_ids = torch.empty((capacity, 1), device=device, dtype=torch.long)
+        self.insertion_steps = torch.empty((capacity, 1), device=device, dtype=torch.long)
+        self.usage_counts = torch.zeros((capacity, 1), device=device, dtype=torch.long)
+        self._fresh = torch.zeros((capacity, 1), device=device, dtype=torch.bool)
         self._size = 0
         self._position = 0
         self._next_transition_id = 0
@@ -101,18 +83,14 @@ class ReplayBuffer:
         insertion_step: int,
     ) -> int:
         index = self._position
-        self.observations[index].copy_(
-            observation.to(self.device)
-        )
+        self.observations[index].copy_(observation.to(self.device))
         self.actions[index].copy_(action.to(self.device))
         self.rewards[index, 0] = torch.as_tensor(
             reward,
             device=self.device,
             dtype=self.rewards.dtype,
         )
-        self.next_observations[index].copy_(
-            next_observation.to(self.device)
-        )
+        self.next_observations[index].copy_(next_observation.to(self.device))
         self.terminated[index, 0] = terminated
         self.truncated[index, 0] = truncated
         transition_id = self._next_transition_id
@@ -121,9 +99,7 @@ class ReplayBuffer:
         self.usage_counts[index, 0] = 0
         self._fresh[index, 0] = True
         self._next_transition_id += 1
-        self._position = (
-            self._position + 1
-        ) % self.capacity
+        self._position = (self._position + 1) % self.capacity
         self._size = min(self._size + 1, self.capacity)
         return transition_id
 
@@ -136,9 +112,7 @@ class ReplayBuffer:
         if batch_size < 1:
             raise ValueError("batch_size must be >= 1")
         if self._size < batch_size:
-            raise ValueError(
-                "not enough replay items to sample requested batch"
-            )
+            raise ValueError("not enough replay items to sample requested batch")
         indices = torch.randperm(
             self._size,
             device=self.device,
@@ -181,22 +155,14 @@ class ReplayBuffer:
             "fresh": self._fresh[:size].clone(),
         }
 
-    def load_state_dict(
-        self, state: dict[str, object]
-    ) -> None:
+    def load_state_dict(self, state: dict[str, object]) -> None:
         if state.get("version") != 1:
-            raise ValueError(
-                "unsupported replay checkpoint version"
-            )
+            raise ValueError("unsupported replay checkpoint version")
         if int(state["capacity"]) != self.capacity:
-            raise ValueError(
-                "replay checkpoint capacity mismatch"
-            )
+            raise ValueError("replay checkpoint capacity mismatch")
         size = int(state["size"])
         if not 0 <= size <= self.capacity:
-            raise ValueError(
-                "invalid replay checkpoint size"
-            )
+            raise ValueError("invalid replay checkpoint size")
         tensor_fields = {
             "observations": self.observations,
             "actions": self.actions,
@@ -212,13 +178,9 @@ class ReplayBuffer:
         for key, target in tensor_fields.items():
             source = state[key]
             if not isinstance(source, Tensor):
-                raise TypeError(
-                    f"replay checkpoint field {key} must be a tensor"
-                )
+                raise TypeError(f"replay checkpoint field {key} must be a tensor")
             if source.shape != target[:size].shape:
-                raise ValueError(
-                    f"replay checkpoint shape mismatch for {key}"
-                )
+                raise ValueError(f"replay checkpoint shape mismatch for {key}")
             target[:size].copy_(
                 source.to(
                     device=self.device,
@@ -227,6 +189,4 @@ class ReplayBuffer:
             )
         self._size = size
         self._position = int(state["position"])
-        self._next_transition_id = int(
-            state["next_transition_id"]
-        )
+        self._next_transition_id = int(state["next_transition_id"])
