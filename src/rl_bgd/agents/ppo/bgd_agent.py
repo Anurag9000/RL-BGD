@@ -315,11 +315,12 @@ class BGDPPOAgent(PPOAgent):
                             str,
                             Tensor,
                         ],
+                        current_batch: PPORolloutBatch = batch,
                     ) -> Tensor:
                         return (
                             self._sampled_actor_loss(
                                 params,
-                                batch,
+                                current_batch,
                             )
                         )
 
@@ -367,11 +368,12 @@ class BGDPPOAgent(PPOAgent):
                             str,
                             Tensor,
                         ],
+                        current_batch: PPORolloutBatch = batch,
                     ) -> Tensor:
                         return (
                             self._sampled_value_loss(
                                 params,
-                                batch,
+                                current_batch,
                             )
                         )
 
