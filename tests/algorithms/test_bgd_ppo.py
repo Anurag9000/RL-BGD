@@ -14,6 +14,8 @@ from rl_bgd.bayes.bgd import BGDConfig
 
 def make_agent(
     mode: str,
+    *,
+    evidence_mode: str = "first_epoch_only",
 ) -> BGDPPOAgent:
     return BGDPPOAgent(
         2,
@@ -28,6 +30,7 @@ def make_agent(
         bgd_config=BGDPPOConfig(
             bayesianization=mode,  # type: ignore[arg-type]
             posterior_std=0.1,
+            evidence_mode=evidence_mode,  # type: ignore[arg-type]
             actor_bgd=BGDConfig(
                 eta=0.1,
                 mc_samples=2,
@@ -166,3 +169,33 @@ def test_bgd_ppo_checkpoint_round_trip() -> None:
                 name
             ],
         )
+
+
+@pytest.mark.parametrize(
+    (
+        "evidence_mode",
+        "expected_weight",
+    ),
+    [
+        ("all_epochs", 1.0),
+        ("first_epoch_only", 0.5),
+        ("normalized_epochs", 0.5),
+    ],
+)
+def test_bgd_ppo_evidence_reuse_weight_is_explicit(
+    evidence_mode: str,
+    expected_weight: float,
+) -> None:
+    torch.manual_seed(74)
+    agent = make_agent(
+        "actor_only",
+        evidence_mode=evidence_mode,
+    )
+    metrics = agent.update(
+        make_rollout(agent)
+    )
+    assert metrics[
+        "uncertainty_evidence_weight_mean"
+    ] == pytest.approx(
+        expected_weight
+    )
