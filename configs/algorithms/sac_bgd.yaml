@@ -4,6 +4,8 @@ bayesianization: critic_only
 posterior_std: 0.1
 sigma_min: 1.0e-6
 sigma_max: 10.0
+replay_evidence:
+  mode: all_replay
 actor_bgd:
   eta: 0.1
   mc_samples: 4

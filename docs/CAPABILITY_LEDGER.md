@@ -12,13 +12,14 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Diagonal Gaussian posterior | COMPLETE | bayes/diagonal_gaussian.py + tests |
 | FP32 Bayesian state | COMPLETE | posterior state tensors enforce FP32 |
 | BGD Monte Carlo update | COMPLETE | bayes/bgd.py + quadratic/integration tests |
+| Separate mean/evidence gradient channels | COMPLETE | BGDLoss + replay-evidence mechanism tests |
 | K=1/2/4/8 support | COMPLETE | generic mc_samples; antithetic requires even K |
 | Antithetic sampling | COMPLETE | sampler + pair-cancellation test |
 | Sigma bounds/nonfinite failure | COMPLETE | PosteriorBounds + clamp/assert |
 | Gaussian tempering | COMPLETE | bayes/tempering.py + exact tests |
 | Posterior diagnostics | COMPLETE | sigma/precision/entropy/effective LR |
 | Posterior/updater checkpoint | COMPLETE | versioned round-trip test |
-| Generalized-Bayes RL | PARTIAL | formulation and SAC mapping documented; replay semantics pending |
+| Generalized-Bayes RL | PARTIAL | formulation + SAC mapping; adaptive temperature pending |
 | InformationAccessConfig | COMPLETE | central contract + leakage tests |
 | Device auto/CUDA/CPU | COMPLETE | utils/device.py + tests |
 | Deterministic seeding | COMPLETE | Python/NumPy/PyTorch CPU/CUDA |
@@ -40,7 +41,11 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | BGD-SAC actor-only | COMPLETE | functional-call sampled actor update + mode test |
 | BGD-SAC actor+critic | COMPLETE | both posterior paths + checkpoint round-trip |
 | BGD-SAC posterior diagnostics | COMPLETE | sigma/effective-LR metrics per Bayesian module |
-| Replay evidence accounting modes | NOT STARTED | phase 5 (metadata already present) |
+| Replay evidence all_replay | COMPLETE | evidence module + BGD-SAC wiring |
+| Replay evidence fresh_only_uncertainty | COMPLETE | separate gradient channel + zero-evidence sigma test |
+| Replay evidence inverse_reuse_weight | COMPLETE | usage-weight tests + synthetic precision comparison |
+| Replay evidence normalized_batch_evidence | COMPLETE | uniform batch-scale test + BGD-SAC wiring |
+| Replay evidence diagnostics / ESS | COMPLETE | per-update metrics |
 | Surprise estimators | NOT STARTED | phase 8 |
 | PPO + Adam/BGD | NOT STARTED | phase 9 |
 | Recurrent agents/sequence replay | NOT STARTED | phase 11 |
@@ -48,5 +53,5 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Continual World CW10/CW20 | NOT STARTED | phase 10 |
 | ContinualBench/CORA adapter | NOT STARTED | optional external benchmark |
 | EWC/Online-EWC/SI/MAS | NOT STARTED | baseline phase |
-| Mechanistic experiments | PARTIAL | curvature + movement + long-horizon mechanisms executable |
+| Mechanistic experiments | PARTIAL | curvature + movement + long-horizon + replay-evidence mechanisms executable |
 | Paper tables/figures | NOT STARTED | phase 15 |

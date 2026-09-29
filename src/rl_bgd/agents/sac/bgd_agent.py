@@ -10,12 +10,18 @@ from torch import Tensor
 from torch.func import functional_call
 
 from rl_bgd.agents.sac.agent import SACAgent, SACConfig
-from rl_bgd.bayes.bgd import BGDConfig, BGDStepResult, BGDUpdater
+from rl_bgd.bayes.bgd import BGDConfig, BGDLoss, BGDStepResult, BGDUpdater
 from rl_bgd.bayes.diagonal_gaussian import (
     DiagonalGaussianPosterior,
     PosteriorBounds,
 )
 from rl_bgd.replay.buffer import ReplayBatch
+from rl_bgd.replay.evidence_accounting import (
+    ReplayEvidenceConfig,
+    ReplayEvidenceSummary,
+    replay_evidence_weights,
+    weighted_evidence_mean,
+)
 
 BayesianizationMode = Literal[
     "critic_only",
@@ -30,6 +36,7 @@ class BGDSACConfig:
     posterior_std: float = 0.1
     sigma_min: float = 1e-6
     sigma_max: float = 10.0
+    replay_evidence: ReplayEvidenceConfig = field(default_factory=ReplayEvidenceConfig)
     actor_bgd: BGDConfig = field(
         default_factory=lambda: BGDConfig(
             eta=0.1,
@@ -60,6 +67,7 @@ class BGDSACConfig:
             self.sigma_min,
             self.sigma_max,
         ).validate()
+        self.replay_evidence.validate()
         self.actor_bgd.validate()
         self.critic_bgd.validate()
 
@@ -133,10 +141,14 @@ class BGDSACAgent(SACAgent):
                 self.bgd_config.critic_bgd,
             )
 
+    def _evidence(self, batch: ReplayBatch) -> ReplayEvidenceSummary:
+        return replay_evidence_weights(batch, self.bgd_config.replay_evidence)
+
     def _update_critics_bgd(
         self,
         batch: ReplayBatch,
         target: Tensor,
+        evidence: ReplayEvidenceSummary,
     ) -> tuple[BGDStepResult, BGDStepResult]:
         if self.critic1_bgd is None or self.critic2_bgd is None:
             raise RuntimeError("critic BGD is not configured")
@@ -144,29 +156,40 @@ class BGDSACAgent(SACAgent):
         def critic_loss(output: Tensor) -> Tensor:
             return torch.nn.functional.mse_loss(output, target)
 
+        def critic_uncertainty_loss(output: Tensor) -> Tensor:
+            per_item = torch.nn.functional.mse_loss(
+                output,
+                target,
+                reduction="none",
+            )
+            return weighted_evidence_mean(per_item, evidence.weights)
+
         result1 = self.critic1_bgd.step_module(
             self.critic1,
             critic_loss,
             batch.observations,
             batch.actions,
+            uncertainty_loss_fn=critic_uncertainty_loss,
         )
         result2 = self.critic2_bgd.step_module(
             self.critic2,
             critic_loss,
             batch.observations,
             batch.actions,
+            uncertainty_loss_fn=critic_uncertainty_loss,
         )
         return result1, result2
 
     def _update_actor_bgd(
         self,
         batch: ReplayBatch,
+        evidence: ReplayEvidenceSummary,
     ) -> BGDStepResult:
         if self.actor_bgd is None or self.actor_posterior is None:
             raise RuntimeError("actor BGD is not configured")
         actor_buffers = dict(self.actor.named_buffers())
 
-        def objective(params: dict[str, Tensor]) -> Tensor:
+        def objective(params: dict[str, Tensor]) -> BGDLoss:
             sampled_action, log_prob, _ = functional_call(
                 self.actor,
                 (dict(params), actor_buffers),
@@ -182,9 +205,11 @@ class BGDSACAgent(SACAgent):
                     sampled_action,
                 ),
             )
-            return (
-                self.alpha.detach() * log_prob - q_pi
-            ).mean()
+            per_item = self.alpha.detach() * log_prob - q_pi
+            return BGDLoss(
+                mean=per_item.mean(),
+                uncertainty=weighted_evidence_mean(per_item, evidence.weights),
+            )
 
         result = self.actor_bgd.step(objective)
         self.actor_posterior.sync_module(self.actor)
@@ -196,14 +221,15 @@ class BGDSACAgent(SACAgent):
     ) -> dict[str, float]:
         mode = self.bgd_config.bayesianization
         target = self._target_values(batch)
+        evidence = self._evidence(batch)
 
         critic1_result: BGDStepResult | None = None
         critic2_result: BGDStepResult | None = None
         if mode in {"critic_only", "actor_and_critic"}:
-            critic1_result, critic2_result = (
-                self._update_critics_bgd(
-                    batch, target
-                )
+            critic1_result, critic2_result = self._update_critics_bgd(
+                batch,
+                target,
+                evidence,
             )
             q1 = self.critic1(
                 batch.observations,
@@ -257,7 +283,8 @@ class BGDSACAgent(SACAgent):
         actor_result: BGDStepResult | None = None
         if mode in {"actor_only", "actor_and_critic"}:
             actor_result = self._update_actor_bgd(
-                batch
+                batch,
+                evidence,
             )
             with torch.no_grad():
                 (
@@ -372,6 +399,12 @@ class BGDSACAgent(SACAgent):
                 .mean()
                 .item()
             ),
+            "evidence_weight_mean": evidence.mean_weight,
+            "evidence_weight_min": evidence.min_weight,
+            "evidence_weight_max": evidence.max_weight,
+            "evidence_fresh_fraction": evidence.fresh_fraction,
+            "evidence_mean_usage_count": evidence.mean_usage_count,
+            "evidence_effective_sample_size": evidence.effective_sample_size,
         }
         if (
             critic1_result is not None
@@ -399,6 +432,12 @@ class BGDSACAgent(SACAgent):
                             "effective_lr_mean"
                         ]
                     ),
+                    "critic1_uncertainty_gradient_norm": (
+                        critic1_result.uncertainty_gradient_norm
+                    ),
+                    "critic2_uncertainty_gradient_norm": (
+                        critic2_result.uncertainty_gradient_norm
+                    ),
                 }
             )
         if actor_result is not None:
@@ -413,6 +452,9 @@ class BGDSACAgent(SACAgent):
                         actor_result.diagnostics[
                             "effective_lr_mean"
                         ]
+                    ),
+                    "actor_uncertainty_gradient_norm": (
+                        actor_result.uncertainty_gradient_norm
                     ),
                 }
             )
@@ -430,6 +472,9 @@ class BGDSACAgent(SACAgent):
         state["bgd_sac_version"] = 1
         state["bayesianization"] = (
             self.bgd_config.bayesianization
+        )
+        state["replay_evidence_mode"] = (
+            self.bgd_config.replay_evidence.mode
         )
         if self.actor_bgd is not None:
             state["actor_bgd"] = (
@@ -461,6 +506,13 @@ class BGDSACAgent(SACAgent):
         ):
             raise ValueError(
                 "BGD-SAC checkpoint Bayesianization mode mismatch"
+            )
+        if (
+            state.get("replay_evidence_mode", "all_replay")
+            != self.bgd_config.replay_evidence.mode
+        ):
+            raise ValueError(
+                "BGD-SAC checkpoint replay evidence mode mismatch"
             )
         super().load_state_dict(state)  # type: ignore[arg-type]
         if self.actor_bgd is not None:
