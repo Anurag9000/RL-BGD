@@ -23,20 +23,7 @@ def test_ppo_runs_across_task_agnostic_recurring_lqr(
         device="cpu",
         optimizer=optimizer,  # type: ignore[arg-type]
     )
-    assert result[
-        "environment_steps"
-    ] == 128
-    assert result[
-        "training"
-    ][
-        "episodes"
-    ] >= 4
-    metrics = result[
-        "training"
-    ][
-        "last_update_metrics"
-    ]
-    assert all(
-        math.isfinite(value)
-        for value in metrics.values()
-    )
+    assert result["environment_steps"] == 128
+    assert result["training"]["episodes"] >= 4
+    metrics = result["training"]["last_update_metrics"]
+    assert all(math.isfinite(value) for value in metrics.values())

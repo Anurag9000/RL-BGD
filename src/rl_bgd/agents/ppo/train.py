@@ -74,13 +74,9 @@ def train_ppo(
     config: PPOTrainConfig,
 ) -> dict[str, object]:
     if config.total_steps < 1 or config.rollout_steps < 1:
-        raise ValueError(
-            "PPO training budgets must be positive"
-        )
+        raise ValueError("PPO training budgets must be positive")
 
-    observation, _ = env.reset(
-        seed=config.seed
-    )
+    observation, _ = env.reset(seed=config.seed)
     episode_return = 0.0
     completed_returns: list[float] = []
     last_metrics: dict[str, float] = {}
@@ -92,12 +88,8 @@ def train_ppo(
             config.rollout_steps,
             config.total_steps - steps,
         )
-        observation_dim = int(
-            env.observation_space.low.numel()
-        )
-        action_dim = int(
-            env.action_space.low.numel()
-        )
+        observation_dim = int(env.observation_space.low.numel())
+        action_dim = int(env.action_space.low.numel())
         rollout = RolloutBuffer(
             horizon,
             observation_dim,
@@ -118,9 +110,7 @@ def train_ppo(
                 truncated,
                 _,
             ) = env.step(action)
-            next_value = agent.value_of(
-                next_observation
-            )
+            next_value = agent.value_of(next_observation)
             rollout.add(
                 observation,
                 action,
@@ -136,9 +126,7 @@ def train_ppo(
             steps += 1
 
             if terminated or truncated:
-                completed_returns.append(
-                    episode_return
-                )
+                completed_returns.append(episode_return)
                 episode_return = 0.0
                 observation, _ = env.reset()
 
@@ -150,10 +138,7 @@ def train_ppo(
         "rollouts": rollout_index,
         "episodes": len(completed_returns),
         "mean_episode_return": (
-            sum(completed_returns)
-            / len(completed_returns)
-            if completed_returns
-            else float("nan")
+            sum(completed_returns) / len(completed_returns) if completed_returns else float("nan")
         ),
         "final_10_mean_return": (
             sum(completed_returns[-10:])
@@ -181,9 +166,7 @@ def evaluate_ppo(
 
     returns: list[float] = []
     for episode in range(episodes):
-        observation, _ = env.reset(
-            seed=seed + episode
-        )
+        observation, _ = env.reset(seed=seed + episode)
         episode_return = 0.0
         while True:
             observation, reward, terminated, truncated, _ = env.step(

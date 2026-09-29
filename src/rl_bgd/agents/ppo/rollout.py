@@ -33,11 +33,14 @@ class RolloutBuffer:
         *,
         device: torch.device | str = "cpu",
     ) -> None:
-        if min(
-            capacity,
-            observation_dim,
-            action_dim,
-        ) < 1:
+        if (
+            min(
+                capacity,
+                observation_dim,
+                action_dim,
+            )
+            < 1
+        ):
             raise ValueError("rollout dimensions/capacity must be positive")
         self.capacity = capacity
         self.device = torch.device(device)
@@ -112,18 +115,30 @@ class RolloutBuffer:
         self.rewards[index, 0] = float(reward)
         self.terminated[index, 0] = terminated
         self.truncated[index, 0] = truncated
-        self.values[index, 0] = value.detach().to(
-            self.device,
-            dtype=torch.float32,
-        ).reshape(())
-        self.next_values[index, 0] = next_value.detach().to(
-            self.device,
-            dtype=torch.float32,
-        ).reshape(())
-        self.log_probs[index, 0] = log_prob.detach().to(
-            self.device,
-            dtype=torch.float32,
-        ).reshape(())
+        self.values[index, 0] = (
+            value.detach()
+            .to(
+                self.device,
+                dtype=torch.float32,
+            )
+            .reshape(())
+        )
+        self.next_values[index, 0] = (
+            next_value.detach()
+            .to(
+                self.device,
+                dtype=torch.float32,
+            )
+            .reshape(())
+        )
+        self.log_probs[index, 0] = (
+            log_prob.detach()
+            .to(
+                self.device,
+                dtype=torch.float32,
+            )
+            .reshape(())
+        )
         self.size += 1
         self.advantages = None
         self.returns = None
@@ -154,33 +169,18 @@ class RolloutBuffer:
             -1,
         ):
             bootstrap_mask = (~self.terminated[index]).float()
-            continuation_mask = (
-                ~(
-                    self.terminated[index]
-                    | self.truncated[index]
-                )
-            ).float()
+            continuation_mask = (~(self.terminated[index] | self.truncated[index])).float()
             delta = (
                 self.rewards[index]
-                + gamma
-                * bootstrap_mask
-                * self.next_values[index]
+                + gamma * bootstrap_mask * self.next_values[index]
                 - self.values[index]
             )
-            gae = (
-                delta
-                + gamma
-                * gae_lambda
-                * continuation_mask
-                * gae
-            )
+            gae = delta + gamma * gae_lambda * continuation_mask * gae
             advantages[index] = gae
 
         returns = advantages + self.values[: self.size]
         if normalize_advantages and self.size > 1:
-            advantages = (
-                advantages - advantages.mean()
-            ) / (
+            advantages = (advantages - advantages.mean()) / (
                 advantages.std(
                     unbiased=False,
                 )
@@ -196,9 +196,7 @@ class RolloutBuffer:
         generator: torch.Generator | None = None,
     ) -> Iterator[PPORolloutBatch]:
         if self.advantages is None or self.returns is None:
-            raise RuntimeError(
-                "compute_gae must be called before minibatching"
-            )
+            raise RuntimeError("compute_gae must be called before minibatching")
         if minibatch_size < 1:
             raise ValueError("minibatch_size must be positive")
 
@@ -222,7 +220,6 @@ class RolloutBuffer:
                 old_values=self.values[indices],
             )
 
-
     def state_dict(self) -> dict[str, Any]:
         """Serialize partial or update-ready on-policy rollout state."""
 
@@ -230,47 +227,19 @@ class RolloutBuffer:
         return {
             "version": 1,
             "capacity": self.capacity,
-            "observation_dim": int(
-                self.observations.shape[1]
-            ),
-            "action_dim": int(
-                self.actions.shape[1]
-            ),
+            "observation_dim": int(self.observations.shape[1]),
+            "action_dim": int(self.actions.shape[1]),
             "size": size,
-            "observations": self.observations[
-                :size
-            ].clone(),
-            "actions": self.actions[
-                :size
-            ].clone(),
-            "rewards": self.rewards[
-                :size
-            ].clone(),
-            "terminated": self.terminated[
-                :size
-            ].clone(),
-            "truncated": self.truncated[
-                :size
-            ].clone(),
-            "values": self.values[
-                :size
-            ].clone(),
-            "next_values": self.next_values[
-                :size
-            ].clone(),
-            "log_probs": self.log_probs[
-                :size
-            ].clone(),
-            "advantages": (
-                None
-                if self.advantages is None
-                else self.advantages.clone()
-            ),
-            "returns": (
-                None
-                if self.returns is None
-                else self.returns.clone()
-            ),
+            "observations": self.observations[:size].clone(),
+            "actions": self.actions[:size].clone(),
+            "rewards": self.rewards[:size].clone(),
+            "terminated": self.terminated[:size].clone(),
+            "truncated": self.truncated[:size].clone(),
+            "values": self.values[:size].clone(),
+            "next_values": self.next_values[:size].clone(),
+            "log_probs": self.log_probs[:size].clone(),
+            "advantages": (None if self.advantages is None else self.advantages.clone()),
+            "returns": (None if self.returns is None else self.returns.clone()),
         }
 
     def load_state_dict(
@@ -280,35 +249,17 @@ class RolloutBuffer:
         """Restore behavior-policy statistics without recomputing them."""
 
         if state.get("version") != 1:
-            raise ValueError(
-                "unsupported PPO rollout checkpoint version"
-            )
+            raise ValueError("unsupported PPO rollout checkpoint version")
         if int(state["capacity"]) != self.capacity:
-            raise ValueError(
-                "PPO rollout checkpoint capacity mismatch"
-            )
-        if int(
-            state["observation_dim"]
-        ) != int(
-            self.observations.shape[1]
-        ):
-            raise ValueError(
-                "PPO rollout observation dimension mismatch"
-            )
-        if int(
-            state["action_dim"]
-        ) != int(
-            self.actions.shape[1]
-        ):
-            raise ValueError(
-                "PPO rollout action dimension mismatch"
-            )
+            raise ValueError("PPO rollout checkpoint capacity mismatch")
+        if int(state["observation_dim"]) != int(self.observations.shape[1]):
+            raise ValueError("PPO rollout observation dimension mismatch")
+        if int(state["action_dim"]) != int(self.actions.shape[1]):
+            raise ValueError("PPO rollout action dimension mismatch")
 
         size = int(state["size"])
         if not 0 <= size <= self.capacity:
-            raise ValueError(
-                "invalid PPO rollout checkpoint size"
-            )
+            raise ValueError("invalid PPO rollout checkpoint size")
         fields = {
             "observations": self.observations,
             "actions": self.actions,
@@ -325,15 +276,9 @@ class RolloutBuffer:
                 source,
                 Tensor,
             ):
-                raise TypeError(
-                    "PPO rollout checkpoint field "
-                    f"{name} must be a tensor"
-                )
+                raise TypeError(f"PPO rollout checkpoint field {name} must be a tensor")
             if source.shape != target[:size].shape:
-                raise ValueError(
-                    "PPO rollout checkpoint shape mismatch "
-                    f"for {name}"
-                )
+                raise ValueError(f"PPO rollout checkpoint shape mismatch for {name}")
             target[:size].copy_(
                 source.to(
                     device=self.device,
@@ -341,18 +286,11 @@ class RolloutBuffer:
                 )
             )
 
-        advantages = state.get(
-            "advantages"
-        )
+        advantages = state.get("advantages")
         returns = state.get("returns")
-        if (
-            advantages is None
-        ) != (
-            returns is None
-        ):
+        if (advantages is None) != (returns is None):
             raise ValueError(
-                "PPO rollout checkpoint must contain "
-                "both advantages and returns or neither"
+                "PPO rollout checkpoint must contain both advantages and returns or neither"
             )
         if advantages is None:
             self.advantages = None
@@ -365,21 +303,10 @@ class RolloutBuffer:
                 returns,
                 Tensor,
             ):
-                raise TypeError(
-                    "PPO rollout advantages/returns "
-                    "must be tensors"
-                )
+                raise TypeError("PPO rollout advantages/returns must be tensors")
             expected_shape = (size, 1)
-            if (
-                advantages.shape
-                != expected_shape
-                or returns.shape
-                != expected_shape
-            ):
-                raise ValueError(
-                    "PPO rollout checkpoint advantage/return "
-                    "shape mismatch"
-                )
+            if advantages.shape != expected_shape or returns.shape != expected_shape:
+                raise ValueError("PPO rollout checkpoint advantage/return shape mismatch")
             self.advantages = advantages.to(
                 device=self.device,
                 dtype=torch.float32,

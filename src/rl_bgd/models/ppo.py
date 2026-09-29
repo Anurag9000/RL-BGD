@@ -99,9 +99,7 @@ class PPOSquashedGaussianActor(nn.Module):
             -1.0 + 1e-6,
             1.0 - 1e-6,
         )
-        pre_tanh = 0.5 * (
-            torch.log1p(normalized) - torch.log1p(-normalized)
-        )
+        pre_tanh = 0.5 * (torch.log1p(normalized) - torch.log1p(-normalized))
         _, log_prob = self._from_pre_tanh(
             normal,
             pre_tanh,

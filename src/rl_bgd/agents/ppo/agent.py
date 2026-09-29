@@ -43,13 +43,8 @@ class PPOConfig:
             raise ValueError("gae_lambda must lie in [0, 1]")
         if not 0.0 < self.clip_ratio < 1.0:
             raise ValueError("clip_ratio must lie in (0, 1)")
-        if (
-            self.value_clip_ratio is not None
-            and not 0.0 < self.value_clip_ratio < 1.0
-        ):
-            raise ValueError(
-                "value_clip_ratio must lie in (0, 1)"
-            )
+        if self.value_clip_ratio is not None and not 0.0 < self.value_clip_ratio < 1.0:
+            raise ValueError("value_clip_ratio must lie in (0, 1)")
         if (
             min(
                 self.actor_lr,
@@ -60,13 +55,9 @@ class PPOConfig:
             <= 0
             or self.entropy_coef < 0
         ):
-            raise ValueError(
-                "invalid PPO optimization coefficients"
-            )
+            raise ValueError("invalid PPO optimization coefficients")
         if self.update_epochs < 1 or self.minibatch_size < 1:
-            raise ValueError(
-                "update_epochs and minibatch_size must be positive"
-            )
+            raise ValueError("update_epochs and minibatch_size must be positive")
         if self.target_kl is not None and self.target_kl <= 0:
             raise ValueError("target_kl must be positive")
 
@@ -175,26 +166,21 @@ class PPOAgent:
         log_ratio = log_prob - batch.old_log_probs
         ratio = log_ratio.exp()
         surrogate1 = ratio * batch.advantages
-        surrogate2 = ratio.clamp(
-            1.0 - self.config.clip_ratio,
-            1.0 + self.config.clip_ratio,
-        ) * batch.advantages
+        surrogate2 = (
+            ratio.clamp(
+                1.0 - self.config.clip_ratio,
+                1.0 + self.config.clip_ratio,
+            )
+            * batch.advantages
+        )
         policy_loss = -torch.minimum(
             surrogate1,
             surrogate2,
         ).mean()
         entropy_mean = entropy.mean()
-        actor_loss = (
-            policy_loss
-            - self.config.entropy_coef * entropy_mean
-        )
-        approx_kl = (
-            (ratio - 1.0) - log_ratio
-        ).mean()
-        clip_fraction = (
-            torch.abs(ratio - 1.0)
-            > self.config.clip_ratio
-        ).float().mean()
+        actor_loss = policy_loss - self.config.entropy_coef * entropy_mean
+        approx_kl = ((ratio - 1.0) - log_ratio).mean()
+        clip_fraction = (torch.abs(ratio - 1.0) > self.config.clip_ratio).float().mean()
         return (
             actor_loss,
             policy_loss,
@@ -213,22 +199,19 @@ class PPOAgent:
                 prediction,
                 batch.returns,
             )
-        clipped = batch.old_values + (
-            prediction - batch.old_values
-        ).clamp(
+        clipped = batch.old_values + (prediction - batch.old_values).clamp(
             -self.config.value_clip_ratio,
             self.config.value_clip_ratio,
         )
-        plain_loss = (
-            prediction - batch.returns
-        ).square()
-        clipped_loss = (
-            clipped - batch.returns
-        ).square()
-        return 0.5 * torch.maximum(
-            plain_loss,
-            clipped_loss,
-        ).mean()
+        plain_loss = (prediction - batch.returns).square()
+        clipped_loss = (clipped - batch.returns).square()
+        return (
+            0.5
+            * torch.maximum(
+                plain_loss,
+                clipped_loss,
+            ).mean()
+        )
 
     def update(
         self,
@@ -239,11 +222,7 @@ class PPOAgent:
             gae_lambda=self.config.gae_lambda,
             normalize_advantages=self.config.normalize_advantages,
         )
-        generator = torch.Generator(
-            device=self.device
-        ).manual_seed(
-            self.update_count + 12_345
-        )
+        generator = torch.Generator(device=self.device).manual_seed(self.update_count + 12_345)
         totals = {
             "policy_loss": 0.0,
             "value_loss": 0.0,
@@ -265,9 +244,7 @@ class PPOAgent:
                     approx_kl,
                     clip_fraction,
                 ) = self._actor_loss(batch)
-                self.actor_optimizer.zero_grad(
-                    set_to_none=True
-                )
+                self.actor_optimizer.zero_grad(set_to_none=True)
                 actor_loss.backward()
                 nn.utils.clip_grad_norm_(
                     self.actor.parameters(),
@@ -276,13 +253,8 @@ class PPOAgent:
                 self.actor_optimizer.step()
 
                 value_loss = self._value_loss(batch)
-                self.value_optimizer.zero_grad(
-                    set_to_none=True
-                )
-                (
-                    self.config.value_coef
-                    * value_loss
-                ).backward()
+                self.value_optimizer.zero_grad(set_to_none=True)
+                (self.config.value_coef * value_loss).backward()
                 nn.utils.clip_grad_norm_(
                     self.value.parameters(),
                     self.config.gradient_clip_norm,
@@ -296,17 +268,12 @@ class PPOAgent:
                     ("approx_kl", approx_kl),
                     ("clip_fraction", clip_fraction),
                 ):
-                    totals[name] += float(
-                        value.detach().item()
-                    )
+                    totals[name] += float(value.detach().item())
                 minibatches += 1
 
                 if (
                     self.config.target_kl is not None
-                    and float(
-                        approx_kl.detach().item()
-                    )
-                    > self.config.target_kl
+                    and float(approx_kl.detach().item()) > self.config.target_kl
                 ):
                     stop_early = True
                     break
@@ -314,26 +281,12 @@ class PPOAgent:
                 break
 
         if minibatches == 0:
-            raise RuntimeError(
-                "PPO update produced no minibatches"
-            )
+            raise RuntimeError("PPO update produced no minibatches")
         self.update_count += 1
-        metrics = {
-            name: value / minibatches
-            for name, value in totals.items()
-        }
-        metrics["epochs_early_stopped"] = float(
-            stop_early
-        )
-        if not all(
-            torch.isfinite(
-                torch.tensor(value)
-            )
-            for value in metrics.values()
-        ):
-            raise FloatingPointError(
-                "nonfinite PPO update metric"
-            )
+        metrics = {name: value / minibatches for name, value in totals.items()}
+        metrics["epochs_early_stopped"] = float(stop_early)
+        if not all(torch.isfinite(torch.tensor(value)) for value in metrics.values()):
+            raise FloatingPointError("nonfinite PPO update metric")
         return metrics
 
     def state_dict(self) -> dict[str, Any]:
@@ -341,12 +294,8 @@ class PPOAgent:
             "checkpoint_version": 1,
             "actor": self.actor.state_dict(),
             "value": self.value.state_dict(),
-            "actor_optimizer": (
-                self.actor_optimizer.state_dict()
-            ),
-            "value_optimizer": (
-                self.value_optimizer.state_dict()
-            ),
+            "actor_optimizer": (self.actor_optimizer.state_dict()),
+            "value_optimizer": (self.value_optimizer.state_dict()),
             "update_count": self.update_count,
         }
 
@@ -355,17 +304,9 @@ class PPOAgent:
         state: dict[str, Any],
     ) -> None:
         if state.get("checkpoint_version") != 1:
-            raise ValueError(
-                "unsupported PPO checkpoint version"
-            )
+            raise ValueError("unsupported PPO checkpoint version")
         self.actor.load_state_dict(state["actor"])
         self.value.load_state_dict(state["value"])
-        self.actor_optimizer.load_state_dict(
-            state["actor_optimizer"]
-        )
-        self.value_optimizer.load_state_dict(
-            state["value_optimizer"]
-        )
-        self.update_count = int(
-            state["update_count"]
-        )
+        self.actor_optimizer.load_state_dict(state["actor_optimizer"])
+        self.value_optimizer.load_state_dict(state["value_optimizer"])
+        self.update_count = int(state["update_count"])

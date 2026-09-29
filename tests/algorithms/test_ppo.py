@@ -26,22 +26,16 @@ def make_rollout(
         device=agent.device,
     )
     for index in range(size):
-        action, log_prob, value = agent.sample_action(
-            observation
-        )
+        action, log_prob, value = agent.sample_action(observation)
         next_observation = torch.randn(
             2,
             device=agent.device,
         )
-        next_value = agent.value_of(
-            next_observation
-        )
+        next_value = agent.value_of(next_observation)
         rollout.add(
             observation,
             action,
-            reward=-float(
-                observation.square().sum().item()
-            ),
+            reward=-float(observation.square().sum().item()),
             terminated=False,
             truncated=(index % 8 == 7),
             value=value,
@@ -66,9 +60,7 @@ def test_ppo_action_log_prob_and_update_are_finite() -> None:
         ),
     )
     observations = torch.randn(13, 2)
-    actions, log_prob, _ = agent.actor.sample(
-        observations
-    )
+    actions, log_prob, _ = agent.actor.sample(observations)
     evaluated, _ = agent.actor.evaluate_actions(
         observations,
         actions,
@@ -80,13 +72,8 @@ def test_ppo_action_log_prob_and_update_are_finite() -> None:
         rtol=2e-5,
     )
 
-    metrics = agent.update(
-        make_rollout(agent)
-    )
-    assert all(
-        math.isfinite(value)
-        for value in metrics.values()
-    )
+    metrics = agent.update(make_rollout(agent))
+    assert all(math.isfinite(value) for value in metrics.values())
 
 
 def test_gae_bootstraps_truncation_but_stops_episode_trace() -> None:
@@ -143,9 +130,7 @@ def test_ppo_checkpoint_round_trip_preserves_deterministic_action() -> None:
         hidden_dims=(16, 16),
     )
     agent = PPOAgent(**kwargs)
-    agent.update(
-        make_rollout(agent, size=16)
-    )
+    agent.update(make_rollout(agent, size=16))
     observation = torch.tensor([0.4, -0.6])
     expected = agent.act(
         observation,
@@ -153,9 +138,7 @@ def test_ppo_checkpoint_round_trip_preserves_deterministic_action() -> None:
     )
 
     restored = PPOAgent(**kwargs)
-    restored.load_state_dict(
-        agent.state_dict()
-    )
+    restored.load_state_dict(agent.state_dict())
     torch.testing.assert_close(
         restored.act(
             observation,
@@ -188,9 +171,7 @@ def test_ppo_rollout_checkpoint_round_trip() -> None:
         2,
         1,
     )
-    restored.load_state_dict(
-        rollout.state_dict()
-    )
+    restored.load_state_dict(rollout.state_dict())
 
     assert restored.size == rollout.size
     for name in (

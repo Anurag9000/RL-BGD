@@ -17,9 +17,7 @@ from rl_bgd.envs.synthetic.lqr import (
 
 def test_ppo_training_loop_runs_on_lqr() -> None:
     torch.manual_seed(54)
-    env = LinearQuadraticControlEnv(
-        horizon=20
-    )
+    env = LinearQuadraticControlEnv(horizon=20)
     agent = PPOAgent(
         1,
         1,
@@ -43,8 +41,4 @@ def test_ppo_training_loop_runs_on_lqr() -> None:
         ),
     )
     assert summary["episodes"] >= 5
-    assert math.isfinite(
-        summary["last_update_metrics"][
-            "policy_loss"
-        ]
-    )
+    assert math.isfinite(summary["last_update_metrics"]["policy_loss"])

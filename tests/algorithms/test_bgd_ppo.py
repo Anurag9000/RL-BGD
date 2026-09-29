@@ -62,9 +62,7 @@ def make_rollout(
         device=agent.device,
     )
     for index in range(size):
-        action, log_prob, value = agent.sample_action(
-            observation
-        )
+        action, log_prob, value = agent.sample_action(observation)
         next_observation = torch.randn(
             2,
             device=agent.device,
@@ -72,15 +70,11 @@ def make_rollout(
         rollout.add(
             observation,
             action,
-            reward=-float(
-                observation.square().sum().item()
-            ),
+            reward=-float(observation.square().sum().item()),
             terminated=False,
             truncated=(index % 8 == 7),
             value=value,
-            next_value=agent.value_of(
-                next_observation
-            ),
+            next_value=agent.value_of(next_observation),
             log_prob=log_prob,
         )
         observation = next_observation
@@ -100,49 +94,32 @@ def test_bgd_ppo_modes_update_without_nonfinite_values(
 ) -> None:
     torch.manual_seed(72)
     agent = make_agent(mode)
-    metrics = agent.update(
-        make_rollout(agent)
-    )
-    assert all(
-        math.isfinite(value)
-        for value in metrics.values()
-    )
+    metrics = agent.update(make_rollout(agent))
+    assert all(math.isfinite(value) for value in metrics.values())
     if mode in {
         "actor_only",
         "actor_and_value",
     }:
-        assert metrics[
-            "actor_sigma_mean"
-        ] > 0
+        assert metrics["actor_sigma_mean"] > 0
     if mode in {
         "value_only",
         "actor_and_value",
     }:
-        assert metrics[
-            "value_sigma_mean"
-        ] > 0
+        assert metrics["value_sigma_mean"] > 0
 
 
 def test_bgd_ppo_checkpoint_round_trip() -> None:
     torch.manual_seed(73)
-    agent = make_agent(
-        "actor_and_value"
-    )
-    agent.update(
-        make_rollout(agent)
-    )
+    agent = make_agent("actor_and_value")
+    agent.update(make_rollout(agent))
     state = agent.state_dict()
-    observation = torch.tensor(
-        [0.3, -0.1]
-    )
+    observation = torch.tensor([0.3, -0.1])
     expected = agent.act(
         observation,
         deterministic=True,
     )
 
-    restored = make_agent(
-        "actor_and_value"
-    )
+    restored = make_agent("actor_and_value")
     restored.load_state_dict(state)
     torch.testing.assert_close(
         restored.act(
@@ -152,22 +129,12 @@ def test_bgd_ppo_checkpoint_round_trip() -> None:
         expected,
     )
 
-    assert (
-        restored.actor_posterior
-        is not None
-    )
-    assert (
-        agent.actor_posterior
-        is not None
-    )
+    assert restored.actor_posterior is not None
+    assert agent.actor_posterior is not None
     for name in agent.actor_posterior.stds:
         torch.testing.assert_close(
-            restored.actor_posterior.stds[
-                name
-            ],
-            agent.actor_posterior.stds[
-                name
-            ],
+            restored.actor_posterior.stds[name],
+            agent.actor_posterior.stds[name],
         )
 
 
@@ -191,11 +158,5 @@ def test_bgd_ppo_evidence_reuse_weight_is_explicit(
         "actor_only",
         evidence_mode=evidence_mode,
     )
-    metrics = agent.update(
-        make_rollout(agent)
-    )
-    assert metrics[
-        "uncertainty_evidence_weight_mean"
-    ] == pytest.approx(
-        expected_weight
-    )
+    metrics = agent.update(make_rollout(agent))
+    assert metrics["uncertainty_evidence_weight_mean"] == pytest.approx(expected_weight)

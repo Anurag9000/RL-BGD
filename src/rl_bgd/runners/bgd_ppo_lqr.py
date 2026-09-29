@@ -92,9 +92,7 @@ def run_bgd_ppo_lqr(
         "steps": steps,
         "pre_return": pre_return,
         "post_return": post_return,
-        "improvement": (
-            post_return - pre_return
-        ),
+        "improvement": (post_return - pre_return),
         "training": summary,
     }
 

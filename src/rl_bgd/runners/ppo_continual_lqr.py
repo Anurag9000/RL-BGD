@@ -115,9 +115,7 @@ def run_ppo_recurring_lqr(
             device=resolved,
         )
     else:
-        raise ValueError(
-            f"unsupported optimizer family: {optimizer}"
-        )
+        raise ValueError(f"unsupported optimizer family: {optimizer}")
 
     summary = train_ppo(
         env,
@@ -132,9 +130,7 @@ def run_ppo_recurring_lqr(
         "optimizer": optimizer,
         "steps": steps,
         "environment_steps": env.environment_step,
-        "final_evaluation_context": (
-            env.evaluation_context
-        ),
+        "final_evaluation_context": (env.evaluation_context),
         "training": summary,
     }
 
