@@ -114,20 +114,14 @@ def test_metaworld_adapter_is_tensor_native_at_agent_boundary() -> None:
     assert raw_env.task is task
     assert not raw_env._freeze_rand_vec
 
-    observation, info = env.reset(
-        seed=7
-    )
+    observation, info = env.reset(seed=7)
     assert info == {}
     torch.testing.assert_close(
         observation,
-        torch.tensor(
-            [1.0, 2.0, 3.0]
-        ),
+        torch.tensor([1.0, 2.0, 3.0]),
     )
     assert env.action_space.shape == (2,)
-    assert env.observation_space.shape == (
-        3,
-    )
+    assert env.observation_space.shape == (3,)
 
     (
         observation,
@@ -135,9 +129,7 @@ def test_metaworld_adapter_is_tensor_native_at_agent_boundary() -> None:
         terminated,
         truncated,
         info,
-    ) = env.step(
-        torch.tensor([0.25, -0.5])
-    )
+    ) = env.step(torch.tensor([0.25, -0.5]))
     assert isinstance(
         raw_env.last_action,
         np.ndarray,
@@ -151,9 +143,7 @@ def test_metaworld_adapter_is_tensor_native_at_agent_boundary() -> None:
     )
     torch.testing.assert_close(
         observation,
-        torch.tensor(
-            [4.0, 5.0, 6.0]
-        ),
+        torch.tensor([4.0, 5.0, 6.0]),
     )
     assert reward == pytest.approx(1.25)
     assert not terminated
@@ -162,17 +152,13 @@ def test_metaworld_adapter_is_tensor_native_at_agent_boundary() -> None:
         "success": 1.0,
     }
 
-    _, _, _, truncated, _ = env.step(
-        torch.zeros(2)
-    )
+    _, _, _, truncated, _ = env.step(torch.zeros(2))
     assert truncated
 
 
 @pytest.mark.benchmark
 def test_modern_metaworld_cw10_factory_smoke() -> None:
-    pytest.importorskip(
-        "metaworld"
-    )
+    pytest.importorskip("metaworld")
     env = make_continual_world_stream(
         "CW10",
         steps_per_task=2,
@@ -180,18 +166,12 @@ def test_modern_metaworld_cw10_factory_smoke() -> None:
         device="cpu",
         episode_horizon=2,
     )
-    observation, info = env.reset(
-        seed=13
-    )
-    assert observation.shape == (
-        env.observation_space.shape
-    )
+    observation, info = env.reset(seed=13)
+    assert observation.shape == (env.observation_space.shape)
     assert info == {}
     action = torch.zeros(
         env.action_space.shape,
     )
-    _, reward, _, _, info = env.step(
-        action
-    )
+    _, reward, _, _, info = env.step(action)
     assert np.isfinite(reward)
     assert info == {}

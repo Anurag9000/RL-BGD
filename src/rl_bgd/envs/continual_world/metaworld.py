@@ -28,9 +28,7 @@ class MetaWorldTaskAdapter:
         horizon: int = 200,
     ) -> None:
         if horizon < 1:
-            raise ValueError(
-                "Meta-World horizon must be positive"
-            )
+            raise ValueError("Meta-World horizon must be positive")
         self.env = env
         self.device = torch.device(device)
         self.horizon = horizon
@@ -88,9 +86,7 @@ class MetaWorldTaskAdapter:
         Tensor,
         dict[str, object],
     ]:
-        reset_output = self.env.reset(
-            seed=seed
-        )
+        reset_output = self.env.reset(seed=seed)
         if (
             isinstance(
                 reset_output,
@@ -103,9 +99,7 @@ class MetaWorldTaskAdapter:
             observation = reset_output
         self._episode_step = 0
         return (
-            self._observation_tensor(
-                observation
-            ),
+            self._observation_tensor(observation),
             {},
         )
 
@@ -129,9 +123,7 @@ class MetaWorldTaskAdapter:
             )
             .numpy()
         )
-        step_output = self.env.step(
-            cpu_action
-        )
+        step_output = self.env.step(cpu_action)
         if len(step_output) == 5:
             (
                 observation,
@@ -150,30 +142,17 @@ class MetaWorldTaskAdapter:
             terminated = bool(done)
             truncated = False
         else:
-            raise RuntimeError(
-                "unexpected Meta-World step return signature"
-            )
+            raise RuntimeError("unexpected Meta-World step return signature")
 
         self._episode_step += 1
-        if (
-            self._episode_step
-            >= self.horizon
-            and not terminated
-        ):
+        if self._episode_step >= self.horizon and not terminated:
             truncated = True
 
         safe_info: dict[str, object] = {}
-        if (
-            isinstance(info, dict)
-            and "success" in info
-        ):
-            safe_info["success"] = float(
-                info["success"]
-            )
+        if isinstance(info, dict) and "success" in info:
+            safe_info["success"] = float(info["success"])
         return (
-            self._observation_tensor(
-                observation
-            ),
+            self._observation_tensor(observation),
             float(reward),
             bool(terminated),
             bool(truncated),
@@ -195,47 +174,24 @@ def make_continual_world_stream(
         import metaworld
     except ImportError as exc:
         raise RuntimeError(
-            "Meta-World is required for Continual World; "
-            "install the 'continual-world' extra"
+            "Meta-World is required for Continual World; install the 'continual-world' extra"
         ) from exc
 
-    task_names = list(
-        continual_world_task_sequence(
-            benchmark
-        )
-    )
-    benchmark_api = metaworld.MT50(
-        seed=seed
-    )
-    train_classes = (
-        benchmark_api.train_classes
-    )
-    train_tasks = (
-        benchmark_api.train_tasks
-    )
+    task_names = list(continual_world_task_sequence(benchmark))
+    benchmark_api = metaworld.MT50(seed=seed)
+    train_classes = benchmark_api.train_classes
+    train_tasks = benchmark_api.train_tasks
 
     envs: list[MetaWorldTaskAdapter] = []
-    for occurrence, task_name in enumerate(
-        task_names
-    ):
+    for occurrence, task_name in enumerate(task_names):
         if task_name not in train_classes:
             raise RuntimeError(
-                "current Meta-World does not provide "
-                f"required Continual World task {task_name}"
+                f"current Meta-World does not provide required Continual World task {task_name}"
             )
-        matching_tasks = [
-            task
-            for task in train_tasks
-            if task.env_name == task_name
-        ]
+        matching_tasks = [task for task in train_tasks if task.env_name == task_name]
         if not matching_tasks:
-            raise RuntimeError(
-                "Meta-World task bank is missing "
-                f"{task_name}"
-            )
-        env = train_classes[
-            task_name
-        ]()
+            raise RuntimeError(f"Meta-World task bank is missing {task_name}")
+        env = train_classes[task_name]()
         # A fixed task definition with _freeze_rand_vec=False matches the
         # published random_init_all protocol while modern Meta-World handles
         # reset randomization itself.

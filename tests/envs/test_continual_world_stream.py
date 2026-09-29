@@ -86,19 +86,10 @@ def test_cw_sequences_preserve_official_order_and_repeat() -> None:
         "window-close-v1",
         "peg-unplug-side-v1",
     )
-    assert tuple(
-        name.removesuffix("-v1") + "-v3"
-        for name in CW10_TASKS_V1
-    ) == CW10_TASKS_V3
-    assert (
-        CW10_TASKS_V3 + CW10_TASKS_V3
-    ) == CW20_TASKS_V3
-    assert continual_world_task_sequence(
-        "CW10"
-    ) == CW10_TASKS_V3
-    assert continual_world_task_sequence(
-        "CW20"
-    ) == CW20_TASKS_V3
+    assert tuple(name.removesuffix("-v1") + "-v3" for name in CW10_TASKS_V1) == CW10_TASKS_V3
+    assert (CW10_TASKS_V3 + CW10_TASKS_V3) == CW20_TASKS_V3
+    assert continual_world_task_sequence("CW10") == CW10_TASKS_V3
+    assert continual_world_task_sequence("CW20") == CW20_TASKS_V3
 
 
 def test_hidden_task_switch_emits_no_boundary_or_identity_signal() -> None:
@@ -111,9 +102,7 @@ def test_hidden_task_switch_emits_no_boundary_or_identity_signal() -> None:
             "first-v3",
             "second-v3",
         ],
-        config=ContinualWorldStreamConfig(
-            steps_per_task=2
-        ),
+        config=ContinualWorldStreamConfig(steps_per_task=2),
     )
     observation, info = env.reset(seed=7)
     torch.testing.assert_close(
@@ -122,16 +111,12 @@ def test_hidden_task_switch_emits_no_boundary_or_identity_signal() -> None:
     )
     assert info == {}
 
-    _, _, terminated, truncated, info = env.step(
-        torch.zeros(1)
-    )
+    _, _, terminated, truncated, info = env.step(torch.zeros(1))
     assert not terminated
     assert not truncated
     assert info == {}
 
-    observation, _, terminated, truncated, info = env.step(
-        torch.zeros(1)
-    )
+    observation, _, terminated, truncated, info = env.step(torch.zeros(1))
     torch.testing.assert_close(
         observation,
         torch.tensor([2.0]),
@@ -160,21 +145,15 @@ def test_natural_episode_end_can_carry_pending_hidden_switch() -> None:
             "first-v3",
             "second-v3",
         ],
-        config=ContinualWorldStreamConfig(
-            steps_per_task=2
-        ),
+        config=ContinualWorldStreamConfig(steps_per_task=2),
     )
     env.reset(seed=9)
     env.step(torch.zeros(1))
-    _, _, terminated, truncated, info = env.step(
-        torch.zeros(1)
-    )
+    _, _, terminated, truncated, info = env.step(torch.zeros(1))
     assert not terminated
     assert truncated
     assert info == {}
-    assert env.evaluation_context[
-        "task_index"
-    ] == 0
+    assert env.evaluation_context["task_index"] == 0
 
     observation, info = env.reset()
     torch.testing.assert_close(
@@ -182,9 +161,7 @@ def test_natural_episode_end_can_carry_pending_hidden_switch() -> None:
         torch.tensor([2.0]),
     )
     assert info == {}
-    assert env.evaluation_context[
-        "task_index"
-    ] == 1
+    assert env.evaluation_context["task_index"] == 1
 
 
 def test_stream_rejects_steps_after_total_budget() -> None:
@@ -197,9 +174,7 @@ def test_stream_rejects_steps_after_total_budget() -> None:
             "first-v3",
             "second-v3",
         ],
-        config=ContinualWorldStreamConfig(
-            steps_per_task=1
-        ),
+        config=ContinualWorldStreamConfig(steps_per_task=1),
     )
     env.reset(seed=11)
     env.step(torch.zeros(1))

@@ -28,19 +28,12 @@ CW10_TASKS_V1: tuple[str, ...] = (
 
 def _modernize_task_name(task_name: str) -> str:
     if not task_name.endswith("-v1"):
-        raise ValueError(
-            "canonical Continual World task names must use the v1 suffix"
-        )
+        raise ValueError("canonical Continual World task names must use the v1 suffix")
     return task_name.removesuffix("-v1") + "-v3"
 
 
-CW10_TASKS_V3: tuple[str, ...] = tuple(
-    _modernize_task_name(name)
-    for name in CW10_TASKS_V1
-)
-CW20_TASKS_V3: tuple[str, ...] = (
-    CW10_TASKS_V3 + CW10_TASKS_V3
-)
+CW10_TASKS_V3: tuple[str, ...] = tuple(_modernize_task_name(name) for name in CW10_TASKS_V1)
+CW20_TASKS_V3: tuple[str, ...] = CW10_TASKS_V3 + CW10_TASKS_V3
 
 
 def continual_world_task_sequence(
@@ -52,9 +45,7 @@ def continual_world_task_sequence(
         return CW10_TASKS_V3
     if benchmark == "CW20":
         return CW20_TASKS_V3
-    raise ValueError(
-        f"unsupported Continual World benchmark: {benchmark}"
-    )
+    raise ValueError(f"unsupported Continual World benchmark: {benchmark}")
 
 
 class ContinuousTaskEnv(Protocol):
@@ -88,13 +79,10 @@ class ContinualWorldStreamConfig:
 
     def validate(self) -> None:
         if self.steps_per_task < 1:
-            raise ValueError(
-                "steps_per_task must be positive"
-            )
+            raise ValueError("steps_per_task must be positive")
         if not self.strict_task_agnostic:
             raise ValueError(
-                "ContinualWorldStreamEnv only implements the strict "
-                "task-agnostic protocol"
+                "ContinualWorldStreamEnv only implements the strict task-agnostic protocol"
             )
 
 
@@ -115,38 +103,20 @@ class ContinualWorldStreamEnv:
         config: ContinualWorldStreamConfig | None = None,
     ) -> None:
         if not envs:
-            raise ValueError(
-                "Continual World stream requires at least one task"
-            )
+            raise ValueError("Continual World stream requires at least one task")
         if len(envs) != len(task_names):
-            raise ValueError(
-                "task environment/name counts must match"
-            )
-        self.config = (
-            config or ContinualWorldStreamConfig()
-        )
+            raise ValueError("task environment/name counts must match")
+        self.config = config or ContinualWorldStreamConfig()
         self.config.validate()
         self.envs = list(envs)
         self.task_names = list(task_names)
         self.action_space = envs[0].action_space
-        self.observation_space = (
-            envs[0].observation_space
-        )
+        self.observation_space = envs[0].observation_space
         for env in envs[1:]:
-            if (
-                env.action_space.shape
-                != self.action_space.shape
-            ):
-                raise ValueError(
-                    "Continual World action dimensions differ"
-                )
-            if (
-                env.observation_space.shape
-                != self.observation_space.shape
-            ):
-                raise ValueError(
-                    "Continual World observation dimensions differ"
-                )
+            if env.action_space.shape != self.action_space.shape:
+                raise ValueError("Continual World action dimensions differ")
+            if env.observation_space.shape != self.observation_space.shape:
+                raise ValueError("Continual World observation dimensions differ")
 
         self.task_index = 0
         self.task_step = 0
@@ -156,10 +126,7 @@ class ContinualWorldStreamEnv:
 
     @property
     def total_step_limit(self) -> int:
-        return (
-            len(self.envs)
-            * self.config.steps_per_task
-        )
+        return len(self.envs) * self.config.steps_per_task
 
     @property
     def evaluation_context(
@@ -169,20 +136,14 @@ class ContinualWorldStreamEnv:
 
         return {
             "task_index": self.task_index,
-            "task_name": self.task_names[
-                self.task_index
-            ],
+            "task_name": self.task_names[self.task_index],
             "task_step": self.task_step,
             "environment_step": self.environment_step,
         }
 
     def _advance_task(self) -> None:
-        if self.task_index + 1 >= len(
-            self.envs
-        ):
-            raise RuntimeError(
-                "Continual World stream is exhausted"
-            )
+        if self.task_index + 1 >= len(self.envs):
+            raise RuntimeError("Continual World stream is exhausted")
         self.task_index += 1
         self.task_step = 0
         self._switch_on_reset = False
@@ -191,13 +152,8 @@ class ContinualWorldStreamEnv:
         self,
     ) -> Tensor:
         self._internal_reset_counter += 1
-        observation, _ = self.envs[
-            self.task_index
-        ].reset(
-            seed=(
-                1_000_000
-                + self._internal_reset_counter
-            )
+        observation, _ = self.envs[self.task_index].reset(
+            seed=(1_000_000 + self._internal_reset_counter)
         )
         return observation
 
@@ -206,21 +162,15 @@ class ContinualWorldStreamEnv:
         *,
         seed: int | None = None,
     ) -> tuple[Tensor, dict[str, object]]:
-        if self.environment_step >= (
-            self.total_step_limit
-        ):
+        if self.environment_step >= (self.total_step_limit):
             # Trainers commonly reset immediately after a final natural
             # truncation before their outer step loop notices completion.
             # Permit that reset, but keep any further step invalid.
-            observation, _ = self.envs[
-                self.task_index
-            ].reset(seed=seed)
+            observation, _ = self.envs[self.task_index].reset(seed=seed)
             return observation, {}
         if self._switch_on_reset:
             self._advance_task()
-        observation, _ = self.envs[
-            self.task_index
-        ].reset(seed=seed)
+        observation, _ = self.envs[self.task_index].reset(seed=seed)
         # Strict path intentionally strips task/context metadata.
         return observation, {}
 
@@ -234,41 +184,27 @@ class ContinualWorldStreamEnv:
         bool,
         dict[str, object],
     ]:
-        if self.environment_step >= (
-            self.total_step_limit
-        ):
-            raise RuntimeError(
-                "Continual World stream is exhausted"
-            )
+        if self.environment_step >= (self.total_step_limit):
+            raise RuntimeError("Continual World stream is exhausted")
         (
             observation,
             reward,
             terminated,
             truncated,
             _,
-        ) = self.envs[
-            self.task_index
-        ].step(action)
+        ) = self.envs[self.task_index].step(action)
 
         self.environment_step += 1
         self.task_step += 1
-        hit_task_budget = (
-            self.task_step
-            >= self.config.steps_per_task
-        )
-        has_next_task = (
-            self.task_index + 1
-            < len(self.envs)
-        )
+        hit_task_budget = self.task_step >= self.config.steps_per_task
+        has_next_task = self.task_index + 1 < len(self.envs)
 
         if hit_task_budget and has_next_task:
             if terminated or truncated:
                 self._switch_on_reset = True
             else:
                 self._advance_task()
-                observation = (
-                    self._internal_reset()
-                )
+                observation = self._internal_reset()
 
         # Do not return task IDs, names, indices, context, or switch flags.
         return (
