@@ -68,11 +68,13 @@ class SquashedGaussianActor(nn.Module):
         log_prob = normal.log_prob(pre_tanh) - correction
         log_prob = log_prob.sum(dim=-1, keepdim=True)
         log_prob -= torch.log(self.action_scale).sum()
-        deterministic = (
-            torch.tanh(mean) * self.action_scale + self.action_bias
-        )
+        deterministic = torch.tanh(mean) * self.action_scale + self.action_bias
         return action, log_prob, deterministic
 
     def deterministic(self, observation: Tensor) -> Tensor:
         mean, _ = self.distribution_parameters(observation)
         return torch.tanh(mean) * self.action_scale + self.action_bias
+
+    def forward(self, observation: Tensor) -> tuple[Tensor, Tensor, Tensor]:
+        """Functional-call compatible stochastic policy evaluation."""
+        return self.sample(observation)

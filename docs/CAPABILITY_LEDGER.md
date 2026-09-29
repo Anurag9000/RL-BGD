@@ -18,7 +18,7 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Gaussian tempering | COMPLETE | bayes/tempering.py + exact tests |
 | Posterior diagnostics | COMPLETE | sigma/precision/entropy/effective LR |
 | Posterior/updater checkpoint | COMPLETE | versioned round-trip test |
-| Generalized-Bayes RL | PARTIAL | formulation documented; BGD-SAC wiring pending |
+| Generalized-Bayes RL | PARTIAL | formulation and SAC mapping documented; replay semantics pending |
 | InformationAccessConfig | COMPLETE | central contract + leakage tests |
 | Device auto/CUDA/CPU | COMPLETE | utils/device.py + tests |
 | Deterministic seeding | COMPLETE | Python/NumPy/PyTorch CPU/CUDA |
@@ -27,16 +27,19 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Abrupt/smooth/recurring quadratic streams | COMPLETE | QuadraticStream + tests |
 | Low-sigma movement mechanism | COMPLETE | identical-gradient movement test |
 | Long-horizon tempering mechanism | COMPLETE | vanilla-vs-tempered uncertainty test |
-| Synthetic benchmark family overall | PARTIAL | bandits still pending; LQR-style control now added |
+| Synthetic benchmark family overall | PARTIAL | bandits pending; LQR-style control added |
 | Continuous LQR-style smoke environment | COMPLETE | tensor-native finite-horizon control environment |
 | SAC actor/twin critics/targets | COMPLETE | agents/sac + unit tests |
 | Automatic entropy tuning | COMPLETE | SAC alpha optimizer + finite-update tests |
-| SAC deterministic evaluation | COMPLETE | act(deterministic=True) + evaluation runner |
+| SAC deterministic evaluation | COMPLETE | deterministic policy runner |
 | SAC replay buffer | COMPLETE | device-aware buffer, IDs/usage/fresh metadata |
-| terminated vs truncated bootstrap | COMPLETE | ReplayBatch.bootstrap_mask + test |
-| SAC/replay checkpointing | COMPLETE | agent and replay round-trip tests |
-| Stationary SAC learning smoke | COMPLETE | marked slow LQR learning test; deterministic return improves |
-| BGD-SAC | NOT STARTED | phase 4 |
+| terminated vs truncated bootstrap | COMPLETE | bootstrap_mask + test |
+| SAC/replay checkpointing | COMPLETE | round-trip tests |
+| Stationary SAC learning smoke | COMPLETE | slow deterministic-return learning test |
+| BGD-SAC critic-only | COMPLETE | mean-target semantics + mode test + stationary learning test |
+| BGD-SAC actor-only | COMPLETE | functional-call sampled actor update + mode test |
+| BGD-SAC actor+critic | COMPLETE | both posterior paths + checkpoint round-trip |
+| BGD-SAC posterior diagnostics | COMPLETE | sigma/effective-LR metrics per Bayesian module |
 | Replay evidence accounting modes | NOT STARTED | phase 5 (metadata already present) |
 | Surprise estimators | NOT STARTED | phase 8 |
 | PPO + Adam/BGD | NOT STARTED | phase 9 |
@@ -45,5 +48,5 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Continual World CW10/CW20 | NOT STARTED | phase 10 |
 | ContinualBench/CORA adapter | NOT STARTED | optional external benchmark |
 | EWC/Online-EWC/SI/MAS | NOT STARTED | baseline phase |
-| Mechanistic experiments | PARTIAL | curvature + movement + long-horizon synthetic mechanisms executable |
+| Mechanistic experiments | PARTIAL | curvature + movement + long-horizon mechanisms executable |
 | Paper tables/figures | NOT STARTED | phase 15 |

@@ -1,0 +1,17 @@
+algorithm: sac
+optimizer: bgd
+bayesianization: critic_only
+posterior_std: 0.1
+sigma_min: 1.0e-6
+sigma_max: 10.0
+actor_bgd:
+  eta: 0.1
+  mc_samples: 4
+  antithetic: true
+  temper_retention: 1.0
+critic_bgd:
+  eta: 0.1
+  mc_samples: 4
+  antithetic: true
+  temper_retention: 1.0
+target_posterior: mean_only
