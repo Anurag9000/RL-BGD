@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -11,17 +12,23 @@ from torch import Tensor
 from rl_bgd.agents.sac.agent import SACAgent
 from rl_bgd.replay.buffer import ReplayBuffer
 
+UpdateObserver = Callable[[int, dict[str, float]], None]
+EpisodeObserver = Callable[[int, float], None]
+
 
 class ContinuousEnv(Protocol):
     action_space: object
     observation_space: object
 
     def reset(
-        self, *, seed: int | None = None
+        self,
+        *,
+        seed: int | None = None,
     ) -> tuple[Tensor, dict[str, object]]: ...
 
     def step(
-        self, action: Tensor
+        self,
+        action: Tensor,
     ) -> tuple[
         Tensor,
         float,
@@ -46,6 +53,8 @@ def train_sac(
     agent: SACAgent,
     *,
     config: SACTrainConfig,
+    update_observer: UpdateObserver | None = None,
+    episode_observer: EpisodeObserver | None = None,
 ) -> dict[str, object]:
     if (
         config.total_steps < 1
@@ -55,6 +64,8 @@ def train_sac(
         raise ValueError(
             "invalid SAC training budget/replay configuration"
         )
+    if config.random_steps < 0 or config.updates_per_step < 1:
+        raise ValueError("invalid SAC warmup/update configuration")
     action_dim = int(
         env.action_space.low.numel()
     )
@@ -108,6 +119,11 @@ def train_sac(
             completed_returns.append(
                 episode_return
             )
+            if episode_observer is not None:
+                episode_observer(
+                    step,
+                    episode_return,
+                )
             episode_return = 0.0
             observation, _ = env.reset()
 
@@ -123,6 +139,11 @@ def train_sac(
                     generator=generator,
                 )
                 last_metrics = agent.update(batch)
+                if update_observer is not None:
+                    update_observer(
+                        step,
+                        dict(last_metrics),
+                    )
 
     return {
         "steps": config.total_steps,

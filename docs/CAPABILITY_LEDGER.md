@@ -32,6 +32,7 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Long-horizon tempering mechanism | COMPLETE | vanilla-vs-tempered uncertainty test |
 | Synthetic benchmark family overall | PARTIAL | bandits pending; LQR-style control added |
 | Continuous LQR-style smoke environment | COMPLETE | tensor-native finite-horizon control environment |
+| Boundary-free nonstationary LQR stream | COMPLETE | ScheduledLQREnv + leakage/unit test |
 | SAC actor/twin critics/targets | COMPLETE | agents/sac + unit tests |
 | Automatic entropy tuning | COMPLETE | SAC alpha optimizer + finite-update tests |
 | SAC deterministic evaluation | COMPLETE | deterministic policy runner |
@@ -53,7 +54,12 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | TD adaptive retention in BGD-SAC | COMPLETE | no-boundary SAC wiring + checkpoint state + metrics |
 | Ensemble-disagreement surprise primitive | COMPLETE | estimator + state API; adaptive-agent wiring pending |
 | Predictive-NLL surprise primitive | COMPLETE | estimator + state API; world-model wiring pending |
-| Surprise change-detection metrics | NOT STARTED | evaluation phase |
+| Final average / forgetting / BWT / generic FWT metrics | COMPLETE | metrics/continual.py + tests |
+| Lifetime AUC / plasticity retention | COMPLETE | metrics/continual.py + tests |
+| T80/T90 primitive / post-change AUC / recurrence metrics | COMPLETE | metrics/adaptation.py + tests |
+| Surprise change-detection event metrics | COMPLETE | delay/FPR/precision/recall/F1/false alarms + tests |
+| Surprise AUROC primitive | COMPLETE | rank-based binary AUROC + tests |
+| Adaptive surprise causal timeline runner | COMPLETE | adaptive BGD-SAC on recurring LQR + slow integration test |
 | CARL 1.1.1 strict hidden-context adapter | PARTIAL | adapter/config/unit tests; real CARL smoke pending |
 | CARL abrupt/smooth/recurring configs | PARTIAL | schedule semantics complete; real CARL smoke pending |
 | PPO + Adam/BGD | NOT STARTED | phase 9 |
@@ -61,5 +67,5 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Continual World CW10/CW20 | NOT STARTED | phase 10 |
 | ContinualBench/CORA adapter | NOT STARTED | optional external benchmark |
 | EWC/Online-EWC/SI/MAS | NOT STARTED | baseline phase |
-| Mechanistic experiments | PARTIAL | curvature + movement + long-horizon + replay evidence; surprise timeline pending |
+| Mechanistic experiments | PARTIAL | curvature + movement + long-horizon + replay evidence + surprise timeline |
 | Paper tables/figures | NOT STARTED | phase 15 |
