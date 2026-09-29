@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+title: RL-BGD
+type: software
+authors:
+  - family-names: Basistha
+    given-names: Anurag
+repository-code: https://github.com/Anurag9000/RL-BGD
+license: MIT
+version: 0.1.0
+message: "If you use this software, cite the repository and the original papers for the algorithms and benchmarks used."

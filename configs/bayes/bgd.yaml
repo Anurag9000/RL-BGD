@@ -1,0 +1,8 @@
+method: bgd
+eta: 1.0
+mc_samples: 4
+antithetic: true
+sigma_init: 0.1
+sigma_min: 1.0e-6
+sigma_max: 10.0
+temper_retention: 1.0

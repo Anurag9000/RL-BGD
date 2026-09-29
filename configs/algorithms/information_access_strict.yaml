@@ -1,0 +1,11 @@
+receives_task_id: false
+receives_task_boundary: false
+replay: false
+replay_size: 0
+uses_task_balanced_replay: false
+architecture_growth: false
+task_specific_heads: false
+context_available: false
+recurrent: false
+stores_old_raw_data: false
+posterior_distribution: diagonal_gaussian
