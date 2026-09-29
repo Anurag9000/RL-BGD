@@ -19,6 +19,7 @@ from rl_bgd.agents.ppo.rollout import (
 )
 from rl_bgd.bayes.bgd import (
     BGDConfig,
+    BGDLoss,
     BGDStepResult,
     BGDUpdater,
 )
@@ -31,6 +32,11 @@ PPOBayesianization = Literal[
     "value_only",
     "actor_and_value",
 ]
+PPOEvidenceMode = Literal[
+    "all_epochs",
+    "first_epoch_only",
+    "normalized_epochs",
+]
 
 
 @dataclass(frozen=True)
@@ -39,6 +45,7 @@ class BGDPPOConfig:
 
     bayesianization: PPOBayesianization = "actor_and_value"
     posterior_std: float = 0.1
+    evidence_mode: PPOEvidenceMode = "first_epoch_only"
     actor_bgd: BGDConfig = BGDConfig(
         eta=0.1,
         mc_samples=4,
@@ -62,6 +69,14 @@ class BGDPPOConfig:
         if self.posterior_std <= 0:
             raise ValueError(
                 "posterior_std must be positive"
+            )
+        if self.evidence_mode not in {
+            "all_epochs",
+            "first_epoch_only",
+            "normalized_epochs",
+        }:
+            raise ValueError(
+                "unsupported BGD-PPO evidence mode"
             )
         self.actor_bgd.validate()
         self.value_bgd.validate()
@@ -133,6 +148,25 @@ class BGDPPOAgent(PPOAgent):
                 self.value_posterior,
                 self.bgd_config.value_bgd,
             )
+
+    def _uncertainty_evidence_weight(
+        self,
+        epoch_index: int,
+    ) -> float:
+        """Weight posterior-consolidation evidence from repeated PPO epochs."""
+
+        if not 0 <= epoch_index < self.config.update_epochs:
+            raise ValueError(
+                "epoch_index is outside the configured PPO update range"
+            )
+        mode = self.bgd_config.evidence_mode
+        if mode == "all_epochs":
+            return 1.0
+        if mode == "first_epoch_only":
+            return 1.0 if epoch_index == 0 else 0.0
+        return 1.0 / float(
+            self.config.update_epochs
+        )
 
     def _sampled_actor_loss(
         self,
@@ -284,11 +318,19 @@ class BGDPPOAgent(PPOAgent):
             "clip_fraction": 0.0,
         }
         bayes_totals: dict[str, float] = {}
+        evidence_weight_total = 0.0
         minibatches = 0
         stop_early = False
         mode = self.bgd_config.bayesianization
 
-        for _ in range(self.config.update_epochs):
+        for epoch_index in range(
+            self.config.update_epochs
+        ):
+            evidence_weight = (
+                self._uncertainty_evidence_weight(
+                    epoch_index
+                )
+            )
             for batch in rollout.batches(
                 self.config.minibatch_size,
                 generator=generator,
@@ -316,12 +358,18 @@ class BGDPPOAgent(PPOAgent):
                             Tensor,
                         ],
                         current_batch: PPORolloutBatch = batch,
-                    ) -> Tensor:
-                        return (
-                            self._sampled_actor_loss(
-                                params,
-                                current_batch,
-                            )
+                        current_evidence_weight: float = evidence_weight,
+                    ) -> BGDLoss:
+                        loss = self._sampled_actor_loss(
+                            params,
+                            current_batch,
+                        )
+                        return BGDLoss(
+                            mean=loss,
+                            uncertainty=(
+                                current_evidence_weight
+                                * loss
+                            ),
                         )
 
                     actor_result = (
@@ -369,12 +417,18 @@ class BGDPPOAgent(PPOAgent):
                             Tensor,
                         ],
                         current_batch: PPORolloutBatch = batch,
-                    ) -> Tensor:
-                        return (
-                            self._sampled_value_loss(
-                                params,
-                                current_batch,
-                            )
+                        current_evidence_weight: float = evidence_weight,
+                    ) -> BGDLoss:
+                        loss = self._sampled_value_loss(
+                            params,
+                            current_batch,
+                        )
+                        return BGDLoss(
+                            mean=loss,
+                            uncertainty=(
+                                current_evidence_weight
+                                * loss
+                            ),
                         )
 
                     value_result = (
@@ -427,6 +481,9 @@ class BGDPPOAgent(PPOAgent):
                 totals[
                     "clip_fraction"
                 ] += clip_value
+                evidence_weight_total += (
+                    evidence_weight
+                )
                 minibatches += 1
 
                 if actor_result is not None:
@@ -489,6 +546,11 @@ class BGDPPOAgent(PPOAgent):
         metrics["epochs_early_stopped"] = float(
             stop_early
         )
+        metrics[
+            "uncertainty_evidence_weight_mean"
+        ] = (
+            evidence_weight_total / minibatches
+        )
         for name, value in bayes_totals.items():
             metrics[name] = (
                 value / minibatches
@@ -511,10 +573,13 @@ class BGDPPOAgent(PPOAgent):
         state = super().state_dict()
         state[
             "bgd_ppo_version"
-        ] = 1
+        ] = 2
         state[
             "bayesianization"
         ] = self.bgd_config.bayesianization
+        state[
+            "evidence_mode"
+        ] = self.bgd_config.evidence_mode
         if self.actor_bgd is not None:
             state[
                 "actor_bgd"
@@ -529,9 +594,13 @@ class BGDPPOAgent(PPOAgent):
         self,
         state: dict[str, Any],
     ) -> None:
-        if state.get(
-            "bgd_ppo_version"
-        ) != 1:
+        version = int(
+            state.get(
+                "bgd_ppo_version",
+                0,
+            )
+        )
+        if version not in {1, 2}:
             raise ValueError(
                 "unsupported BGD-PPO checkpoint version"
             )
@@ -540,6 +609,17 @@ class BGDPPOAgent(PPOAgent):
         ) != self.bgd_config.bayesianization:
             raise ValueError(
                 "BGD-PPO checkpoint Bayesianization mode mismatch"
+            )
+        checkpoint_evidence_mode = state.get(
+            "evidence_mode",
+            "all_epochs",
+        )
+        if (
+            checkpoint_evidence_mode
+            != self.bgd_config.evidence_mode
+        ):
+            raise ValueError(
+                "BGD-PPO checkpoint evidence mode mismatch"
             )
         super().load_state_dict(state)
 
