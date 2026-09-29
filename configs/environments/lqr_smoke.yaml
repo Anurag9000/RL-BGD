@@ -1,0 +1,7 @@
+environment: linear_quadratic_control
+dimension: 1
+horizon: 30
+dynamics: 0.9
+control_gain: 0.5
+action_cost: 0.05
+process_noise: 0.0

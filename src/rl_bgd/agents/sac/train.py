@@ -1,0 +1,144 @@
+"""Small inspectable SAC collection/training loop."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Protocol
+
+import torch
+from torch import Tensor
+
+from rl_bgd.agents.sac.agent import SACAgent
+from rl_bgd.replay.buffer import ReplayBuffer
+
+
+class ContinuousEnv(Protocol):
+    action_space: object
+    observation_space: object
+
+    def reset(
+        self, *, seed: int | None = None
+    ) -> tuple[Tensor, dict[str, object]]: ...
+
+    def step(
+        self, action: Tensor
+    ) -> tuple[
+        Tensor,
+        float,
+        bool,
+        bool,
+        dict[str, object],
+    ]: ...
+
+
+@dataclass(frozen=True)
+class SACTrainConfig:
+    total_steps: int = 10_000
+    random_steps: int = 1_000
+    batch_size: int = 256
+    replay_capacity: int = 100_000
+    updates_per_step: int = 1
+    seed: int = 0
+
+
+def train_sac(
+    env: ContinuousEnv,
+    agent: SACAgent,
+    *,
+    config: SACTrainConfig,
+) -> dict[str, object]:
+    if (
+        config.total_steps < 1
+        or config.batch_size < 1
+        or config.replay_capacity < config.batch_size
+    ):
+        raise ValueError(
+            "invalid SAC training budget/replay configuration"
+        )
+    action_dim = int(
+        env.action_space.low.numel()
+    )
+    observation_dim = int(
+        env.observation_space.low.numel()
+    )
+    replay = ReplayBuffer(
+        config.replay_capacity,
+        observation_dim,
+        action_dim,
+        storage_device=agent.device,
+    )
+    generator = torch.Generator(
+        device=agent.device
+    ).manual_seed(config.seed + 17)
+    observation, _ = env.reset(
+        seed=config.seed
+    )
+    episode_return = 0.0
+    completed_returns: list[float] = []
+    last_metrics: dict[str, float] = {}
+    for step in range(config.total_steps):
+        if step < config.random_steps:
+            action = env.action_space.sample(
+                generator=generator
+            )
+        else:
+            action = agent.act(
+                observation,
+                deterministic=False,
+            )
+        (
+            next_observation,
+            reward,
+            terminated,
+            truncated,
+            _,
+        ) = env.step(action)
+        replay.add(
+            observation,
+            action,
+            reward,
+            next_observation,
+            terminated=terminated,
+            truncated=truncated,
+            insertion_step=step,
+        )
+        episode_return += reward
+        observation = next_observation
+        if terminated or truncated:
+            completed_returns.append(
+                episode_return
+            )
+            episode_return = 0.0
+            observation, _ = env.reset()
+
+        if (
+            len(replay) >= config.batch_size
+            and step >= config.random_steps
+        ):
+            for _ in range(
+                config.updates_per_step
+            ):
+                batch = replay.sample(
+                    config.batch_size,
+                    generator=generator,
+                )
+                last_metrics = agent.update(batch)
+
+    return {
+        "steps": config.total_steps,
+        "episodes": len(completed_returns),
+        "mean_episode_return": (
+            sum(completed_returns)
+            / len(completed_returns)
+            if completed_returns
+            else float("nan")
+        ),
+        "final_10_mean_return": (
+            sum(completed_returns[-10:])
+            / min(10, len(completed_returns))
+            if completed_returns
+            else float("nan")
+        ),
+        "last_update_metrics": last_metrics,
+        "replay_size": len(replay),
+    }
