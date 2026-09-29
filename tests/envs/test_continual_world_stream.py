@@ -86,13 +86,13 @@ def test_cw_sequences_preserve_official_order_and_repeat() -> None:
         "window-close-v1",
         "peg-unplug-side-v1",
     )
-    assert CW10_TASKS_V3 == tuple(
+    assert tuple(
         name.removesuffix("-v1") + "-v3"
         for name in CW10_TASKS_V1
-    )
-    assert CW20_TASKS_V3 == (
+    ) == CW10_TASKS_V3
+    assert (
         CW10_TASKS_V3 + CW10_TASKS_V3
-    )
+    ) == CW20_TASKS_V3
     assert continual_world_task_sequence(
         "CW10"
     ) == CW10_TASKS_V3
