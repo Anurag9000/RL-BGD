@@ -1,0 +1,22 @@
+algorithm: ppo
+optimizer: bgd
+bayesianization: actor_and_value
+posterior_std: 0.1
+gamma: 0.99
+gae_lambda: 0.95
+clip_ratio: 0.2
+value_clip_ratio: 0.2
+entropy_coef: 0.0
+value_coef: 0.5
+update_epochs: 10
+minibatch_size: 64
+actor_bgd:
+  eta: 0.1
+  mc_samples: 4
+  antithetic: true
+  temper_retention: 1.0
+value_bgd:
+  eta: 0.1
+  mc_samples: 4
+  antithetic: true
+  temper_retention: 1.0

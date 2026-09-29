@@ -1,6 +1,10 @@
 """Proximal Policy Optimization implementations."""
 
 from rl_bgd.agents.ppo.agent import PPOAgent, PPOConfig
+from rl_bgd.agents.ppo.bgd_agent import (
+    BGDPPOAgent,
+    BGDPPOConfig,
+)
 from rl_bgd.agents.ppo.rollout import (
     PPORolloutBatch,
     RolloutBuffer,
@@ -12,6 +16,8 @@ from rl_bgd.agents.ppo.train import (
 )
 
 __all__ = [
+    "BGDPPOAgent",
+    "BGDPPOConfig",
     "PPOAgent",
     "PPOConfig",
     "PPORolloutBatch",

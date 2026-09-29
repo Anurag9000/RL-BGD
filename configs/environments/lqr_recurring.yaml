@@ -1,0 +1,12 @@
+environment: scheduled_lqr
+schedule:
+  mode: recurring
+  phase_steps: 64
+  anchors:
+    - dynamics: 0.75
+      control_gain: 0.35
+    - dynamics: 0.95
+      control_gain: 0.70
+    - dynamics: 0.85
+      control_gain: 0.50
+strict_task_agnostic: true
