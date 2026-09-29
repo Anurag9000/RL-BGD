@@ -13,13 +13,14 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | FP32 Bayesian state | COMPLETE | posterior state tensors enforce FP32 |
 | BGD Monte Carlo update | COMPLETE | bayes/bgd.py + quadratic/integration tests |
 | Separate mean/evidence gradient channels | COMPLETE | BGDLoss + replay-evidence mechanism tests |
+| Dynamic per-update retention override | COMPLETE | BGDUpdater retention override + tempering test |
 | K=1/2/4/8 support | COMPLETE | generic mc_samples; antithetic requires even K |
 | Antithetic sampling | COMPLETE | sampler + pair-cancellation test |
 | Sigma bounds/nonfinite failure | COMPLETE | PosteriorBounds + clamp/assert |
 | Gaussian tempering | COMPLETE | bayes/tempering.py + exact tests |
 | Posterior diagnostics | COMPLETE | sigma/precision/entropy/effective LR |
 | Posterior/updater checkpoint | COMPLETE | versioned round-trip test |
-| Generalized-Bayes RL | PARTIAL | formulation + SAC mapping; adaptive temperature pending |
+| Generalized-Bayes RL | PARTIAL | formulation + SAC mapping; evidence temperature study pending |
 | InformationAccessConfig | COMPLETE | central contract + leakage tests |
 | Device auto/CUDA/CPU | COMPLETE | utils/device.py + tests |
 | Deterministic seeding | COMPLETE | Python/NumPy/PyTorch CPU/CUDA |
@@ -46,12 +47,17 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Replay evidence inverse_reuse_weight | COMPLETE | usage-weight tests + synthetic precision comparison |
 | Replay evidence normalized_batch_evidence | COMPLETE | uniform batch-scale test + BGD-SAC wiring |
 | Replay evidence diagnostics / ESS | COMPLETE | per-update metrics |
-| Surprise estimators | NOT STARTED | phase 8 |
+| Fixed controlled forgetting | COMPLETE | exact Gaussian tempering + BGD fixed retention |
+| TD surprise estimator | COMPLETE | online normalized TD surprise + tests |
+| TD adaptive retention in BGD-SAC | COMPLETE | no-boundary SAC wiring + checkpoint state + metrics |
+| Ensemble-disagreement surprise primitive | COMPLETE | estimator + state API; adaptive-agent wiring pending |
+| Predictive-NLL surprise primitive | COMPLETE | estimator + state API; world-model wiring pending |
+| Surprise change-detection metrics | NOT STARTED | evaluation phase |
 | PPO + Adam/BGD | NOT STARTED | phase 9 |
 | Recurrent agents/sequence replay | NOT STARTED | phase 11 |
 | CARL | NOT STARTED | phase 7 |
 | Continual World CW10/CW20 | NOT STARTED | phase 10 |
 | ContinualBench/CORA adapter | NOT STARTED | optional external benchmark |
 | EWC/Online-EWC/SI/MAS | NOT STARTED | baseline phase |
-| Mechanistic experiments | PARTIAL | curvature + movement + long-horizon + replay-evidence mechanisms executable |
+| Mechanistic experiments | PARTIAL | curvature + movement + long-horizon + replay evidence; surprise timeline pending |
 | Paper tables/figures | NOT STARTED | phase 15 |

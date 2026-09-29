@@ -57,6 +57,7 @@ class BGDStepResult:
     gradient_norm: float
     uncertainty_gradient_norm: float
     c_norm: float
+    retention: float
 
 
 class BGDUpdater:
@@ -72,20 +73,24 @@ class BGDUpdater:
         self.config.validate()
         self.step_count = 0
 
-    def _temper_if_requested(self) -> None:
-        if self.config.temper_retention == 1.0:
-            return
+    def _temper(self, retention: float | None) -> float:
+        applied = self.config.temper_retention if retention is None else retention
+        if not 0.0 <= applied <= 1.0:
+            raise ValueError("retention override must lie in [0, 1]")
+        if applied == 1.0:
+            return applied
         means, stds = temper_diagonal_gaussian(
             self.posterior.means,
             self.posterior.stds,
             self.posterior.prior_means,
             self.posterior.prior_stds,
-            retention=self.config.temper_retention,
+            retention=applied,
         )
         for name in self.posterior.means:
             self.posterior.means[name].copy_(means[name])
             self.posterior.stds[name].copy_(stds[name])
         self.posterior.clamp_stds_()
+        return applied
 
     @staticmethod
     def _check_scalar_loss(loss: Tensor, name: str) -> None:
@@ -99,10 +104,11 @@ class BGDUpdater:
         objective: Objective,
         *,
         generator: torch.Generator | None = None,
+        retention: float | None = None,
     ) -> BGDStepResult:
         """Take one BGD step using distinct mean/evidence gradient channels."""
 
-        self._temper_if_requested()
+        applied_retention = self._temper(retention)
         epsilons = self.posterior.sample_epsilons(
             samples=self.config.mc_samples,
             antithetic=self.config.antithetic,
@@ -202,6 +208,7 @@ class BGDUpdater:
             gradient_norm=gradient_norm,
             uncertainty_gradient_norm=uncertainty_gradient_norm,
             c_norm=c_norm,
+            retention=applied_retention,
         )
 
     def step_module(
@@ -212,6 +219,7 @@ class BGDUpdater:
         uncertainty_loss_fn: Callable[[Any], Tensor] | None = None,
         buffers: Mapping[str, Tensor] | None = None,
         generator: torch.Generator | None = None,
+        retention: float | None = None,
         **kwargs: Any,
     ) -> BGDStepResult:
         """Convenience wrapper for a single-module forward objective."""
@@ -228,7 +236,11 @@ class BGDUpdater:
                 uncertainty=uncertainty_loss_fn(output),
             )
 
-        result = self.step(objective, generator=generator)
+        result = self.step(
+            objective,
+            generator=generator,
+            retention=retention,
+        )
         self.posterior.sync_module(module)
         return result
 

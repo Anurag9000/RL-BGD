@@ -22,6 +22,8 @@ from rl_bgd.replay.evidence_accounting import (
     replay_evidence_weights,
     weighted_evidence_mean,
 )
+from rl_bgd.surprise.base import SurpriseObservation, surprise_to_retention
+from rl_bgd.surprise.td import AdaptiveTDRetentionConfig, TDSurprise
 
 BayesianizationMode = Literal[
     "critic_only",
@@ -37,6 +39,7 @@ class BGDSACConfig:
     sigma_min: float = 1e-6
     sigma_max: float = 10.0
     replay_evidence: ReplayEvidenceConfig = field(default_factory=ReplayEvidenceConfig)
+    adaptive_td_retention: AdaptiveTDRetentionConfig | None = None
     actor_bgd: BGDConfig = field(
         default_factory=lambda: BGDConfig(
             eta=0.1,
@@ -68,6 +71,8 @@ class BGDSACConfig:
             self.sigma_max,
         ).validate()
         self.replay_evidence.validate()
+        if self.adaptive_td_retention is not None:
+            self.adaptive_td_retention.validate()
         self.actor_bgd.validate()
         self.critic_bgd.validate()
 
@@ -109,6 +114,12 @@ class BGDSACAgent(SACAgent):
         self.critic2_posterior: DiagonalGaussianPosterior | None = None
         self.critic1_bgd: BGDUpdater | None = None
         self.critic2_bgd: BGDUpdater | None = None
+        self.td_surprise: TDSurprise | None = None
+
+        if self.bgd_config.adaptive_td_retention is not None:
+            self.td_surprise = TDSurprise(
+                self.bgd_config.adaptive_td_retention.surprise
+            )
 
         if mode in {"actor_only", "actor_and_critic"}:
             self.actor_posterior = DiagonalGaussianPosterior.from_module(
@@ -144,11 +155,31 @@ class BGDSACAgent(SACAgent):
     def _evidence(self, batch: ReplayBatch) -> ReplayEvidenceSummary:
         return replay_evidence_weights(batch, self.bgd_config.replay_evidence)
 
+    def _adaptive_retention(
+        self,
+        batch: ReplayBatch,
+        target: Tensor,
+    ) -> tuple[float | None, SurpriseObservation | None]:
+        config = self.bgd_config.adaptive_td_retention
+        if config is None or self.td_surprise is None:
+            return None, None
+        with torch.no_grad():
+            q1 = self.critic1(batch.observations, batch.actions)
+            q2 = self.critic2(batch.observations, batch.actions)
+            td_errors = torch.cat((target - q1, target - q2), dim=0)
+        observation = self.td_surprise.observe(td_errors)
+        retention = surprise_to_retention(
+            observation.smoothed,
+            config.mapping,
+        )
+        return retention, observation
+
     def _update_critics_bgd(
         self,
         batch: ReplayBatch,
         target: Tensor,
         evidence: ReplayEvidenceSummary,
+        retention: float | None,
     ) -> tuple[BGDStepResult, BGDStepResult]:
         if self.critic1_bgd is None or self.critic2_bgd is None:
             raise RuntimeError("critic BGD is not configured")
@@ -170,6 +201,7 @@ class BGDSACAgent(SACAgent):
             batch.observations,
             batch.actions,
             uncertainty_loss_fn=critic_uncertainty_loss,
+            retention=retention,
         )
         result2 = self.critic2_bgd.step_module(
             self.critic2,
@@ -177,6 +209,7 @@ class BGDSACAgent(SACAgent):
             batch.observations,
             batch.actions,
             uncertainty_loss_fn=critic_uncertainty_loss,
+            retention=retention,
         )
         return result1, result2
 
@@ -184,6 +217,7 @@ class BGDSACAgent(SACAgent):
         self,
         batch: ReplayBatch,
         evidence: ReplayEvidenceSummary,
+        retention: float | None,
     ) -> BGDStepResult:
         if self.actor_bgd is None or self.actor_posterior is None:
             raise RuntimeError("actor BGD is not configured")
@@ -211,7 +245,10 @@ class BGDSACAgent(SACAgent):
                 uncertainty=weighted_evidence_mean(per_item, evidence.weights),
             )
 
-        result = self.actor_bgd.step(objective)
+        result = self.actor_bgd.step(
+            objective,
+            retention=retention,
+        )
         self.actor_posterior.sync_module(self.actor)
         return result
 
@@ -222,6 +259,7 @@ class BGDSACAgent(SACAgent):
         mode = self.bgd_config.bayesianization
         target = self._target_values(batch)
         evidence = self._evidence(batch)
+        retention, surprise = self._adaptive_retention(batch, target)
 
         critic1_result: BGDStepResult | None = None
         critic2_result: BGDStepResult | None = None
@@ -230,6 +268,7 @@ class BGDSACAgent(SACAgent):
                 batch,
                 target,
                 evidence,
+                retention,
             )
             q1 = self.critic1(
                 batch.observations,
@@ -285,6 +324,7 @@ class BGDSACAgent(SACAgent):
             actor_result = self._update_actor_bgd(
                 batch,
                 evidence,
+                retention,
             )
             with torch.no_grad():
                 (
@@ -406,6 +446,17 @@ class BGDSACAgent(SACAgent):
             "evidence_mean_usage_count": evidence.mean_usage_count,
             "evidence_effective_sample_size": evidence.effective_sample_size,
         }
+        if surprise is not None and retention is not None:
+            metrics.update(
+                {
+                    "surprise_raw": surprise.raw,
+                    "surprise_center": surprise.center,
+                    "surprise_scale": surprise.scale,
+                    "surprise_normalized": surprise.normalized,
+                    "surprise_smoothed": surprise.smoothed,
+                    "retention_lambda": retention,
+                }
+            )
         if (
             critic1_result is not None
             and critic2_result is not None
@@ -476,6 +527,11 @@ class BGDSACAgent(SACAgent):
         state["replay_evidence_mode"] = (
             self.bgd_config.replay_evidence.mode
         )
+        state["adaptive_td_retention"] = (
+            self.bgd_config.adaptive_td_retention is not None
+        )
+        if self.td_surprise is not None:
+            state["td_surprise"] = self.td_surprise.state_dict()
         if self.actor_bgd is not None:
             state["actor_bgd"] = (
                 self.actor_bgd.state_dict()
@@ -514,7 +570,17 @@ class BGDSACAgent(SACAgent):
             raise ValueError(
                 "BGD-SAC checkpoint replay evidence mode mismatch"
             )
+        expected_adaptive = self.bgd_config.adaptive_td_retention is not None
+        if bool(state.get("adaptive_td_retention", False)) != expected_adaptive:
+            raise ValueError(
+                "BGD-SAC checkpoint adaptive-retention configuration mismatch"
+            )
         super().load_state_dict(state)  # type: ignore[arg-type]
+        if self.td_surprise is not None:
+            payload = state["td_surprise"]
+            if not isinstance(payload, dict):
+                raise TypeError("TD-surprise checkpoint state must be a dictionary")
+            self.td_surprise.load_state_dict(payload)
         if self.actor_bgd is not None:
             self.actor_bgd.load_state_dict(
                 state["actor_bgd"]  # type: ignore[arg-type]

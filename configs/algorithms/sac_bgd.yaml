@@ -6,6 +6,19 @@ sigma_min: 1.0e-6
 sigma_max: 10.0
 replay_evidence:
   mode: all_replay
+adaptive_td_retention: null
+# Example adaptive block:
+# adaptive_td_retention:
+#   surprise:
+#     aggregation: median_abs
+#     normalizer:
+#       decay: 0.99
+#       smoothing_decay: 0.9
+#       initial_variance: 1.0
+#       epsilon: 1.0e-6
+#   mapping:
+#     lambda_min: 0.5
+#     kappa: 1.0
 actor_bgd:
   eta: 0.1
   mc_samples: 4
