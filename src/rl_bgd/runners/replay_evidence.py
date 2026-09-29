@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 
 import torch
 from torch import nn
@@ -68,6 +69,29 @@ def _metadata_batch(
     )
 
 
+def _objective_with_evidence(
+    evidence_weights: torch.Tensor,
+) -> Callable[[dict[str, torch.Tensor]], BGDLoss]:
+    def objective(
+        params: dict[str, torch.Tensor],
+    ) -> BGDLoss:
+        per_item = (
+            0.5
+            * params["w"]
+            .square()
+            .reshape(1, 1)
+        )
+        return BGDLoss(
+            mean=per_item.mean(),
+            uncertainty=weighted_evidence_mean(
+                per_item,
+                evidence_weights,
+            ),
+        )
+
+    return objective
+
+
 def run_replay_evidence_demo(
     *,
     uses: int = 30,
@@ -114,26 +138,11 @@ def run_replay_evidence_demo(
                     mode=mode
                 ),
             )
-            evidence_weights = evidence.weights
-
-            def objective(
-                params: dict[str, torch.Tensor],
-            ) -> BGDLoss:
-                per_item = (
-                    0.5
-                    * params["w"]
-                    .square()
-                    .reshape(1, 1)
+            updater.step(
+                _objective_with_evidence(
+                    evidence.weights
                 )
-                return BGDLoss(
-                    mean=per_item.mean(),
-                    uncertainty=weighted_evidence_mean(
-                        per_item,
-                        evidence_weights,
-                    ),
-                )
-
-            updater.step(objective)
+            )
         outputs[
             f"{mode}_sigma"
         ] = float(

@@ -1,0 +1,10 @@
+environment: carl_pendulum
+strict_task_agnostic: true
+expose_evaluation_context: false
+schedule:
+  mode: recurring
+  phase_steps: 50000
+  anchors:
+    - {g: 10.0, m: 1.0, l: 1.0, dt: 0.05, max_speed: 8.0}
+    - {g: 15.0, m: 1.0, l: 1.0, dt: 0.05, max_speed: 8.0}
+    - {g: 5.0, m: 1.0, l: 1.0, dt: 0.05, max_speed: 8.0}

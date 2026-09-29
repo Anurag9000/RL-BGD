@@ -27,6 +27,7 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Diagonal quadratic benchmark | COMPLETE | arbitrary dimension + changing optimum/curvature |
 | Rotated/non-diagonal quadratic | COMPLETE | dense SPD construction + test |
 | Abrupt/smooth/recurring quadratic streams | COMPLETE | QuadraticStream + tests |
+| Generic context schedules | COMPLETE | abrupt/smooth/periodic/random-walk/recurring + tests |
 | Low-sigma movement mechanism | COMPLETE | identical-gradient movement test |
 | Long-horizon tempering mechanism | COMPLETE | vanilla-vs-tempered uncertainty test |
 | Synthetic benchmark family overall | PARTIAL | bandits pending; LQR-style control added |
@@ -53,9 +54,10 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Ensemble-disagreement surprise primitive | COMPLETE | estimator + state API; adaptive-agent wiring pending |
 | Predictive-NLL surprise primitive | COMPLETE | estimator + state API; world-model wiring pending |
 | Surprise change-detection metrics | NOT STARTED | evaluation phase |
+| CARL 1.1.1 strict hidden-context adapter | PARTIAL | adapter/config/unit tests; real CARL smoke pending |
+| CARL abrupt/smooth/recurring configs | PARTIAL | schedule semantics complete; real CARL smoke pending |
 | PPO + Adam/BGD | NOT STARTED | phase 9 |
 | Recurrent agents/sequence replay | NOT STARTED | phase 11 |
-| CARL | NOT STARTED | phase 7 |
 | Continual World CW10/CW20 | NOT STARTED | phase 10 |
 | ContinualBench/CORA adapter | NOT STARTED | optional external benchmark |
 | EWC/Online-EWC/SI/MAS | NOT STARTED | baseline phase |

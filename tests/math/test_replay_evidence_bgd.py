@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import torch
 from torch import nn
 
@@ -71,6 +73,29 @@ def test_zero_uncertainty_evidence_preserves_sigma_but_mean_still_learns() -> No
     )
 
 
+def _scaled_objective(
+    uncertainty_weight: float,
+) -> Callable[[dict[str, torch.Tensor]], BGDLoss]:
+    def objective(
+        params: dict[str, torch.Tensor],
+    ) -> BGDLoss:
+        base = (
+            0.5
+            * params["w"]
+            .square()
+            .sum()
+        )
+        return BGDLoss(
+            mean=base,
+            uncertainty=(
+                base
+                * uncertainty_weight
+            ),
+        )
+
+    return objective
+
+
 def test_replay_downweighting_reduces_precision_accumulation() -> None:
     def run(
         inverse_reuse: bool,
@@ -83,26 +108,9 @@ def test_replay_downweighting_reduces_precision_accumulation() -> None:
                 if inverse_reuse
                 else 1.0
             )
-            uncertainty_weight = weight
-
-            def objective(
-                params: dict[str, torch.Tensor],
-            ) -> BGDLoss:
-                base = (
-                    0.5
-                    * params["w"]
-                    .square()
-                    .sum()
-                )
-                return BGDLoss(
-                    mean=base,
-                    uncertainty=(
-                        base
-                        * uncertainty_weight
-                    ),
-                )
-
-            updater.step(objective)
+            updater.step(
+                _scaled_objective(weight)
+            )
         return float(
             updater.posterior.stds["w"]
             .item()

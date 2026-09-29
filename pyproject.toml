@@ -24,10 +24,12 @@ dependencies = [
 [project.optional-dependencies]
 rl = ["gymnasium>=1.0"]
 dev = ["pytest>=8.3", "pytest-cov>=6.0", "ruff>=0.9", "mypy>=1.14", "pre-commit>=4.0", "gymnasium>=1.0"]
-carl = ["carl-bench>=0.3"]
+# CARL 1.1.1 pins gymnasium<1.0.0; install this extra in a dedicated environment.
+carl = ["carl-bench==1.1.1"]
 continual-world = ["gymnasium>=1.0", "mujoco>=3.2", "metaworld>=3.0"]
 continual-bench = ["gymnasium>=1.0"]
-all = ["gymnasium>=1.0", "mujoco>=3.2", "metaworld>=3.0", "carl-bench>=0.3"]
+# CARL is intentionally excluded because its current Gymnasium pin conflicts.
+all = ["gymnasium>=1.0", "mujoco>=3.2", "metaworld>=3.0"]
 
 [project.scripts]
 rl-bgd-smoke = "rl_bgd.runners.smoke:main"

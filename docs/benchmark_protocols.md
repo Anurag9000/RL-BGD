@@ -1,12 +1,34 @@
 # Benchmark Protocols
 
-Benchmark adapters are not yet implemented.
+## CARL 1.1.1
+
+RL-BGD's first CARL integration targets the published carl-bench 1.1.1 API.
+The package exposes controllable physics contexts and returns observations as a
+dictionary containing base state plus context. CARL selects a context on reset,
+and its environment base exposes the active context and environment-specific
+context update hook.
+
+Strict task-agnostic RL-BGD runs remove both the context observation and
+context_id metadata before data reaches the training loop. Context evolution is
+driven by a global environment-step schedule; the agent receives no task ID or
+switch callback.
+
+The base schedule layer supports abrupt, smooth, recurring, periodic, random
+walk, and multidimensional context trajectories. Initial runnable configs cover
+CARLPendulum abrupt/smooth/recurring gravity and physical-parameter changes.
+
+CARL 1.1.1 declares gymnasium<1.0.0, so CARL is maintained as an optional
+benchmark environment rather than a base dependency. This incompatibility must
+not be silently bypassed by forcing a newer Gymnasium into the same environment.
 
 ## Continual World
-Canonical CW10/CW20 evaluation and strict task-agnostic variants remain distinct. Strict TA training receives no task ID, switch callback, task head routing, optimizer/posterior reset, per-task normalization, or task-routed replay.
 
-## CARL
-Context variables may define drift but are hidden from the policy in strict task-agnostic runs. Ground-truth context/switch metadata is evaluation-only unless an experiment is explicitly oracle.
+Canonical CW10/CW20 evaluation and strict task-agnostic variants remain
+distinct. Strict TA training receives no task ID, switch callback, task head
+routing, optimizer/posterior reset, per-task normalization, or task-routed
+replay.
 
 ## Hidden context / 3RL style
-Recurrent Adam and recurrent BGD must share architecture so recurrence/context-inference gains are not misattributed to BGD.
+
+Recurrent Adam and recurrent BGD must share architecture so recurrence/context
+inference gains are not misattributed to BGD.
