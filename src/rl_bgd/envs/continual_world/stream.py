@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
-import torch
 from torch import Tensor
 
 from rl_bgd.envs.synthetic.lqr import TensorBox
