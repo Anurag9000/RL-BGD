@@ -24,9 +24,16 @@ not be silently bypassed by forcing a newer Gymnasium into the same environment.
 ## Continual World
 
 Canonical CW10/CW20 evaluation and strict task-agnostic variants remain
-distinct. Strict TA training receives no task ID, switch callback, task head
-routing, optimizer/posterior reset, per-task normalization, or task-routed
-replay.
+distinct. The canonical path appends an occurrence one-hot, routes shared-body
+actor/critics through occurrence-specific heads, resets FIFO replay and Adam
+state at task changes, keeps critic weights, and restarts the exploration/update
+clock per task. These controls reproduce the published baseline defaults and
+are intentionally unavailable to strict task-agnostic experiments.
+
+Strict TA training receives no task ID, switch callback, task head routing,
+optimizer/posterior reset, per-task normalization, or task-routed replay. Both
+protocols use physically separate evaluation environments and preserve global
+Python/NumPy/PyTorch RNG state across evaluator-only rollouts.
 
 ## Hidden context / 3RL style
 

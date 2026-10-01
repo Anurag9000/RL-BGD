@@ -1,0 +1,24 @@
+benchmark: continual_world
+sequence: CW20
+protocol: canonical
+algorithm: sac
+optimizer: adam
+architecture: multihead
+steps_per_task: 1000000
+episode_horizon: 200
+evaluation_episodes: 5
+evaluation_metric: success
+randomization: random_init_all
+hidden_dims: [256, 256, 256, 256]
+batch_size: 128
+replay_capacity: 1000000
+start_steps: 10000
+update_after: 1000
+update_every: 50
+target_output_std: 0.089
+task_identity_observation: true
+hide_task_id_from_shared_body: true
+reset_buffer_on_task_change: true
+reset_optimizer_on_task_change: true
+reset_critic_on_task_change: false
+agent_policy_exploration: false
