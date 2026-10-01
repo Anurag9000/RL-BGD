@@ -1,12 +1,12 @@
 # Paper artifact pipeline
 
-Phase 15 consumes only canonical completed run directories created by the
-Phase 14 suite launcher.
+Phase 15 consumes only canonical raw run directories created by the Phase 14
+suite launcher.
 
 Run:
 
     python scripts/build_paper_artifacts.py \
-        --run-root artifacts/suites \
+        --results-root artifacts/suites \
         --output-dir artifacts/paper
 
 ## Canonical raw-run contract
@@ -20,29 +20,31 @@ Every completed run is authoritative only when its directory contains:
 
 The strict loader validates schema versions, run IDs, completion state, source
 files, and provenance hashes before a run can enter paper aggregation.
-stdout.json, stderr.log, and execution_metadata.json may also exist for
-debugging, but they are not scientific input to tables or figures.
+stdout.json, stderr.log, and execution metadata may also exist for debugging,
+but they are not scientific inputs to tables or figures.
+
+## Fail-closed aggregation
+
+A paper build does not silently discard a failed or partial run. If the
+selected results root contains a failed/partial run manifest, corrupted
+completed artifact, duplicate run ID/seed, inconsistent matched-seed metric, or
+missing declared primary metric, the build aborts. This prevents survivorship
+bias and accidental cherry-picking. Resolve the failed run or intentionally
+construct a different, explicitly documented results root before rebuilding.
 
 ## Automatic aggregation
 
-The pipeline:
+The canonical builder automatically:
 
-1. discovers canonical run directories;
-2. excludes explicitly failed/partial runs;
-3. fails closed if a completed run is corrupt or missing its declared primary
-   metric;
-4. records SHA-256 hashes for canonical raw artifacts;
-5. flattens scalar summary/resource/task metrics into all_runs.csv;
-6. groups seed replicates by suite, job, and declared primary metric;
-7. computes deterministic nonparametric bootstrap confidence intervals;
-8. writes CSV and Markdown paper tables;
-9. generates a primary-metric figure with confidence intervals;
-10. indexes and hashes every suite_manifest.json;
-11. writes artifact_report.json with the exact aggregation settings.
+1. discovers strict run directories;
+2. validates run and information-access provenance;
+3. aggregates scalar metrics with seed-level bootstrap confidence intervals;
+4. hierarchically bootstraps task-level metrics;
+5. computes paired matched-seed method differences where available;
+6. writes run-index and information-access tables;
+7. exports paper tables in CSV, Markdown, and LaTeX;
+8. generates publication figures in configured formats;
+9. records skipped-figure reasons rather than inventing unavailable data;
+10. emits a paper_manifest.json tying every table/figure to source runs.
 
-No metric is manually transcribed into a table or figure, and no missing metric
-is silently replaced with a different statistic.
-
-The generic all-runs table retains every scalar summary metric plus task-level
-and resource metrics, so later paper-specific analyses can be regenerated from
-the same provenance-checked evidence.
+No metric is manually transcribed and no missing metric is silently substituted.
