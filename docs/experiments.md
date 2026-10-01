@@ -28,13 +28,19 @@ integration. The default comparison uses update-count-driven consolidation with
 no task ID or boundary input; a separate oracle-boundary trainer exists and is
 labelled as privileged. Both share the same regularizer implementation.
 
-Recurrent BGD-SAC has passed stationary learning acceptance. Recurrent
-BGD-PPO remains intentionally open after both actor+value and actor-only BGD
-failed the first naturally stable LQR acceptance; its replacement acceptance
-uses a matched recurrent-Adam control on a control-requiring stationary LQR.
+Recurrent BGD-SAC and recurrent BGD-PPO have both passed stationary learning
+acceptance under matched recurrent controls. The recurrent PPO acceptance was
+reworked after the first naturally stable LQR criterion proved uninformative;
+the current gate uses a control-requiring stationary LQR with a matched
+recurrent-Adam comparison rather than accepting a trivial stable policy.
 
 ContinualBench now has a strict hidden-task adapter matching its current source
 contract, including reward dictionaries and both four-/five-value step APIs.
-Its real pinned live smoke remains pending after the first attempt exposed and
-fixed a project-metadata direct-reference issue. CORA has been source-audited;
-its legacy runtime pins are not installed into the modern base environment.
+The pinned live workflow has exposed upstream packaging and asset-layout gaps;
+the adapter contains targeted compatibility repairs and remains PARTIAL until
+the real reset/step smoke passes.
+
+CORA now has dependency-free canonical protocol metadata plus isolated
+forgetting and isolated zero-shot forward-transfer metrics with tests. Its
+legacy environment runtime remains intentionally isolated because its old
+Gym/Atari/setuptools pins are incompatible with the modern base environment.
