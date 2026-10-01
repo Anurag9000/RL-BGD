@@ -34,8 +34,9 @@ def run_recurrent_bgd_ppo_lqr(
     steps: int = 1_000,
     seed: int = 101,
     device: str = "auto",
+    bayesianization: str = "actor_only",
 ) -> dict[str, object]:
-    """Validate that recurrent actor-and-value BGD-PPO learns stationary control."""
+    """Validate recurrent BGD-PPO learning with a selectable Bayesian module."""
 
     seed_everything(seed, deterministic=True)
     resolved = resolve_device(device)
@@ -60,7 +61,7 @@ def run_recurrent_bgd_ppo_lqr(
             encoder_hidden_dims=(24,),
         ),
         bgd_config=BGDPPOConfig(
-            bayesianization="actor_and_value",
+            bayesianization=bayesianization,  # type: ignore[arg-type]
             posterior_std=0.1,
             evidence_mode="first_epoch_only",
             actor_bgd=BGDConfig(
@@ -99,6 +100,7 @@ def run_recurrent_bgd_ppo_lqr(
     )
     return {
         "algorithm": "recurrent_bgd_ppo",
+        "bayesianization": bayesianization,
         "steps": steps,
         "pre_return": pre_return,
         "post_return": post_return,

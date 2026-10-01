@@ -12,11 +12,12 @@ def test_recurrent_bgd_ppo_learns_stationary_lqr() -> None:
         steps=1_000,
         seed=101,
         device="cpu",
+        bayesianization="actor_only",
     )
     assert result["post_return"] > result["pre_return"] + 0.1
     metrics = result["training"]["last_update_metrics"]
     assert metrics["actor_sigma_mean"] > 0.0
-    assert metrics["value_sigma_mean"] > 0.0
+    assert "value_sigma_mean" not in metrics
 
 
 @pytest.mark.slow
