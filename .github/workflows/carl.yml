@@ -1,0 +1,22 @@
+name: carl-benchmark-smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  carl-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: pip install pytest
+      - name: Install isolated CARL dependency set
+        run: pip install -e ".[carl]"
+      - name: Run live CARL adapter smoke
+        run: pytest tests/envs/test_carl_live.py -m benchmark -q
