@@ -232,11 +232,17 @@ def test_execute_suite_fails_closed_on_missing_primary_metric(
             "artifact_error"
         ]
     )
-    failed = load_run_directory(
-        run_dir,
-        require_completed=False,
+    failed_manifest = json.loads(
+        (
+            run_dir
+            / "manifest.json"
+        ).read_text(
+            encoding="utf-8"
+        )
     )
-    assert failed.manifest.status == "failed"
+    assert failed_manifest[
+        "status"
+    ] == "failed"
     with pytest.raises(
         ValueError,
         match="refuses incomplete",
