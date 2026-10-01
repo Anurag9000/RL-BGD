@@ -178,10 +178,7 @@ class RegularizedSACAgent(SACAgent):
                         observation
                     )
                     return torch.cat(
-                        [
-                            mean,
-                            log_std,
-                        ],
+                        [mean, log_std],
                         dim=-1,
                     )
 

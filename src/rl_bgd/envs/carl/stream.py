@@ -171,6 +171,14 @@ def make_carl_pendulum_stream(
     env = carl_pendulum(
         contexts={0: initial},
         context_selector=static_selector,
+        # CARL v1.1.1 contains a Pendulum context-name mismatch between
+        # releases. Strict task-agnostic runs do not consume context
+        # observations anyway, so request no context features at the source.
+        obs_context_features=(
+            []
+            if strict_task_agnostic
+            else list(initial)
+        ),
         obs_context_as_dict=True,
     )
     return CARLContextStream(

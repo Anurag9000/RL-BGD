@@ -10,8 +10,12 @@ pytestmark = pytest.mark.benchmark
 def test_live_carl_pendulum_strict_hidden_context_stream() -> None:
     base = {
         "g": 10.0,
+        "m": 1.0,
+        "l": 1.0,
+        "dt": 0.05,
     }
     changed = {
+        **base,
         "g": 12.0,
     }
     schedule = ContextSchedule(
