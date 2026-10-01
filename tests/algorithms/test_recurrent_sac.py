@@ -111,3 +111,35 @@ def test_recurrent_sac_checkpoint_preserves_online_hidden_state() -> None:
         restored.actor_hidden,
         agent.actor_hidden,
     )
+
+
+def test_recurrent_sac_post_step_observer_runs_each_step() -> None:
+    torch.manual_seed(114)
+    env = LinearQuadraticControlEnv(horizon=8)
+    agent = RecurrentSACAgent(
+        1,
+        1,
+        action_low=env.action_space.low,
+        action_high=env.action_space.high,
+        recurrent_config=RecurrentSACConfig(
+            recurrent_hidden_dim=6,
+            encoder_hidden_dims=(6,),
+            q_hidden_dims=(6,),
+        ),
+    )
+    observed: list[int] = []
+    train_recurrent_sac(
+        env,
+        agent,
+        config=RecurrentSACTrainConfig(
+            total_steps=12,
+            random_steps=11,
+            sequence_batch_size=2,
+            burn_in=1,
+            unroll=2,
+            replay_capacity=16,
+            seed=114,
+        ),
+        post_step_observer=lambda step, _: observed.append(step),
+    )
+    assert observed == list(range(1, 13))

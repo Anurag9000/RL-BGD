@@ -1,0 +1,25 @@
+benchmark: continual_world
+sequence: CW10
+protocol: task_agnostic
+protocol_label: 3RL-style
+algorithm: recurrent_sac
+optimizer: adam
+steps_per_task: 1000000
+total_steps: 10000000
+episode_horizon: 200
+history_length: 15
+recurrent_hidden_dim: 30
+encoder_hidden_dims: [400, 400]
+critic_head_hidden_dims: [400, 400]
+learning_rate: 0.0003
+replay_capacity: 10000000
+initial_random_steps: 10000
+sequence_batch_size: 128
+unroll: 1
+evaluation_episodes: 10
+task_identity_observation: false
+task_boundary_signal: false
+task_specific_head: false
+replay_reset_on_task_change: false
+optimizer_reset_on_task_change: false
+posterior_reset_on_task_change: false
