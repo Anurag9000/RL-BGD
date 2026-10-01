@@ -1,53 +1,31 @@
+import math
+
 import pytest
 import torch
 
-from rl_bgd.agents.sac.agent import (
-    SACConfig,
-)
-from rl_bgd.agents.sac.bgd_agent import (
-    BGDSACConfig,
-)
-from rl_bgd.agents.sac.recurrent_agent import (
-    RecurrentSACConfig,
-)
+from rl_bgd.agents.sac.agent import SACConfig
+from rl_bgd.agents.sac.recurrent_agent import RecurrentSACConfig
 from rl_bgd.agents.sac.recurrent_bgd_agent import (
-    BGDRecurrentSACAgent,
+    RecurrentBGDSACAgent,
+    RecurrentBGDSACConfig,
 )
-from rl_bgd.agents.sac.recurrent_train import (
-    RecurrentSACTrainConfig,
-    train_recurrent_sac,
-)
-from rl_bgd.bayes.bgd import (
-    BGDConfig,
-)
-from rl_bgd.envs.synthetic.lqr import (
-    LinearQuadraticControlEnv,
-)
-from rl_bgd.replay.evidence_accounting import (
-    ReplayEvidenceConfig,
-)
+from rl_bgd.bayes.bgd import BGDConfig
+from rl_bgd.replay.evidence_accounting import ReplayEvidenceConfig
+from rl_bgd.replay.sequence_buffer import SequenceReplayBuffer
+from rl_bgd.surprise.base import RetentionMappingConfig
+from rl_bgd.surprise.td import AdaptiveTDRetentionConfig
 
 
-@pytest.mark.parametrize(
-    "mode",
-    [
-        "critic_only",
-        "actor_only",
-        "actor_and_critic",
-    ],
-)
-def test_bgd_recurrent_sac_modes_are_finite(
-    mode: str,
-) -> None:
-    torch.manual_seed(84)
-    env = LinearQuadraticControlEnv(
-        horizon=16
-    )
-    agent = BGDRecurrentSACAgent(
+def make_agent(
+    mode: str = "actor_and_critic",
+    *,
+    adaptive: bool = False,
+) -> RecurrentBGDSACAgent:
+    return RecurrentBGDSACAgent(
+        2,
         1,
-        1,
-        action_low=env.action_space.low,
-        action_high=env.action_space.high,
+        action_low=torch.tensor([-1.0]),
+        action_high=torch.tensor([1.0]),
         sac_config=SACConfig(
             actor_lr=1e-3,
             critic_lr=1e-3,
@@ -58,11 +36,21 @@ def test_bgd_recurrent_sac_modes_are_finite(
             encoder_hidden_dims=(8,),
             q_hidden_dims=(8,),
         ),
-        bgd_config=BGDSACConfig(
+        bgd_config=RecurrentBGDSACConfig(
             bayesianization=mode,  # type: ignore[arg-type]
             posterior_std=0.1,
             replay_evidence=ReplayEvidenceConfig(
                 mode="inverse_reuse_weight"
+            ),
+            adaptive_td_retention=(
+                AdaptiveTDRetentionConfig(
+                    mapping=RetentionMappingConfig(
+                        lambda_min=0.6,
+                        kappa=1.0,
+                    )
+                )
+                if adaptive
+                else None
             ),
             actor_bgd=BGDConfig(
                 eta=0.1,
@@ -76,106 +64,100 @@ def test_bgd_recurrent_sac_modes_are_finite(
             ),
         ),
     )
-    summary = train_recurrent_sac(
-        env,
-        agent,
-        config=RecurrentSACTrainConfig(
-            total_steps=64,
-            random_steps=20,
-            sequence_batch_size=3,
-            burn_in=2,
-            unroll=4,
-            replay_capacity=96,
-            seed=84,
-        ),
-    )
-    metrics = summary[
-        "last_update_metrics"
-    ]
-    assert metrics
-    assert torch.isfinite(
-        torch.tensor(
-            metrics[
-                "actor_loss"
-            ]
-        )
-    )
-    assert metrics[
-        "evidence_weight_mean"
-    ] > 0.0
 
 
-def test_bgd_recurrent_sac_checkpoint_round_trip() -> None:
-    torch.manual_seed(85)
-    config = BGDSACConfig(
-        bayesianization="actor_and_critic",
-        actor_bgd=BGDConfig(
-            eta=0.1,
-            mc_samples=2,
-            antithetic=True,
-        ),
-        critic_bgd=BGDConfig(
-            eta=0.1,
-            mc_samples=2,
-            antithetic=True,
-        ),
-    )
-    recurrent = RecurrentSACConfig(
-        recurrent_hidden_dim=8,
-        encoder_hidden_dims=(8,),
-        q_hidden_dims=(8,),
-    )
-    agent = BGDRecurrentSACAgent(
+def make_batch(agent: RecurrentBGDSACAgent):
+    buffer = SequenceReplayBuffer(
+        64,
         2,
         1,
-        action_low=torch.tensor(
-            [-1.0]
-        ),
-        action_high=torch.tensor(
-            [1.0]
-        ),
-        recurrent_config=recurrent,
-        bgd_config=config,
+        storage_device=agent.device,
     )
-    agent.act_recurrent(
-        torch.tensor(
-            [0.2, -0.4]
+    generator = torch.Generator().manual_seed(201)
+    for index in range(24):
+        observation = torch.randn(
+            2,
+            generator=generator,
         )
+        next_observation = torch.randn(
+            2,
+            generator=generator,
+        )
+        buffer.add(
+            observation,
+            torch.zeros(1),
+            reward=-float(observation.square().sum().item()),
+            next_observation=next_observation,
+            terminated=False,
+            truncated=(index in {11, 23}),
+            episode_start=(index in {0, 12}),
+            insertion_step=index,
+        )
+    return buffer.sample_sequences(
+        2,
+        burn_in=2,
+        unroll=4,
+        generator=torch.Generator().manual_seed(202),
     )
+
+
+@pytest.mark.parametrize(
+    "mode",
+    [
+        "actor_only",
+        "critic_only",
+        "actor_and_critic",
+    ],
+)
+def test_recurrent_bgd_sac_modes_are_finite(mode: str) -> None:
+    torch.manual_seed(203)
+    agent = make_agent(mode)
+    metrics = agent.update(make_batch(agent))
+    assert all(
+        math.isfinite(value)
+        for value in metrics.values()
+    )
+    if mode in {"actor_only", "actor_and_critic"}:
+        assert metrics["actor_sigma_mean"] > 0
+    if mode in {"critic_only", "actor_and_critic"}:
+        assert metrics["critic1_sigma_mean"] > 0
+        assert metrics["critic2_sigma_mean"] > 0
+    assert metrics["evidence_mean_usage_count"] >= 1.0
+
+
+def test_recurrent_adaptive_bgd_sac_emits_retention() -> None:
+    torch.manual_seed(204)
+    agent = make_agent(adaptive=True)
+    metrics = agent.update(make_batch(agent))
+    assert 0.6 <= metrics["retention_lambda"] <= 1.0
+    assert math.isfinite(metrics["surprise_raw"])
+
+
+def test_recurrent_bgd_sac_checkpoint_round_trip() -> None:
+    torch.manual_seed(205)
+    agent = make_agent(adaptive=True)
+    agent.update(make_batch(agent))
     state = agent.state_dict()
-    restored = BGDRecurrentSACAgent(
-        2,
-        1,
-        action_low=torch.tensor(
-            [-1.0]
-        ),
-        action_high=torch.tensor(
-            [1.0]
-        ),
-        recurrent_config=recurrent,
-        bgd_config=config,
-    )
-    restored.load_state_dict(
-        state
-    )
+
+    restored = make_agent(adaptive=True)
+    restored.load_state_dict(state)
+    observation = torch.tensor([0.2, -0.3])
+    agent.reset_recurrent_state()
+    restored.reset_recurrent_state()
     torch.testing.assert_close(
-        restored.actor_hidden,
-        agent.actor_hidden,
+        restored.act_recurrent(
+            observation,
+            deterministic=True,
+        ),
+        agent.act_recurrent(
+            observation,
+            deterministic=True,
+        ),
     )
-    assert (
-        restored.actor_posterior
-        is not None
-    )
-    assert (
-        agent.actor_posterior
-        is not None
-    )
+    assert restored.actor_posterior is not None
+    assert agent.actor_posterior is not None
     for name in agent.actor_posterior.stds:
         torch.testing.assert_close(
-            restored.actor_posterior.stds[
-                name
-            ],
-            agent.actor_posterior.stds[
-                name
-            ],
+            restored.actor_posterior.stds[name],
+            agent.actor_posterior.stds[name],
         )
