@@ -145,9 +145,7 @@ def test_failed_run_is_excluded_but_completed_missing_metric_fails(
         },
     )
     (failed / "manifest.json").write_text(
-        json.dumps(
-            failed_manifest.to_dict()
-        ),
+        json.dumps(failed_manifest.to_dict()),
         encoding="utf-8",
     )
 
@@ -196,6 +194,4 @@ def test_failed_run_is_excluded_but_completed_missing_metric_fails(
     except ValueError as exc:
         assert "missing_score" in str(exc)
     else:
-        raise AssertionError(
-            "completed run with missing primary metric was silently accepted"
-        )
+        raise AssertionError("completed run with missing primary metric was silently accepted")
