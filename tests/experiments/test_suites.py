@@ -111,7 +111,7 @@ def _tiny_suite(
     primary_metric: str,
 ) -> ExperimentSuite:
     return ExperimentSuite(
-        name="tiny_strict",
+        name="smoke",
         description=(
             "strict-artifact execution test"
         ),
@@ -151,11 +151,11 @@ def test_execute_suite_writes_strict_artifacts(
     )
     monkeypatch.setitem(
         SUITES,
-        suite.name,
+        "smoke",
         suite,
     )
     result = execute_suite(
-        suite.name,
+        "smoke",
         tmp_path,
     )
     assert result[
@@ -163,7 +163,7 @@ def test_execute_suite_writes_strict_artifacts(
     ] == "success"
     run_dir = (
         tmp_path
-        / suite.name
+        / "smoke"
         / "tiny_smoke__seed_0"
     )
     loaded = load_run_directory(
