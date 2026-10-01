@@ -1,0 +1,11 @@
+benchmark: CW20
+protocol: canonical
+steps_per_task: 1000000
+episode_horizon: 200
+task_identity_observation: one_hot_occurrence
+task_boundary_visible: true
+repeated_task_occurrences_are_distinct: true
+note: >-
+  This environment-level protocol matches the original task-aware information
+  flow. The original benchmark's default multi-head model and task-change
+  optimizer/replay resets are tracked separately from this adapter.
