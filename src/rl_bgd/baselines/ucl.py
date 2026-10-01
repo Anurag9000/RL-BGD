@@ -111,12 +111,8 @@ def ucl_regularization(
     )
 
     for layer, saved in zip(layers, snapshots, strict=True):
-        current_weight_sigma_row = positive_sigma(layer.weight_rho).clamp_min(
-            config.epsilon
-        )
-        current_bias_sigma = positive_sigma(layer.bias_rho).clamp_min(
-            config.epsilon
-        )
+        current_weight_sigma_row = positive_sigma(layer.weight_rho).clamp_min(config.epsilon)
+        current_bias_sigma = positive_sigma(layer.bias_rho).clamp_min(config.epsilon)
         saved_weight_sigma_row = saved.weight_sigma.to(
             device=device,
             dtype=dtype,
@@ -134,9 +130,7 @@ def ucl_regularization(
             in_features,
         )
         if previous_weight_sigma.shape[1] != in_features:
-            raise ValueError(
-                "UCL adjacent Bayesian layer widths are not chain-compatible"
-            )
+            raise ValueError("UCL adjacent Bayesian layer widths are not chain-compatible")
         previous_sigma = previous_weight_sigma.expand(
             out_features,
             in_features,
@@ -153,48 +147,26 @@ def ucl_regularization(
             + (bias_delta / saved_bias_sigma).square().sum()
         )
         mean_l1 = mean_l1 + std_reference_sq * (
-            (
-                saved_weight_mu.square()
-                / saved_weight_sigma.square()
-                * weight_delta
-            )
-            .abs()
-            .sum()
-            + (
-                saved_bias_mu.square()
-                / saved_bias_sigma.square()
-                * bias_delta
-            )
-            .abs()
-            .sum()
+            (saved_weight_mu.square() / saved_weight_sigma.square() * weight_delta).abs().sum()
+            + (saved_bias_mu.square() / saved_bias_sigma.square() * bias_delta).abs().sum()
         )
 
         weight_ratio = (
-            current_weight_sigma_row.square()
-            / saved_weight_sigma_row.square()
+            current_weight_sigma_row.square() / saved_weight_sigma_row.square()
         ).clamp_min(config.epsilon)
-        bias_ratio = (
-            current_bias_sigma.square()
-            / saved_bias_sigma.square()
-        ).clamp_min(config.epsilon)
-        current_weight_variance = current_weight_sigma_row.square().clamp_min(
+        bias_ratio = (current_bias_sigma.square() / saved_bias_sigma.square()).clamp_min(
             config.epsilon
         )
-        current_bias_variance = current_bias_sigma.square().clamp_min(
-            config.epsilon
+        current_weight_variance = current_weight_sigma_row.square().clamp_min(config.epsilon)
+        current_bias_variance = current_bias_sigma.square().clamp_min(config.epsilon)
+        sigma_penalty = sigma_penalty + (weight_ratio - torch.log(weight_ratio)).sum()
+        sigma_penalty = (
+            sigma_penalty + (current_weight_variance - torch.log(current_weight_variance)).sum()
         )
-        sigma_penalty = sigma_penalty + (
-            weight_ratio - torch.log(weight_ratio)
-        ).sum()
-        sigma_penalty = sigma_penalty + (
-            current_weight_variance - torch.log(current_weight_variance)
-        ).sum()
-        sigma_penalty = sigma_penalty + (
-            bias_ratio - torch.log(bias_ratio)
-        ).sum()
-        sigma_penalty = sigma_penalty + (
-            current_bias_variance - torch.log(current_bias_variance)
-        ).sum()
+        sigma_penalty = sigma_penalty + (bias_ratio - torch.log(bias_ratio)).sum()
+        sigma_penalty = (
+            sigma_penalty + (current_bias_variance - torch.log(current_bias_variance)).sum()
+        )
 
         previous_weight_sigma = saved_weight_sigma_row.reshape(1, -1)
 

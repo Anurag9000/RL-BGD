@@ -207,8 +207,7 @@ def test_adaptive_predictive_checkpoint_round_trip() -> None:
     assert restored.predictive_surprise is not None
     assert agent.predictive_surprise is not None
     assert (
-        restored.predictive_surprise.normalizer.count
-        == agent.predictive_surprise.normalizer.count
+        restored.predictive_surprise.normalizer.count == agent.predictive_surprise.normalizer.count
     )
     assert restored.predictive_model is not None
     assert agent.predictive_model is not None

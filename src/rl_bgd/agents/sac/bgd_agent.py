@@ -151,9 +151,7 @@ class BGDSACAgent(SACAgent):
             )
         predictive_config = self.bgd_config.adaptive_predictive_retention
         if predictive_config is not None:
-            self.predictive_surprise = PredictiveSurprise(
-                predictive_config.normalizer
-            )
+            self.predictive_surprise = PredictiveSurprise(predictive_config.normalizer)
             self.predictive_model = GaussianTransitionModel(
                 observation_dim,
                 action_dim,
@@ -268,11 +266,7 @@ class BGDSACAgent(SACAgent):
         batch: ReplayBatch,
     ) -> float | None:
         config = self.bgd_config.adaptive_predictive_retention
-        if (
-            config is None
-            or self.predictive_model is None
-            or self.predictive_optimizer is None
-        ):
+        if config is None or self.predictive_model is None or self.predictive_optimizer is None:
             return None
         nll = self.predictive_model.negative_log_likelihood(
             batch.observations,

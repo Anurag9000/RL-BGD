@@ -175,25 +175,10 @@ def test_missing_visual_assets_are_repaired_from_metaworld(
 ) -> None:
     continual_package = tmp_path / "continual_bench" / "envs"
     metaworld_package = tmp_path / "metaworld"
-    scene_destination = (
-        continual_package
-        / "assets"
-        / "textures"
-    )
-    object_destination = (
-        continual_package
-        / "assets"
-        / "objects"
-        / "textures"
-    )
-    source = (
-        metaworld_package
-        / "assets"
-        / "textures"
-    )
-    scene_destination.mkdir(
-        parents=True
-    )
+    scene_destination = continual_package / "assets" / "textures"
+    object_destination = continual_package / "assets" / "objects" / "textures"
+    source = metaworld_package / "assets" / "textures"
+    scene_destination.mkdir(parents=True)
     source.mkdir(parents=True)
     for filename in (
         "wood2.png",
@@ -203,32 +188,15 @@ def test_missing_visual_assets_are_repaired_from_metaworld(
         "metal2.png",
         "wood1.png",
     ):
-        (source / filename).write_bytes(
-            filename.encode("utf-8")
-        )
-    (
-        scene_destination / "wood2.png"
-    ).write_bytes(b"existing")
+        (source / filename).write_bytes(filename.encode("utf-8"))
+    (scene_destination / "wood2.png").write_bytes(b"existing")
 
     repaired = _repair_missing_metaworld_assets(
-        SimpleNamespace(
-            __file__=str(
-                continual_package
-                / "__init__.py"
-            )
-        ),
-        SimpleNamespace(
-            __file__=str(
-                metaworld_package
-                / "__init__.py"
-            )
-        ),
+        SimpleNamespace(__file__=str(continual_package / "__init__.py")),
+        SimpleNamespace(__file__=str(metaworld_package / "__init__.py")),
     )
 
-    assert (
-        "assets/textures/wood2.png"
-        not in repaired
-    )
+    assert "assets/textures/wood2.png" not in repaired
     for filename in (
         "floor2.png",
         "metal.png",
@@ -236,10 +204,7 @@ def test_missing_visual_assets_are_repaired_from_metaworld(
         "metal2.png",
         "wood1.png",
     ):
-        assert (
-            f"assets/textures/{filename}"
-            in repaired
-        )
+        assert f"assets/textures/{filename}" in repaired
     for filename in (
         "wood2.png",
         "floor2.png",
@@ -248,20 +213,8 @@ def test_missing_visual_assets_are_repaired_from_metaworld(
         "metal2.png",
         "wood1.png",
     ):
-        assert (
-            f"assets/objects/textures/{filename}"
-            in repaired
-        )
+        assert f"assets/objects/textures/{filename}" in repaired
 
-    assert (
-        scene_destination
-        / "wood2.png"
-    ).read_bytes() == b"existing"
-    assert (
-        object_destination
-        / "metal1.png"
-    ).read_bytes() == b"metal1.png"
-    assert (
-        object_destination
-        / "wood1.png"
-    ).read_bytes() == b"wood1.png"
+    assert (scene_destination / "wood2.png").read_bytes() == b"existing"
+    assert (object_destination / "metal1.png").read_bytes() == b"metal1.png"
+    assert (object_destination / "wood1.png").read_bytes() == b"wood1.png"

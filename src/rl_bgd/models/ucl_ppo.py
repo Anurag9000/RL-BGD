@@ -41,13 +41,9 @@ class UCLBayesianLinear(nn.Module):
         self.weight_mu = nn.Parameter(
             torch.empty(out_features, in_features).uniform_(-bound, bound)
         )
-        self.weight_rho = nn.Parameter(
-            torch.full((out_features, 1), rho_init)
-        )
+        self.weight_rho = nn.Parameter(torch.full((out_features, 1), rho_init))
         self.bias_mu = nn.Parameter(torch.zeros(out_features))
-        self.bias_rho = nn.Parameter(
-            torch.full((out_features,), rho_init)
-        )
+        self.bias_rho = nn.Parameter(torch.full((out_features,), rho_init))
 
     def forward(
         self,
@@ -59,9 +55,7 @@ class UCLBayesianLinear(nn.Module):
             weight = self.weight_mu + positive_sigma(self.weight_rho) * (
                 torch.randn_like(self.weight_mu)
             )
-            bias = self.bias_mu + positive_sigma(self.bias_rho) * (
-                torch.randn_like(self.bias_mu)
-            )
+            bias = self.bias_mu + positive_sigma(self.bias_rho) * (torch.randn_like(self.bias_mu))
         else:
             weight = self.weight_mu
             bias = self.bias_mu
@@ -130,9 +124,7 @@ class UCLPPOActor(nn.Module):
             hidden_dims=hidden_dims,
             ratio=ratio,
         )
-        self.log_std = nn.Parameter(
-            torch.full((action_dim,), float(initial_log_std))
-        )
+        self.log_std = nn.Parameter(torch.full((action_dim,), float(initial_log_std)))
         self.register_buffer(
             "action_scale",
             ((action_high - action_low) / 2.0).float(),
@@ -167,9 +159,7 @@ class UCLPPOActor(nn.Module):
         squashed = torch.tanh(pre_tanh)
         action = squashed * self.action_scale + self.action_bias
         correction = 2.0 * (
-            math.log(2.0)
-            - pre_tanh
-            - torch.nn.functional.softplus(-2.0 * pre_tanh)
+            math.log(2.0) - pre_tanh - torch.nn.functional.softplus(-2.0 * pre_tanh)
         )
         log_prob = (normal.log_prob(pre_tanh) - correction).sum(
             dim=-1,
@@ -190,9 +180,7 @@ class UCLPPOActor(nn.Module):
         )
         pre_tanh = normal.rsample()
         action, log_prob = self._from_pre_tanh(normal, pre_tanh)
-        deterministic = (
-            torch.tanh(normal.mean) * self.action_scale + self.action_bias
-        )
+        deterministic = torch.tanh(normal.mean) * self.action_scale + self.action_bias
         return action, log_prob, deterministic
 
     def evaluate_actions(
@@ -211,9 +199,7 @@ class UCLPPOActor(nn.Module):
             -1.0 + 1e-6,
             1.0 - 1e-6,
         )
-        pre_tanh = 0.5 * (
-            torch.log1p(normalized) - torch.log1p(-normalized)
-        )
+        pre_tanh = 0.5 * (torch.log1p(normalized) - torch.log1p(-normalized))
         _, log_prob = self._from_pre_tanh(normal, pre_tanh)
         entropy = normal.entropy().sum(dim=-1, keepdim=True)
         return log_prob, entropy
@@ -223,9 +209,7 @@ class UCLPPOActor(nn.Module):
             observation,
             sample_weights=False,
         )
-        return (
-            torch.tanh(normal.mean) * self.action_scale + self.action_bias
-        )
+        return torch.tanh(normal.mean) * self.action_scale + self.action_bias
 
 
 class UCLValueNetwork(nn.Module):

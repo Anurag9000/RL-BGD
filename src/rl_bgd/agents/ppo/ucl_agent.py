@@ -78,12 +78,8 @@ class UCLPPOAgent:
             self.value.parameters(),
             lr=self.config.value_lr,
         )
-        self.actor_snapshot = snapshot_ucl_layers(
-            self.actor.bayesian_layers
-        )
-        self.value_snapshot = snapshot_ucl_layers(
-            self.value.bayesian_layers
-        )
+        self.actor_snapshot = snapshot_ucl_layers(self.actor.bayesian_layers)
+        self.value_snapshot = snapshot_ucl_layers(self.value.bayesian_layers)
         self.boundary_count = 0
         self.update_count = 0
 
@@ -97,12 +93,8 @@ class UCLPPOAgent:
     def consolidate_boundary(self) -> None:
         """Save the current posterior as the previous-task posterior."""
 
-        self.actor_snapshot = snapshot_ucl_layers(
-            self.actor.bayesian_layers
-        )
-        self.value_snapshot = snapshot_ucl_layers(
-            self.value.bayesian_layers
-        )
+        self.actor_snapshot = snapshot_ucl_layers(self.actor.bayesian_layers)
+        self.value_snapshot = snapshot_ucl_layers(self.value.bayesian_layers)
         self.boundary_count += 1
 
     @torch.no_grad()
@@ -185,13 +177,9 @@ class UCLPPOAgent:
             surrogate1,
             surrogate2,
         ).mean()
-        actor_loss = (
-            policy_loss - self.config.entropy_coef * entropy.mean()
-        )
+        actor_loss = policy_loss - self.config.entropy_coef * entropy.mean()
         approx_kl = ((ratio - 1.0) - log_ratio).mean()
-        clip_fraction = (
-            torch.abs(ratio - 1.0) > self.config.clip_ratio
-        ).float().mean()
+        clip_fraction = (torch.abs(ratio - 1.0) > self.config.clip_ratio).float().mean()
         return actor_loss, policy_loss, approx_kl, clip_fraction
 
     def _value_loss(self, batch: PPORolloutBatch) -> Tensor:
@@ -204,18 +192,19 @@ class UCLPPOAgent:
                 prediction,
                 batch.returns,
             )
-        clipped = batch.old_values + (
-            prediction - batch.old_values
-        ).clamp(
+        clipped = batch.old_values + (prediction - batch.old_values).clamp(
             -self.config.value_clip_ratio,
             self.config.value_clip_ratio,
         )
         plain_loss = (prediction - batch.returns).square()
         clipped_loss = (clipped - batch.returns).square()
-        return 0.5 * torch.maximum(
-            plain_loss,
-            clipped_loss,
-        ).mean()
+        return (
+            0.5
+            * torch.maximum(
+                plain_loss,
+                clipped_loss,
+            ).mean()
+        )
 
     def update(self, rollout: RolloutBuffer) -> dict[str, float]:
         rollout.compute_gae(
@@ -223,9 +212,7 @@ class UCLPPOAgent:
             gae_lambda=self.config.gae_lambda,
             normalize_advantages=self.config.normalize_advantages,
         )
-        generator = torch.Generator(device=self.device).manual_seed(
-            self.update_count + 246_810
-        )
+        generator = torch.Generator(device=self.device).manual_seed(self.update_count + 246_810)
         totals = {
             "policy_loss": 0.0,
             "value_loss": 0.0,
@@ -272,10 +259,7 @@ class UCLPPOAgent:
                     config=self.regularization_config,
                     saved_task=self.boundary_count > 0,
                 )
-                value_total = (
-                    self.config.value_coef * value_loss
-                    + value_reg["total"]
-                )
+                value_total = self.config.value_coef * value_loss + value_reg["total"]
                 self.value_optimizer.zero_grad(set_to_none=True)
                 value_total.backward()
                 nn.utils.clip_grad_norm_(
@@ -286,22 +270,15 @@ class UCLPPOAgent:
 
                 totals["policy_loss"] += float(policy_loss.detach().item())
                 totals["value_loss"] += float(value_loss.detach().item())
-                totals["actor_ucl_penalty"] += float(
-                    actor_reg["total"].detach().item()
-                )
-                totals["value_ucl_penalty"] += float(
-                    value_reg["total"].detach().item()
-                )
+                totals["actor_ucl_penalty"] += float(actor_reg["total"].detach().item())
+                totals["value_ucl_penalty"] += float(value_reg["total"].detach().item())
                 totals["approx_kl"] += float(approx_kl.detach().item())
-                totals["clip_fraction"] += float(
-                    clip_fraction.detach().item()
-                )
+                totals["clip_fraction"] += float(clip_fraction.detach().item())
                 minibatches += 1
 
                 if (
                     self.config.target_kl is not None
-                    and float(approx_kl.detach().item())
-                    > self.config.target_kl
+                    and float(approx_kl.detach().item()) > self.config.target_kl
                 ):
                     stop_early = True
                     break
@@ -311,10 +288,7 @@ class UCLPPOAgent:
         if minibatches == 0:
             raise RuntimeError("UCL-PPO update produced no minibatches")
         self.update_count += 1
-        metrics = {
-            name: value / minibatches
-            for name, value in totals.items()
-        }
+        metrics = {name: value / minibatches for name, value in totals.items()}
         metrics["epochs_early_stopped"] = float(stop_early)
         metrics["boundary_count"] = float(self.boundary_count)
         metrics["actor_sigma_mean"] = float(
@@ -339,10 +313,7 @@ class UCLPPOAgent:
             .detach()
             .item()
         )
-        if not all(
-            torch.isfinite(torch.tensor(value))
-            for value in metrics.values()
-        ):
+        if not all(torch.isfinite(torch.tensor(value)) for value in metrics.values()):
             raise FloatingPointError("nonfinite UCL-PPO metric")
         return metrics
 
@@ -385,12 +356,8 @@ class UCLPPOAgent:
             "value": self.value.state_dict(),
             "actor_optimizer": self.actor_optimizer.state_dict(),
             "value_optimizer": self.value_optimizer.state_dict(),
-            "actor_snapshot": self._serialize_snapshots(
-                self.actor_snapshot
-            ),
-            "value_snapshot": self._serialize_snapshots(
-                self.value_snapshot
-            ),
+            "actor_snapshot": self._serialize_snapshots(self.actor_snapshot),
+            "value_snapshot": self._serialize_snapshots(self.value_snapshot),
             "boundary_count": self.boundary_count,
             "update_count": self.update_count,
         }

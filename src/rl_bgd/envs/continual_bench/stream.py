@@ -60,27 +60,14 @@ def _repair_missing_metaworld_assets(
         raise ContinualBenchImportError(
             "cannot locate installed benchmark packages for asset repair"
         )
-    package_root = Path(
-        continual_file
-    ).resolve().parent
-    source = (
-        Path(metaworld_file)
-        .resolve()
-        .parent
-        / "assets"
-        / "textures"
-    )
+    package_root = Path(continual_file).resolve().parent
+    source = Path(metaworld_file).resolve().parent / "assets" / "textures"
     if not source.is_dir():
-        raise ContinualBenchImportError(
-            "canonical Meta-World texture directory is unavailable"
-        )
+        raise ContinualBenchImportError("canonical Meta-World texture directory is unavailable")
 
     destinations = (
         package_root / "assets" / "textures",
-        package_root
-        / "assets"
-        / "objects"
-        / "textures",
+        package_root / "assets" / "objects" / "textures",
     )
     repaired: list[str] = []
     for destination in destinations:
@@ -88,28 +75,17 @@ def _repair_missing_metaworld_assets(
             parents=True,
             exist_ok=True,
         )
-        for canonical in sorted(
-            source.iterdir()
-        ):
+        for canonical in sorted(source.iterdir()):
             if not canonical.is_file():
                 continue
-            target = (
-                destination
-                / canonical.name
-            )
+            target = destination / canonical.name
             if target.exists():
                 continue
             copy2(
                 canonical,
                 target,
             )
-            repaired.append(
-                str(
-                    target.relative_to(
-                        package_root
-                    )
-                )
-            )
+            repaired.append(str(target.relative_to(package_root)))
     return tuple(repaired)
 
 
