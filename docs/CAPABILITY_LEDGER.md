@@ -63,11 +63,11 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | CARL 1.1.1 strict hidden-context adapter | PARTIAL | adapter/config/unit tests; real CARL smoke pending |
 | CARL abrupt/smooth/recurring configs | PARTIAL | schedule semantics complete; real CARL smoke pending |
 | PPO Adam baseline | COMPLETE | clipped surrogate + GAE + minibatch epochs + value clipping + checkpoint + stationary LQR learning smoke |
-| BGD-PPO actor/value/both | PARTIAL | implementation + posterior checkpoint + finite-mode tests + stationary runner; stationary BGD learning acceptance test pending |
+| BGD-PPO actor/value/both | COMPLETE | agents/ppo/bgd_agent.py + test_bgd_ppo.py + test_bgd_ppo_learning.py + scripts/run_bgd_ppo_lqr.py |
 | BGD-PPO repeated-rollout evidence accounting | COMPLETE | first-epoch-only default plus all-epochs/normalized experimental modes + tests |
 | PPO task-agnostic recurring synthetic stream | COMPLETE | Adam/BGD recurring LQR runner + integration test without task ID/boundary input |
 | PPO rollout checkpointing | COMPLETE | partial/update-ready behavior-policy statistics + GAE state round-trip test |
-| PPO + Adam/BGD overall | PARTIAL | phase 9 core complete; close after stationary BGD-PPO learning validation |
+| PPO + Adam/BGD overall | COMPLETE | stationary Adam/BGD validation + recurring task-agnostic LQR benchmark path + CI-tested learning acceptance |
 | Recurrent agents/sequence replay | NOT STARTED | phase 11 |
 | Continual World CW10/CW20 | NOT STARTED | phase 10 |
 | ContinualBench/CORA adapter | NOT STARTED | optional external benchmark |
