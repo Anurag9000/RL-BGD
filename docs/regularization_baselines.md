@@ -58,3 +58,26 @@ silently called a likelihood Fisher when it is derived from a policy,
 Bellman, or surrogate objective. The experiment configuration must state which
 loss/output generated importance, which parameters were regularized, how often
 importance was refreshed, and what information triggered consolidation.
+
+
+## Task-agnostic SAC integration
+
+RegularizedSACAgent wires EWC, Online EWC, SI, and MAS into the SAC actor,
+critics, or both. Strict task-agnostic runs use a fixed optimizer-update
+interval as the consolidation trigger. The trigger depends only on the
+learner's own update count; environment task IDs, hidden context values, and
+switch callbacks are not consumed.
+
+For EWC/Online-EWC, actor importance uses squared gradients of the current SAC
+policy surrogate and critic importance uses squared TD-loss gradients. This is
+reported as an RL empirical-Fisher surrogate, not as an exact likelihood
+Fisher. MAS uses actor-distribution and critic-output sensitivity. SI tracks
+the unregularized task-loss gradients across optimizer steps before applying
+its consolidation penalty.
+
+The same agent exposes explicit consolidation for labelled oracle experiments,
+but strict task-agnostic runners must not call it from true task boundaries.
+
+Run the dependency-light hidden-context smoke path with:
+
+    python scripts/run_regularized_sac_continual_lqr.py --method ewc
