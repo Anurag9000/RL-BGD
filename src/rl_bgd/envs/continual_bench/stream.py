@@ -98,6 +98,12 @@ def _repair_missing_metaworld_assets(
                 continue
 
             canonical = source_root / relative
+            if (
+                not canonical.is_file()
+                and len(relative.parts) >= 2
+                and relative.parts[0] == relative.parts[1]
+            ):
+                canonical = source_root.joinpath(*relative.parts[1:])
             if not canonical.is_file() and "textures" in relative.parts:
                 canonical = source_root / "textures" / relative.name
             if not canonical.is_file():
