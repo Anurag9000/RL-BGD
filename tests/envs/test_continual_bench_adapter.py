@@ -185,7 +185,7 @@ def test_missing_visual_assets_are_repaired_from_metaworld(
         encoding="utf-8",
     )
 
-    canonical_texture = source_root / "objects" / "textures" / "metal1.png"
+    canonical_texture = source_root / "textures" / "metal1.png"
     canonical_texture.parent.mkdir(parents=True)
     canonical_texture.write_bytes(b"canonical-metal")
 
@@ -218,7 +218,7 @@ def test_asset_repair_never_overwrites_existing_benchmark_file(
     existing.parent.mkdir(parents=True)
     existing.write_bytes(b"benchmark-version")
 
-    canonical = source_root / "objects" / "textures" / "metal1.png"
+    canonical = source_root / "textures" / "metal1.png"
     canonical.parent.mkdir(parents=True)
     canonical.write_bytes(b"metaworld-version")
 
