@@ -27,6 +27,11 @@ from rl_bgd.surprise.ensemble import (
     AdaptiveEnsembleRetentionConfig,
     EnsembleDisagreementSurprise,
 )
+from rl_bgd.surprise.predictive import (
+    AdaptivePredictiveRetentionConfig,
+    GaussianTransitionModel,
+    PredictiveSurprise,
+)
 from rl_bgd.surprise.td import AdaptiveTDRetentionConfig, TDSurprise
 
 BayesianizationMode = Literal[
@@ -45,6 +50,7 @@ class BGDSACConfig:
     replay_evidence: ReplayEvidenceConfig = field(default_factory=ReplayEvidenceConfig)
     adaptive_td_retention: AdaptiveTDRetentionConfig | None = None
     adaptive_ensemble_retention: AdaptiveEnsembleRetentionConfig | None = None
+    adaptive_predictive_retention: AdaptivePredictiveRetentionConfig | None = None
     actor_bgd: BGDConfig = field(
         default_factory=lambda: BGDConfig(
             eta=0.1,
@@ -74,12 +80,22 @@ class BGDSACConfig:
             self.sigma_max,
         ).validate()
         self.replay_evidence.validate()
-        if self.adaptive_td_retention is not None and self.adaptive_ensemble_retention is not None:
+        adaptive_sources = sum(
+            source is not None
+            for source in (
+                self.adaptive_td_retention,
+                self.adaptive_ensemble_retention,
+                self.adaptive_predictive_retention,
+            )
+        )
+        if adaptive_sources > 1:
             raise ValueError("configure at most one adaptive retention surprise source")
         if self.adaptive_td_retention is not None:
             self.adaptive_td_retention.validate()
         if self.adaptive_ensemble_retention is not None:
             self.adaptive_ensemble_retention.validate()
+        if self.adaptive_predictive_retention is not None:
+            self.adaptive_predictive_retention.validate()
         self.actor_bgd.validate()
         self.critic_bgd.validate()
 
@@ -123,12 +139,31 @@ class BGDSACAgent(SACAgent):
         self.critic2_bgd: BGDUpdater | None = None
         self.td_surprise: TDSurprise | None = None
         self.ensemble_surprise: EnsembleDisagreementSurprise | None = None
+        self.predictive_surprise: PredictiveSurprise | None = None
+        self.predictive_model: GaussianTransitionModel | None = None
+        self.predictive_optimizer: torch.optim.Optimizer | None = None
 
         if self.bgd_config.adaptive_td_retention is not None:
             self.td_surprise = TDSurprise(self.bgd_config.adaptive_td_retention.surprise)
         if self.bgd_config.adaptive_ensemble_retention is not None:
             self.ensemble_surprise = EnsembleDisagreementSurprise(
                 self.bgd_config.adaptive_ensemble_retention.normalizer
+            )
+        predictive_config = self.bgd_config.adaptive_predictive_retention
+        if predictive_config is not None:
+            self.predictive_surprise = PredictiveSurprise(
+                predictive_config.normalizer
+            )
+            self.predictive_model = GaussianTransitionModel(
+                observation_dim,
+                action_dim,
+                hidden_dims=predictive_config.hidden_dims,
+                min_log_std=predictive_config.min_log_std,
+                max_log_std=predictive_config.max_log_std,
+            ).to(self.device)
+            self.predictive_optimizer = torch.optim.Adam(
+                self.predictive_model.parameters(),
+                lr=predictive_config.learning_rate,
             )
 
         if mode in {"actor_only", "actor_and_critic"}:
@@ -206,7 +241,55 @@ class BGDSACAgent(SACAgent):
             )
             return retention, observation
 
+        predictive_config = self.bgd_config.adaptive_predictive_retention
+        if (
+            predictive_config is not None
+            and self.predictive_surprise is not None
+            and self.predictive_model is not None
+        ):
+            with torch.no_grad():
+                nll = self.predictive_model.negative_log_likelihood(
+                    batch.observations,
+                    batch.actions,
+                    batch.next_observations,
+                    batch.rewards,
+                )
+            observation = self.predictive_surprise.observe_nll(nll)
+            retention = surprise_to_retention(
+                observation.smoothed,
+                predictive_config.mapping,
+            )
+            return retention, observation
+
         return None, None
+
+    def _update_predictive_model(
+        self,
+        batch: ReplayBatch,
+    ) -> float | None:
+        config = self.bgd_config.adaptive_predictive_retention
+        if (
+            config is None
+            or self.predictive_model is None
+            or self.predictive_optimizer is None
+        ):
+            return None
+        nll = self.predictive_model.negative_log_likelihood(
+            batch.observations,
+            batch.actions,
+            batch.next_observations,
+            batch.rewards,
+        )
+        loss = nll.mean()
+        self.predictive_optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        if config.gradient_clip_norm is not None:
+            torch.nn.utils.clip_grad_norm_(
+                self.predictive_model.parameters(),
+                config.gradient_clip_norm,
+            )
+        self.predictive_optimizer.step()
+        return float(loss.detach().item())
 
     def _update_critics_bgd(
         self,
@@ -294,6 +377,7 @@ class BGDSACAgent(SACAgent):
         target = self._target_values(batch)
         evidence = self._evidence(batch)
         retention, surprise = self._adaptive_retention(batch, target)
+        predictive_model_loss = self._update_predictive_model(batch)
 
         critic1_result: BGDStepResult | None = None
         critic2_result: BGDStepResult | None = None
@@ -422,6 +506,8 @@ class BGDSACAgent(SACAgent):
                     "retention_lambda": retention,
                 }
             )
+        if predictive_model_loss is not None:
+            metrics["predictive_model_loss"] = predictive_model_loss
         if critic1_result is not None and critic2_result is not None:
             metrics.update(
                 {
@@ -454,10 +540,21 @@ class BGDSACAgent(SACAgent):
         state["adaptive_ensemble_retention"] = (
             self.bgd_config.adaptive_ensemble_retention is not None
         )
+        state["adaptive_predictive_retention"] = (
+            self.bgd_config.adaptive_predictive_retention is not None
+        )
         if self.td_surprise is not None:
             state["td_surprise"] = self.td_surprise.state_dict()
         if self.ensemble_surprise is not None:
             state["ensemble_surprise"] = self.ensemble_surprise.state_dict()
+        if (
+            self.predictive_surprise is not None
+            and self.predictive_model is not None
+            and self.predictive_optimizer is not None
+        ):
+            state["predictive_surprise"] = self.predictive_surprise.state_dict()
+            state["predictive_model"] = self.predictive_model.state_dict()
+            state["predictive_optimizer"] = self.predictive_optimizer.state_dict()
         if self.actor_bgd is not None:
             state["actor_bgd"] = self.actor_bgd.state_dict()
         if self.critic1_bgd is not None and self.critic2_bgd is not None:
@@ -483,6 +580,11 @@ class BGDSACAgent(SACAgent):
             raise ValueError(
                 "BGD-SAC checkpoint ensemble adaptive-retention configuration mismatch"
             )
+        expected_predictive_adaptive = self.bgd_config.adaptive_predictive_retention is not None
+        if bool(state.get("adaptive_predictive_retention", False)) != expected_predictive_adaptive:
+            raise ValueError(
+                "BGD-SAC checkpoint predictive adaptive-retention configuration mismatch"
+            )
         super().load_state_dict(state)  # type: ignore[arg-type]
         if self.td_surprise is not None:
             payload = state["td_surprise"]
@@ -494,6 +596,21 @@ class BGDSACAgent(SACAgent):
             if not isinstance(payload, dict):
                 raise TypeError("ensemble-surprise checkpoint state must be a dictionary")
             self.ensemble_surprise.load_state_dict(payload)
+        if (
+            self.predictive_surprise is not None
+            and self.predictive_model is not None
+            and self.predictive_optimizer is not None
+        ):
+            payload = state["predictive_surprise"]
+            if not isinstance(payload, dict):
+                raise TypeError("predictive-surprise checkpoint state must be a dictionary")
+            self.predictive_surprise.load_state_dict(payload)
+            model_state = state["predictive_model"]
+            optimizer_state = state["predictive_optimizer"]
+            if not isinstance(model_state, dict) or not isinstance(optimizer_state, dict):
+                raise TypeError("predictive-model checkpoint state must be dictionaries")
+            self.predictive_model.load_state_dict(model_state)
+            self.predictive_optimizer.load_state_dict(optimizer_state)
         if self.actor_bgd is not None:
             self.actor_bgd.load_state_dict(
                 state["actor_bgd"]  # type: ignore[arg-type]
