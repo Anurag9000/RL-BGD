@@ -26,6 +26,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: python -m pip install --upgrade pip
+      - run: pip install pytest
       - run: pip install -e ".[continual-bench]"
       - name: Run live ContinualBench adapter smoke
         run: pytest tests/envs/test_continual_bench_live.py -m benchmark -q
