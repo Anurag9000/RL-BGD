@@ -141,24 +141,64 @@ SMOKE = ExperimentSuite(
     ),
 )
 
-DEV = ExperimentSuite(
-    name="dev",
-    description="Bounded multi-method development comparison before expensive benchmarks.",
-    jobs=(
+def _hidden_context_jobs(
+    *,
+    prefix: str,
+    steps: int,
+    seeds: tuple[int, ...],
+    device: str,
+    runtime_class: str,
+) -> tuple[ExperimentJob, ...]:
+    specs = (
+        ("feedforward_adam", "SAC-Adam"),
+        ("feedforward_bgd", "SAC-BGD"),
+        ("recurrent_adam", "Recurrent-SAC-Adam"),
+        ("recurrent_bgd", "Recurrent-SAC-BGD"),
+        (
+            "recurrent_adaptive_bgd",
+            "Recurrent-SAC-Adaptive-BGD",
+        ),
+    )
+    return tuple(
         _job(
-            "hidden_context_five_way",
+            f"{prefix}_{variant}",
             "H",
-            "rl_bgd.runners.hidden_context_sac_comparison:run_hidden_context_sac_comparison",
-            kwargs={"steps": 96, "device": "cpu"},
-            seeds=(0, 1),
-            algorithm="SAC family",
+            (
+                "rl_bgd.runners.hidden_context_sac_comparison:"
+                "run_hidden_context_sac_variant"
+            ),
+            kwargs={
+                "variant": variant,
+                "steps": steps,
+                "device": device,
+            },
+            seeds=seeds,
+            algorithm=algorithm,
             environment="hidden_recurring_lqr",
             protocol="strict_task_agnostic",
             config_path="configs/environments/lqr_recurring.yaml",
             primary_metric="final_10_mean_return",
-            secondary_metrics=("retention_lambda", "sigma_mean"),
-            runtime_class="dev",
-        ),
+            secondary_metrics=(
+                "retention_lambda",
+                "critic1_sigma_mean",
+            ),
+            runtime_class=runtime_class,
+        )
+        for variant, algorithm in specs
+    )
+
+
+DEV = ExperimentSuite(
+    name="dev",
+    description="Bounded multi-method development comparison before expensive benchmarks.",
+    jobs=_hidden_context_jobs(
+        prefix="dev_hidden",
+        steps=96,
+        seeds=(0, 1),
+        device="cpu",
+        runtime_class="dev",
+    )
+    + (
         _job(
             "regularized_ewc",
             "B",
@@ -193,7 +233,10 @@ DEV = ExperimentSuite(
             protocol="oracle_boundary",
             config_path=None,
             primary_metric="final_phase_return",
-            secondary_metrics=("actor_ucl_penalty", "value_ucl_penalty"),
+            secondary_metrics=(
+                "actor_ucl_penalty",
+                "value_ucl_penalty",
+            ),
             runtime_class="dev",
         ),
     ),
@@ -391,72 +434,160 @@ CW20_FINAL = ExperimentSuite(
 TASK_AGNOSTIC_FINAL = ExperimentSuite(
     name="task_agnostic_final",
     description="Cross-environment strict task-agnostic confirmation suite.",
-    jobs=(
-        _job(
-            "ta_hidden_lqr",
-            "H",
-            "rl_bgd.runners.hidden_context_sac_comparison:run_hidden_context_sac_comparison",
-            kwargs={"steps": 512, "device": "auto"},
-            seeds=(0, 1, 2, 3, 4),
-            algorithm="SAC comparison",
-            environment="hidden_recurring_lqr",
-            protocol="strict_task_agnostic",
-            config_path="configs/environments/lqr_recurring.yaml",
-            primary_metric="final_10_mean_return",
-            secondary_metrics=("sigma_mean", "retention_lambda"),
-            runtime_class="medium",
-        ),
-        *CARL_CORE.jobs,
-        *tuple(job for job in CW10_CORE.jobs if "canonical" not in job.job_id),
-        *tuple(job for job in CW20_FINAL.jobs if "canonical" not in job.job_id),
+    jobs=_hidden_context_jobs(
+        prefix="ta_hidden",
+        steps=512,
+        seeds=(0, 1, 2, 3, 4),
+        device="auto",
+        runtime_class="medium",
+    )
+    + CARL_CORE.jobs
+    + tuple(
+        job
+        for job in CW10_CORE.jobs
+        if "canonical" not in job.job_id
+    )
+    + tuple(
+        job
+        for job in CW20_FINAL.jobs
+        if "canonical" not in job.job_id
     ),
+)
+
+BAYESIANIZATION_JOBS = tuple(
+    _job(
+        f"bgd_sac_{mode}",
+        "G",
+        "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
+        kwargs={
+            "steps": 600,
+            "device": "auto",
+            "bayesianization": mode,
+        },
+        seeds=(0, 1, 2, 3, 4),
+        algorithm=f"SAC-BGD-{mode}",
+        environment="synthetic_lqr",
+        protocol="stationary",
+        config_path="configs/algorithms/sac_bgd.yaml",
+        primary_metric="post_return",
+        secondary_metrics=(
+            "critic1_sigma_mean",
+            "actor_sigma_mean",
+        ),
+        runtime_class="medium",
+    )
+    for mode in (
+        "critic_only",
+        "actor_only",
+        "actor_and_critic",
+    )
+)
+
+REPLAY_EVIDENCE_JOBS = tuple(
+    _job(
+        f"replay_evidence_{mode}",
+        "F",
+        "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
+        kwargs={
+            "steps": 600,
+            "device": "auto",
+            "bayesianization": "critic_only",
+            "replay_evidence_mode": mode,
+        },
+        seeds=(0, 1, 2, 3, 4),
+        algorithm=f"SAC-BGD-replay-{mode}",
+        environment="synthetic_lqr",
+        protocol="stationary_replay_evidence_ablation",
+        config_path="configs/algorithms/sac_bgd.yaml",
+        primary_metric="post_return",
+        secondary_metrics=(
+            "evidence_weight_mean",
+            "evidence_mean_usage_count",
+            "critic1_sigma_mean",
+        ),
+        runtime_class="medium",
+    )
+    for mode in (
+        "all_replay",
+        "fresh_only_uncertainty",
+        "inverse_reuse_weight",
+        "normalized_batch_evidence",
+    )
+)
+
+FIXED_TEMPERING_JOBS = tuple(
+    _job(
+        f"fixed_tempering_{str(retention).replace('.', 'p')}",
+        "D",
+        "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
+        kwargs={
+            "steps": 1200,
+            "device": "auto",
+            "bayesianization": "critic_only",
+            "temper_retention": retention,
+        },
+        seeds=(0, 1, 2, 3, 4),
+        algorithm=f"SAC-BGD-retention-{retention}",
+        environment="synthetic_lqr",
+        protocol="stationary_fixed_tempering_ablation",
+        config_path="configs/algorithms/sac_bgd.yaml",
+        primary_metric="post_return",
+        secondary_metrics=(
+            "critic1_sigma_mean",
+            "critic1_effective_lr_mean",
+        ),
+        runtime_class="medium",
+    )
+    for retention in (
+        1.0,
+        0.999,
+        0.99,
+        0.95,
+    )
+)
+
+EVIDENCE_TEMPERATURE_JOBS = tuple(
+    _job(
+        f"evidence_temperature_{str(temperature).replace('.', 'p')}",
+        "GB-T",
+        "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
+        kwargs={
+            "steps": 600,
+            "device": "auto",
+            "bayesianization": "critic_only",
+            "evidence_temperature": temperature,
+        },
+        seeds=(0, 1, 2, 3, 4),
+        algorithm=f"SAC-BGD-temperature-{temperature}",
+        environment="synthetic_lqr",
+        protocol="stationary_generalized_bayes_temperature",
+        config_path="configs/sweeps/evidence_temperature_lqr.yaml",
+        primary_metric="post_return",
+        secondary_metrics=(
+            "critic1_sigma_mean",
+            "critic1_effective_lr_mean",
+        ),
+        runtime_class="medium",
+    )
+    for temperature in (
+        0.25,
+        0.5,
+        1.0,
+        2.0,
+    )
 )
 
 ABLATION_CORE = ExperimentSuite(
     name="ablation_core",
-    description="Bayesianization and generalized-Bayes control ablations.",
-    jobs=tuple(
-        _job(
-            f"bgd_sac_{mode}",
-            "G",
-            "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
-            kwargs={
-                "steps": 600,
-                "device": "auto",
-                "bayesianization": mode,
-                "evidence_temperature": 1.0,
-            },
-            seeds=(0, 1, 2, 3, 4),
-            algorithm=f"SAC-BGD-{mode}",
-            environment="synthetic_lqr",
-            protocol="stationary",
-            config_path="configs/algorithms/sac_bgd.yaml",
-            primary_metric="post_return",
-            secondary_metrics=("sigma_mean", "effective_lr_mean"),
-            runtime_class="medium",
-        )
-        for mode in ("critic_only", "actor_only", "actor_and_critic")
-    )
-    + (
-        _job(
-            "evidence_temperature",
-            "F",
-            "rl_bgd.runners.evidence_temperature_sweep:run_evidence_temperature_sweep",
-            kwargs={
-                "temperatures": [0.25, 0.5, 1.0, 2.0],
-                "steps": 600,
-                "device": "auto",
-                "bayesianization": "critic_only",
-            },
-            seeds=(0, 1, 2, 3, 4),
-            algorithm="SAC-BGD",
-            environment="synthetic_lqr",
-            protocol="stationary_temperature_sweep",
-            config_path="configs/sweeps/evidence_temperature_lqr.yaml",
-            primary_metric="post_return",
-            secondary_metrics=("sigma_mean", "effective_lr_mean"),
-            runtime_class="medium",
-        ),
+    description=(
+        "Bayesianization, replay-evidence, fixed-tempering, "
+        "and generalized-Bayes ablations."
+    ),
+    jobs=(
+        BAYESIANIZATION_JOBS
+        + REPLAY_EVIDENCE_JOBS
+        + FIXED_TEMPERING_JOBS
+        + EVIDENCE_TEMPERATURE_JOBS
     ),
 )
 
@@ -478,12 +609,16 @@ UNCERTAINTY_ANALYSIS = ExperimentSuite(
             environment="recurring_lqr",
             protocol="strict_task_agnostic",
             config_path="configs/environments/lqr_recurring.yaml",
-            primary_metric="recovery",
-            secondary_metrics=("surprise", "retention_lambda", "sigma_mean"),
+            primary_metric="final_10_mean_return",
+            secondary_metrics=(
+                "change_detection.f1",
+                "retention_lambda",
+                "critic1_sigma_mean",
+            ),
             runtime_class="medium",
         ),
-        *ABLATION_CORE.jobs[-1:],
-    ),
+    )
+    + EVIDENCE_TEMPERATURE_JOBS,
 )
 
 MECHANISM_ANALYSIS = ExperimentSuite(
