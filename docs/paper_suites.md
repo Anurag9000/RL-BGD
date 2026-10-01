@@ -1,9 +1,9 @@
 # Curated paper experiment suites
 
-Phase 14 provides a single registry and launcher for the paper-oriented
-experiment portfolio.
+Phase 14 provides one registry and launcher for the paper-oriented experiment
+portfolio.
 
-List of registered suites:
+Registered suites:
 
 - smoke
 - dev
@@ -19,6 +19,9 @@ List of registered suites:
 Each job records its hypothesis ID, callable target, exact kwargs, seeds,
 algorithm, environment, information protocol, source config where applicable,
 primary/secondary metrics, optional dependency extra, runtime class, and notes.
+Hidden-context methods and evidence-temperature values are separate jobs, so
+seed-level uncertainty is computed per experimental condition rather than over
+a composite JSON blob.
 
 Dry-run manifest generation:
 
@@ -28,18 +31,18 @@ Execution:
 
     python scripts/run_paper_suite.py smoke --output-root artifacts/suites --execute
 
-The launcher expands seeds into immutable run IDs and writes:
+Successful jobs are converted into the canonical Phase-15 schema:
 
-- suite_manifest.json;
-- one run directory per expanded job;
-- stdout.json;
-- stderr.log;
-- run_metadata.json with git commit, timestamps, duration, return code, and
-  complete scientific metadata;
-- suite_execution_summary.json.
+- manifest.json
+- config.yaml
+- metrics.csv
+- summary.json
 
-Large benchmark suites are intentionally not executed by routine CI. Their
-manifests are validated statically against the actual Python callable
-signatures, including optional CARL and Continual World targets. This catches
-stale/nonexistent runner references without pretending the expensive
-experiments were executed.
+Raw stdout/stderr are retained only for debugging. Failed jobs receive an
+explicit failed manifest; downstream paper aggregation refuses such a results
+root rather than silently omitting failures.
+
+Large benchmark suites are intentionally not executed by routine CI. The
+registry statically validates callable signatures/config references, while a
+separate bounded smoke pipeline executes end to end to validate launcher,
+canonical artifact conversion, and paper aggregation.
