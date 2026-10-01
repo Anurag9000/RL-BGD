@@ -1,11 +1,10 @@
+import pytest
 import torch
 
 from rl_bgd.envs.continual_bench import (
     ContinualBenchStreamConfig,
     make_continual_bench_stream,
 )
-
-import pytest
 
 pytestmark = pytest.mark.benchmark
 
