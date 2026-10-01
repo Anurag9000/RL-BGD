@@ -24,3 +24,76 @@ def test_ta_cw10_runner_builds_complete_evaluation_matrix() -> None:
     assert len(result["success_matrix"]) == 10
     assert all(len(row) == 10 for row in result["return_matrix"])
     assert all(len(row) == 10 for row in result["success_matrix"])
+
+
+
+def test_ta_runner_always_closes_protocol_bundle(monkeypatch: pytest.MonkeyPatch) -> None:
+    import rl_bgd.runners.continual_world_sac as runner
+    from rl_bgd.envs.continual_world.evaluation import TaskEvaluation
+    from rl_bgd.envs.synthetic.lqr import TensorBox
+
+    class FakeTrainEnv:
+        def __init__(self) -> None:
+            self.observation_space = TensorBox(
+                low=torch.tensor([-1.0]),
+                high=torch.tensor([1.0]),
+            )
+            self.action_space = TensorBox(
+                low=torch.tensor([-1.0]),
+                high=torch.tensor([1.0]),
+            )
+
+    class FakeBundle:
+        def __init__(self) -> None:
+            self.train_env = FakeTrainEnv()
+            self.evaluation_envs = (object(), object())
+            self.task_names = ("task-a", "task-b")
+            self.closed = False
+
+        def close(self) -> None:
+            self.closed = True
+
+    bundle = FakeBundle()
+
+    def fake_protocol(*args: object, **kwargs: object) -> FakeBundle:
+        del args, kwargs
+        return bundle
+
+    def fake_evaluate(*args: object, **kwargs: object) -> tuple[TaskEvaluation, ...]:
+        del args, kwargs
+        return (
+            TaskEvaluation(mean_return=1.0, success_rate=1.0),
+            TaskEvaluation(mean_return=2.0, success_rate=1.0),
+        )
+
+    def fake_train(
+        env: object,
+        agent: object,
+        *,
+        config: object,
+        post_step_observer: object,
+        **kwargs: object,
+    ) -> dict[str, object]:
+        del env, config, kwargs
+        assert callable(post_step_observer)
+        post_step_observer(1, agent)
+        post_step_observer(2, agent)
+        return {"steps": 2}
+
+    monkeypatch.setattr(runner, "make_continual_world_protocol", fake_protocol)
+    monkeypatch.setattr(runner, "evaluate_tasks", fake_evaluate)
+    monkeypatch.setattr(runner, "train_sac", fake_train)
+
+    result = runner.run_ta_continual_world_sac(
+        benchmark="CW10",
+        optimizer="adam",
+        steps_per_task=1,
+        device="cpu",
+        evaluation_episodes=1,
+        hidden_dims=(4,),
+        replay_capacity=2,
+        batch_size=2,
+        random_steps=2,
+    )
+    assert result["return_matrix"] == [[1.0, 2.0], [1.0, 2.0]]
+    assert bundle.closed

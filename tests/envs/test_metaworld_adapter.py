@@ -48,6 +48,10 @@ class FakeMetaWorldEnv:
         self._step = 0
         self.task: object | None = None
         self.last_action: np.ndarray | None = None
+        self.close_count = 0
+
+    def close(self) -> None:
+        self.close_count += 1
 
     def set_task(
         self,
@@ -154,6 +158,10 @@ def test_metaworld_adapter_is_tensor_native_at_agent_boundary() -> None:
 
     _, _, _, truncated, _ = env.step(torch.zeros(2))
     assert truncated
+
+    env.close()
+    env.close()
+    assert raw_env.close_count == 1
 
 
 @pytest.mark.benchmark

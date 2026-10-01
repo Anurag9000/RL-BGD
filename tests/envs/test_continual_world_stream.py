@@ -31,6 +31,10 @@ class FakeTaskEnv:
         )
         self._step = 0
         self.reset_count = 0
+        self.close_count = 0
+
+    def close(self) -> None:
+        self.close_count += 1
 
     def reset(
         self,
@@ -202,3 +206,16 @@ def test_stream_rejects_steps_after_total_budget() -> None:
         match="exhausted",
     ):
         env.step(torch.zeros(1))
+
+
+def test_hidden_stream_closes_each_owned_task_environment() -> None:
+    first = FakeTaskEnv(1.0)
+    second = FakeTaskEnv(2.0)
+    env = ContinualWorldStreamEnv(
+        [first, second],
+        ["first-v3", "second-v3"],
+        config=ContinualWorldStreamConfig(steps_per_task=2),
+    )
+    env.close()
+    assert first.close_count == 1
+    assert second.close_count == 1

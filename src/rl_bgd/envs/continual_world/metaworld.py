@@ -42,6 +42,7 @@ class MetaWorldTaskAdapter:
         self.device = torch.device(device)
         self.horizon = horizon
         self._episode_step = 0
+        self._closed = False
 
         self.env.set_task(task)
         # Continual World's random_init_all mode fixes the task definition
@@ -132,6 +133,16 @@ class MetaWorldTaskAdapter:
             bool(truncated),
             safe_info,
         )
+
+    def close(self) -> None:
+        """Close the underlying simulator exactly once."""
+
+        if self._closed:
+            return
+        close = getattr(self.env, "close", None)
+        if close is not None:
+            close()
+        self._closed = True
 
 
 def _build_metaworld_task_adapters(
@@ -273,6 +284,15 @@ class ContinualWorldProtocolBundle:
     evaluation_envs: tuple[ContinuousTaskEnv, ...]
     task_names: tuple[str, ...]
     protocol: ContinualWorldProtocol
+
+    def close(self) -> None:
+        """Close training and evaluation environments owned by the bundle."""
+
+        self.train_env.close()
+        for env in self.evaluation_envs:
+            close = getattr(env, "close", None)
+            if close is not None:
+                close()
 
 
 def make_continual_world_protocol(

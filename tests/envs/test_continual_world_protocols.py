@@ -26,6 +26,10 @@ class FakeTaskEnv:
             high=torch.tensor([10.0]),
         )
         self.step_count = 0
+        self.close_count = 0
+
+    def close(self) -> None:
+        self.close_count += 1
 
     def reset(
         self,
@@ -141,3 +145,19 @@ def test_evaluation_and_matrix_summary() -> None:
     assert summary["final_average"] == pytest.approx(0.9)
     assert summary["mean_forgetting"] == pytest.approx(0.2)
     assert summary["backward_transfer"] == pytest.approx(-0.2)
+
+
+def test_identity_wrapper_and_canonical_stream_propagate_close() -> None:
+    first = FakeTaskEnv(1.0)
+    second = FakeTaskEnv(2.0)
+    env = CanonicalContinualWorldStreamEnv(
+        [
+            TaskIdentityObservationEnv(first, task_index=0, num_tasks=2),
+            TaskIdentityObservationEnv(second, task_index=1, num_tasks=2),
+        ],
+        ["first-v3", "second-v3"],
+        config=CanonicalContinualWorldConfig(steps_per_task=2),
+    )
+    env.close()
+    assert first.close_count == 1
+    assert second.close_count == 1

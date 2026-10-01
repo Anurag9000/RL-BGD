@@ -80,6 +80,13 @@ class TaskIdentityObservationEnv:
             dict(info),
         )
 
+    def close(self) -> None:
+        """Close the wrapped task environment."""
+
+        close = getattr(self.env, "close", None)
+        if close is not None:
+            close()
+
 
 @dataclass(frozen=True)
 class CanonicalContinualWorldConfig:
@@ -187,3 +194,11 @@ class CanonicalContinualWorldStreamEnv:
             truncated,
             info,
         )
+
+    def close(self) -> None:
+        """Close every task environment owned by the canonical stream."""
+
+        for env in self.envs:
+            close = getattr(env, "close", None)
+            if close is not None:
+                close()

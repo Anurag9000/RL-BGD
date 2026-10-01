@@ -215,3 +215,11 @@ class ContinualWorldStreamEnv:
             truncated,
             {},
         )
+
+    def close(self) -> None:
+        """Close every task environment owned by the stream."""
+
+        for env in self.envs:
+            close = getattr(env, "close", None)
+            if close is not None:
+                close()
