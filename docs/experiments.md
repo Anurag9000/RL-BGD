@@ -44,3 +44,15 @@ CORA now has dependency-free canonical protocol metadata plus isolated
 forgetting and isolated zero-shot forward-transfer metrics with tests. Its
 legacy environment runtime remains intentionally isolated because its old
 Gym/Atari/setuptools pins are incompatible with the modern base environment.
+
+
+UCL-PPO is implemented as an explicitly oracle-boundary comparator because the
+original method snapshots the previous-task posterior at known task boundaries.
+FOO-VB Diagonal is represented through an exact equivalence contract with the
+eta=1 untempered diagonal BGD update rather than duplicated numerical code.
+
+Phase 13-15 infrastructure now includes a reproducible mechanistic analysis
+suite, curated paper experiment manifests/launchers, and automatic raw-run
+aggregation with deterministic bootstrap confidence intervals. These
+infrastructure paths are distinct from expensive experiment execution: paper
+claims remain pending until corresponding raw run artifacts exist.
