@@ -97,12 +97,8 @@ def test_evidence_temperature_is_not_equivalent_to_eta() -> None:
         eta=0.1,
         mc_samples=64,
     )
-    eta_generator = torch.Generator().manual_seed(
-        777
-    )
-    temperature_generator = torch.Generator().manual_seed(
-        777
-    )
+    eta_generator = torch.Generator().manual_seed(777)
+    temperature_generator = torch.Generator().manual_seed(777)
 
     eta_scaled.step(
         quadratic_objective,
@@ -114,20 +110,11 @@ def test_evidence_temperature_is_not_equivalent_to_eta() -> None:
     )
 
     torch.testing.assert_close(
-        eta_scaled.posterior.means[
-            "weight"
-        ],
-        temperature_scaled.posterior.means[
-            "weight"
-        ],
+        eta_scaled.posterior.means["weight"],
+        temperature_scaled.posterior.means["weight"],
         atol=1e-6,
         rtol=1e-6,
     )
     assert torch.all(
-        temperature_scaled.posterior.stds[
-            "weight"
-        ]
-        < eta_scaled.posterior.stds[
-            "weight"
-        ]
+        temperature_scaled.posterior.stds["weight"] < eta_scaled.posterior.stds["weight"]
     )

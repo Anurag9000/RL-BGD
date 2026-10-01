@@ -43,26 +43,19 @@ def test_temperature_sweep_keeps_controls_matched(
         fake_run_bgd_sac_lqr,
     )
 
-    result = (
-        evidence_temperature_sweep.run_evidence_temperature_sweep(
-            temperatures=(
-                0.5,
-                1.0,
-                2.0,
-            ),
-            steps=123,
-            seed=17,
-            device="cpu",
-            bayesianization="critic_only",
-        )
+    result = evidence_temperature_sweep.run_evidence_temperature_sweep(
+        temperatures=(
+            0.5,
+            1.0,
+            2.0,
+        ),
+        steps=123,
+        seed=17,
+        device="cpu",
+        bayesianization="critic_only",
     )
 
-    assert [
-        call[
-            "evidence_temperature"
-        ]
-        for call in calls
-    ] == [
+    assert [call["evidence_temperature"] for call in calls] == [
         0.5,
         1.0,
         2.0,
@@ -71,19 +64,9 @@ def test_temperature_sweep_keeps_controls_matched(
         assert call["steps"] == 123
         assert call["seed"] == 17
         assert call["device"] == "cpu"
-        assert (
-            call["bayesianization"]
-            == "critic_only"
-        )
+        assert call["bayesianization"] == "critic_only"
 
-    controls = result[
-        "matched_controls"
-    ]
+    controls = result["matched_controls"]
     assert isinstance(controls, dict)
-    assert all(
-        bool(value)
-        for value in controls.values()
-    )
-    assert len(
-        result["runs"]
-    ) == 3
+    assert all(bool(value) for value in controls.values())
+    assert len(result["runs"]) == 3

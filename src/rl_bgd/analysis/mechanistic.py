@@ -57,12 +57,15 @@ class MechanisticAnalysisConfig:
     def validate(self) -> None:
         if self.dimension < 8:
             raise ValueError("mechanistic analysis requires dimension >= 8")
-        if min(
-            self.consolidation_steps,
-            self.adaptation_steps,
-            self.mc_samples,
-            self.curvature_samples,
-        ) < 1:
+        if (
+            min(
+                self.consolidation_steps,
+                self.adaptation_steps,
+                self.mc_samples,
+                self.curvature_samples,
+            )
+            < 1
+        ):
             raise ValueError("mechanistic analysis budgets must be positive")
         if self.eta <= 0 or self.prior_std <= 0:
             raise ValueError("mechanistic BGD scales must be positive")
@@ -95,9 +98,7 @@ def _pearson(left: Tensor, right: Tensor) -> float:
         raise ValueError("correlation vectors must align and contain >=2 values")
     x = x - x.mean()
     y = y - y.mean()
-    denominator = torch.sqrt(
-        x.square().sum() * y.square().sum()
-    )
+    denominator = torch.sqrt(x.square().sum() * y.square().sum())
     if float(denominator.item()) == 0.0:
         return 0.0
     return float((x * y).sum().div(denominator).item())
@@ -173,16 +174,10 @@ def _adapt_with_freeze(
     frozen_mean: Tensor | None = None
     frozen_sigma: Tensor | None = None
     if frozen_indices is not None:
-        frozen_mean = updater.posterior.means["theta"][
-            frozen_indices
-        ].clone()
-        frozen_sigma = updater.posterior.stds["theta"][
-            frozen_indices
-        ].clone()
+        frozen_mean = updater.posterior.means["theta"][frozen_indices].clone()
+        frozen_sigma = updater.posterior.stds["theta"][frozen_indices].clone()
 
-    generator = torch.Generator(device=device).manual_seed(
-        generator_seed
-    )
+    generator = torch.Generator(device=device).manual_seed(generator_seed)
     objective = _loss_objective(target)
     for _ in range(config.adaptation_steps):
         updater.step(
@@ -192,18 +187,10 @@ def _adapt_with_freeze(
         if frozen_indices is not None:
             assert frozen_mean is not None
             assert frozen_sigma is not None
-            updater.posterior.means["theta"][
-                frozen_indices
-            ] = frozen_mean
-            updater.posterior.stds["theta"][
-                frozen_indices
-            ] = frozen_sigma
+            updater.posterior.means["theta"][frozen_indices] = frozen_mean
+            updater.posterior.stds["theta"][frozen_indices] = frozen_sigma
 
-    return float(
-        target.loss(
-            updater.posterior.means["theta"]
-        ).item()
-    )
+    return float(target.loss(updater.posterior.means["theta"]).item())
 
 
 def _save_parameter_csv(
@@ -332,25 +319,12 @@ def _save_figures(
 
     sorted_indices = torch.argsort(sigma)
     chunks = torch.tensor_split(sorted_indices, 4)
-    movement_bins = torch.tensor(
-        [
-            movement[index].mean()
-            for index in chunks
-            if index.numel() > 0
-        ]
-    )
+    movement_bins = torch.tensor([movement[index].mean() for index in chunks if index.numel() > 0])
     perturbation_bins = torch.tensor(
-        [
-            perturbation_importance[index].mean()
-            for index in chunks
-            if index.numel() > 0
-        ]
+        [perturbation_importance[index].mean() for index in chunks if index.numel() > 0]
     )
     movement_norm = movement_bins / movement_bins.max().clamp_min(1e-12)
-    perturbation_norm = (
-        perturbation_bins
-        / perturbation_bins.max().clamp_min(1e-12)
-    )
+    perturbation_norm = perturbation_bins / perturbation_bins.max().clamp_min(1e-12)
     figure = plt.figure()
     axis = figure.add_subplot(111)
     x = list(range(1, len(movement_norm) + 1))
@@ -413,12 +387,8 @@ def run_mechanistic_analysis(
         resolved_config,
         device=device,
     )
-    generator = torch.Generator(device=device).manual_seed(
-        resolved_config.seed + 1
-    )
-    consolidation_objective = _loss_objective(
-        consolidation_task
-    )
+    generator = torch.Generator(device=device).manual_seed(resolved_config.seed + 1)
+    consolidation_objective = _loss_objective(consolidation_task)
     for _ in range(resolved_config.consolidation_steps):
         updater.step(
             consolidation_objective,
@@ -449,22 +419,16 @@ def run_mechanistic_analysis(
     )
     updater.step(
         _loss_objective(shifted_task),
-        generator=torch.Generator(device=device).manual_seed(
-            resolved_config.seed + 2
-        ),
+        generator=torch.Generator(device=device).manual_seed(resolved_config.seed + 2),
     )
-    movement = (
-        posterior.means["theta"] - mean_before
-    ).abs()
+    movement = (posterior.means["theta"] - mean_before).abs()
 
     baseline_loss = consolidation_task.loss(mean_before)
     perturbation_importance = torch.empty_like(mean_before)
     for index in range(resolved_config.dimension):
         perturbed = mean_before.clone()
         perturbed[index] += resolved_config.perturbation_size
-        perturbation_importance[index] = (
-            consolidation_task.loss(perturbed) - baseline_loss
-        )
+        perturbation_importance[index] = consolidation_task.loss(perturbed) - baseline_loss
 
     curvature_updater = _clone_updater(
         consolidated_state,
@@ -475,24 +439,14 @@ def run_mechanistic_analysis(
     epsilons = frozen_posterior.sample_epsilons(
         samples=resolved_config.curvature_samples,
         antithetic=True,
-        generator=torch.Generator(device=device).manual_seed(
-            resolved_config.seed + 3
-        ),
+        generator=torch.Generator(device=device).manual_seed(resolved_config.seed + 3),
     )
     curvature_terms: list[Tensor] = []
     for epsilon in epsilons:
-        theta = frozen_posterior.parameters_from_epsilon(
-            epsilon
-        )["theta"]
-        gradient = consolidation_task.gradient(
-            theta.detach()
-        )
-        curvature_terms.append(
-            gradient * epsilon["theta"]
-        )
-    curvature_signal = torch.stack(
-        curvature_terms
-    ).mean(dim=0)
+        theta = frozen_posterior.parameters_from_epsilon(epsilon)["theta"]
+        gradient = consolidation_task.gradient(theta.detach())
+        curvature_terms.append(gradient * epsilon["theta"])
+    curvature_signal = torch.stack(curvature_terms).mean(dim=0)
     curvature_expected = curvature * sigma_before
 
     quartile = max(1, resolved_config.dimension // 4)
@@ -527,10 +481,7 @@ def run_mechanistic_analysis(
     }
 
     curvature_relative_error = float(
-        (
-            (curvature_signal - curvature_expected).abs()
-            / curvature_expected.abs().clamp_min(1e-8)
-        )
+        ((curvature_signal - curvature_expected).abs() / curvature_expected.abs().clamp_min(1e-8))
         .mean()
         .item()
     )
@@ -549,9 +500,7 @@ def run_mechanistic_analysis(
             sigma_before,
             perturbation_importance,
         ),
-        "curvature_signal_mean_relative_error": (
-            curvature_relative_error
-        ),
+        "curvature_signal_mean_relative_error": (curvature_relative_error),
         "freezing_target_loss": freezing,
     }
 
