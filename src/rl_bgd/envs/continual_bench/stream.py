@@ -99,11 +99,7 @@ def _repair_missing_metaworld_assets(
 
             canonical = source_root / relative
             if not canonical.is_file() and "textures" in relative.parts:
-                canonical = (
-                    source_root
-                    / "textures"
-                    / relative.name
-                )
+                canonical = source_root / "textures" / relative.name
             if not canonical.is_file():
                 raise ContinualBenchImportError(
                     "ContinualBench references a missing asset and no canonical "
