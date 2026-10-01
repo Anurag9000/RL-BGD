@@ -72,10 +72,11 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Recurrent BGD-PPO | PARTIAL | matched GRU architecture + posterior/update/checkpoint tests; learning acceptance pending |
 | Recurrent sequence rollout semantics | COMPLETE | behavior hidden snapshots + episode masks + truncated-BPTT chunks |
 | Recurrent hidden-state task-leakage guard | COMPLETE | recurring LQR runner verifies resets only on episode end |
-| Recurrent SAC / sequence replay | NOT STARTED | next recurrent off-policy phase |
+| Recurrent SAC / sequence replay | COMPLETE | recurrent Adam SAC + burn-in/unroll sequence replay + hidden-state lifecycle + recurring LQR integration test |
+| Recurrent BGD-SAC | PARTIAL | actor/critic/all posterior modes + evidence accounting + checkpoint + recurring LQR finite integration; matched learning acceptance pending |
 | Continual World canonical task-aware protocol | PARTIAL | modern Meta-World stream + task-ID multihead SAC + published replay/optimizer lifecycle + matrix runner/configs; full long benchmark runs pending |
 | Continual World strict task-agnostic CW10/CW20 | PARTIAL | hidden-ID stream + protocol bundles + SAC matrix runner; full long benchmark runs pending |
 | ContinualBench/CORA adapter | NOT STARTED | optional external benchmark |
-| EWC/Online-EWC/SI/MAS | NOT STARTED | baseline phase |
+| EWC/Online-EWC/SI/MAS | PARTIAL | tested regularizer/importance/checkpoint mechanisms; actor/critic RL wiring and declared task-agnostic consolidation triggers pending |
 | Mechanistic experiments | PARTIAL | curvature + movement + long-horizon + replay evidence + surprise timeline |
 | Paper tables/figures | NOT STARTED | phase 15 |
