@@ -681,16 +681,21 @@ def summarize_runner_result(
 def metrics_rows_from_result(
     result: Mapping[str, object],
 ) -> list[dict[str, object]]:
-    """Extract numeric timeline rows, falling back to one scalar summary row."""
+    """Extract timelines and stage-by-task matrices into long-form metric rows."""
 
     rows: list[dict[str, object]] = []
+
+    # Generic list-of-mapping timelines such as surprise/adaptation traces.
     for series_name, value in result.items():
-        if isinstance(
-            value,
-            (str, bytes),
-        ) or not isinstance(
-            value,
-            Sequence,
+        if (
+            isinstance(
+                value,
+                (str, bytes),
+            )
+            or not isinstance(
+                value,
+                Sequence,
+            )
         ):
             continue
         mapping_rows = [
@@ -701,10 +706,21 @@ def metrics_rows_from_result(
                 Mapping,
             )
         ]
-        if not mapping_rows or len(mapping_rows) != len(value):
+        if (
+            not mapping_rows
+            or len(mapping_rows)
+            != len(value)
+        ):
             continue
-        for index, row in enumerate(mapping_rows):
-            numeric = flatten_numeric_metrics({str(key): item for key, item in row.items()})
+        for index, row in enumerate(
+            mapping_rows
+        ):
+            numeric = flatten_numeric_metrics(
+                {
+                    str(key): item
+                    for key, item in row.items()
+                }
+            )
             if numeric:
                 rows.append(
                     {
@@ -713,12 +729,161 @@ def metrics_rows_from_result(
                         **numeric,
                     }
                 )
+
+    # Continual World-style stage x task matrices are preserved explicitly.
+    task_names_raw = result.get(
+        "task_names"
+    )
+    task_names: tuple[str, ...] = ()
+    if (
+        not isinstance(
+            task_names_raw,
+            (str, bytes),
+        )
+        and isinstance(
+            task_names_raw,
+            Sequence,
+        )
+    ):
+        task_names = tuple(
+            str(value)
+            for value in task_names_raw
+        )
+
+    for prefix in (
+        "return",
+        "success",
+    ):
+        matrix_raw = result.get(
+            f"{prefix}_matrix"
+        )
+        if matrix_raw is None:
+            continue
+        if (
+            isinstance(
+                matrix_raw,
+                (str, bytes),
+            )
+            or not isinstance(
+                matrix_raw,
+                Sequence,
+            )
+        ):
+            raise ValueError(
+                f"{prefix}_matrix must be a sequence of rows"
+            )
+        labels_raw = result.get(
+            f"{prefix}_stage_labels",
+            (),
+        )
+        if (
+            isinstance(
+                labels_raw,
+                (str, bytes),
+            )
+            or not isinstance(
+                labels_raw,
+                Sequence,
+            )
+        ):
+            labels_raw = ()
+        stage_labels = tuple(
+            str(value)
+            for value in labels_raw
+        )
+        if (
+            stage_labels
+            and len(stage_labels)
+            != len(matrix_raw)
+        ):
+            raise ValueError(
+                f"{prefix}_stage_labels length does not match matrix rows"
+            )
+
+        for stage_index, matrix_row in enumerate(
+            matrix_raw
+        ):
+            if (
+                isinstance(
+                    matrix_row,
+                    (str, bytes),
+                )
+                or not isinstance(
+                    matrix_row,
+                    Sequence,
+                )
+            ):
+                raise ValueError(
+                    f"{prefix}_matrix rows must be sequences"
+                )
+            if (
+                task_names
+                and len(matrix_row)
+                != len(task_names)
+            ):
+                raise ValueError(
+                    f"{prefix}_matrix width does not match task_names"
+                )
+            for task_index, value in enumerate(
+                matrix_row
+            ):
+                if (
+                    isinstance(
+                        value,
+                        bool,
+                    )
+                    or not isinstance(
+                        value,
+                        (int, float),
+                    )
+                    or not math.isfinite(
+                        float(value)
+                    )
+                ):
+                    raise ValueError(
+                        f"{prefix}_matrix contains a nonfinite numeric value"
+                    )
+                rows.append(
+                    {
+                        "series": f"{prefix}_matrix",
+                        "row_index": (
+                            stage_index
+                            * max(
+                                1,
+                                len(matrix_row),
+                            )
+                            + task_index
+                        ),
+                        "stage_index": stage_index,
+                        "task_index": task_index,
+                        "stage_label": (
+                            stage_labels[
+                                stage_index
+                            ]
+                            if stage_labels
+                            else f"stage_{stage_index}"
+                        ),
+                        "task_name": (
+                            task_names[
+                                task_index
+                            ]
+                            if task_names
+                            else f"task_{task_index}"
+                        ),
+                        "value": float(value),
+                    }
+                )
+
     if rows:
         return rows
 
-    flattened = flatten_numeric_metrics(result)
+    flattened = flatten_numeric_metrics(
+        result
+    )
     if not flattened:
-        raise ValueError("runner result contains no finite scalar or timeline metrics")
+        raise ValueError(
+            "runner result contains no finite scalar, timeline, or matrix metrics"
+        )
     return [
         {
             "series": "summary",
@@ -726,7 +891,6 @@ def metrics_rows_from_result(
             **flattened,
         }
     ]
-
 
 def write_run_artifacts(
     run_dir: str | Path,
