@@ -35,6 +35,7 @@ class BGDConfig:
     mc_samples: int = 4
     antithetic: bool = True
     temper_retention: float = 1.0
+    evidence_temperature: float = 1.0
 
     def validate(self) -> None:
         if self.eta <= 0:
@@ -45,6 +46,8 @@ class BGDConfig:
             raise ValueError("antithetic sampling requires an even mc_samples")
         if not 0.0 <= self.temper_retention <= 1.0:
             raise ValueError("temper_retention must lie in [0, 1]")
+        if self.evidence_temperature <= 0:
+            raise ValueError("evidence_temperature must be strictly positive")
 
 
 @dataclass(frozen=True)
@@ -58,6 +61,7 @@ class BGDStepResult:
     uncertainty_gradient_norm: float
     c_norm: float
     retention: float
+    evidence_temperature: float
 
 
 class BGDUpdater:
@@ -92,6 +96,19 @@ class BGDUpdater:
         self.posterior.clamp_stds_()
         return applied
 
+    def _evidence_temperature(
+        self,
+        evidence_temperature: float | None,
+    ) -> float:
+        applied = (
+            self.config.evidence_temperature
+            if evidence_temperature is None
+            else float(evidence_temperature)
+        )
+        if applied <= 0:
+            raise ValueError("evidence_temperature override must be strictly positive")
+        return applied
+
     @staticmethod
     def _check_scalar_loss(loss: Tensor, name: str) -> None:
         if loss.ndim != 0:
@@ -105,10 +122,14 @@ class BGDUpdater:
         *,
         generator: torch.Generator | None = None,
         retention: float | None = None,
+        evidence_temperature: float | None = None,
     ) -> BGDStepResult:
         """Take one BGD step using distinct mean/evidence gradient channels."""
 
         applied_retention = self._temper(retention)
+        applied_evidence_temperature = self._evidence_temperature(
+            evidence_temperature
+        )
         epsilons = self.posterior.sample_epsilons(
             samples=self.config.mc_samples,
             antithetic=self.config.antithetic,
@@ -128,15 +149,20 @@ class BGDUpdater:
                 uncertainty_loss = objective_value.uncertainty
                 self._check_scalar_loss(mean_loss, "mean")
                 self._check_scalar_loss(uncertainty_loss, "uncertainty")
+                tempered_mean_loss = applied_evidence_temperature * mean_loss
+                tempered_uncertainty_loss = (
+                    applied_evidence_temperature
+                    * uncertainty_loss
+                )
                 grads_tuple = torch.autograd.grad(
-                    mean_loss,
+                    tempered_mean_loss,
                     tuple(sampled[name] for name in ordered_names),
                     allow_unused=False,
                     create_graph=False,
                     retain_graph=True,
                 )
                 uncertainty_grads_tuple = torch.autograd.grad(
-                    uncertainty_loss,
+                    tempered_uncertainty_loss,
                     tuple(sampled[name] for name in ordered_names),
                     allow_unused=False,
                     create_graph=False,
@@ -145,8 +171,9 @@ class BGDUpdater:
                 mean_loss = objective_value
                 uncertainty_loss = objective_value
                 self._check_scalar_loss(mean_loss, "mean")
+                tempered_mean_loss = applied_evidence_temperature * mean_loss
                 grads_tuple = torch.autograd.grad(
-                    mean_loss,
+                    tempered_mean_loss,
                     tuple(sampled[name] for name in ordered_names),
                     allow_unused=False,
                     create_graph=False,
@@ -219,6 +246,7 @@ class BGDUpdater:
             uncertainty_gradient_norm=uncertainty_gradient_norm,
             c_norm=c_norm,
             retention=applied_retention,
+            evidence_temperature=applied_evidence_temperature,
         )
 
     def step_module(
@@ -230,6 +258,7 @@ class BGDUpdater:
         buffers: Mapping[str, Tensor] | None = None,
         generator: torch.Generator | None = None,
         retention: float | None = None,
+        evidence_temperature: float | None = None,
         **kwargs: Any,
     ) -> BGDStepResult:
         """Convenience wrapper for a single-module forward objective."""
@@ -255,6 +284,7 @@ class BGDUpdater:
             objective,
             generator=generator,
             retention=retention,
+            evidence_temperature=evidence_temperature,
         )
         self.posterior.sync_module(module)
         return result
@@ -269,6 +299,7 @@ class BGDUpdater:
                 "mc_samples": self.config.mc_samples,
                 "antithetic": self.config.antithetic,
                 "temper_retention": self.config.temper_retention,
+                "evidence_temperature": self.config.evidence_temperature,
             },
             "posterior": self.posterior.state_dict(),
         }
