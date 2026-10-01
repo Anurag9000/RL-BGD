@@ -17,6 +17,10 @@ from rl_bgd.bayes.bgd import BGDConfig
 from rl_bgd.envs.synthetic.lqr import (
     LinearQuadraticControlEnv,
 )
+from rl_bgd.replay.evidence_accounting import (
+    ReplayEvidenceConfig,
+    ReplayEvidenceMode,
+)
 from rl_bgd.runners.sac_lqr import (
     evaluate_sac_lqr,
 )
@@ -33,6 +37,8 @@ def run_bgd_sac_lqr(
     device: str = "auto",
     bayesianization: str = "critic_only",
     evidence_temperature: float = 1.0,
+    temper_retention: float = 1.0,
+    replay_evidence_mode: ReplayEvidenceMode = "all_replay",
 ) -> dict[str, object]:
     seed_everything(seed, deterministic=True)
     resolved = resolve_device(device)
@@ -51,17 +57,22 @@ def run_bgd_sac_lqr(
         bgd_config=BGDSACConfig(
             bayesianization=bayesianization,  # type: ignore[arg-type]
             posterior_std=0.1,
+            replay_evidence=ReplayEvidenceConfig(
+                mode=replay_evidence_mode,
+            ),
             actor_bgd=BGDConfig(
                 eta=0.1,
                 mc_samples=2,
                 antithetic=True,
                 evidence_temperature=evidence_temperature,
+                temper_retention=temper_retention,
             ),
             critic_bgd=BGDConfig(
                 eta=0.1,
                 mc_samples=2,
                 antithetic=True,
                 evidence_temperature=evidence_temperature,
+                temper_retention=temper_retention,
             ),
         ),
         device=resolved,
@@ -90,6 +101,8 @@ def run_bgd_sac_lqr(
     return {
         "bayesianization": bayesianization,
         "evidence_temperature": evidence_temperature,
+        "temper_retention": temper_retention,
+        "replay_evidence_mode": replay_evidence_mode,
         "steps": steps,
         "pre_return": pre_return,
         "post_return": post_return,
