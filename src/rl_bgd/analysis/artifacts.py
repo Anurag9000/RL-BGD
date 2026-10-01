@@ -51,9 +51,7 @@ def _flatten(
         return output
     if isinstance(value, list):
         if all(
-            isinstance(item, (int, float, bool))
-            and not isinstance(item, bool)
-            for item in value
+            isinstance(item, (int, float, bool)) and not isinstance(item, bool) for item in value
         ):
             output[prefix] = json.dumps(value)
         return output
@@ -78,8 +76,7 @@ def _metric_value(
     numeric = [
         float(candidate)
         for candidate in matches
-        if isinstance(candidate, (int, float))
-        and not isinstance(candidate, bool)
+        if isinstance(candidate, (int, float)) and not isinstance(candidate, bool)
     ]
     if len(numeric) == 1:
         return numeric[0]
@@ -96,14 +93,10 @@ def discover_run_records(
         stdout_path = run_dir / "stdout.json"
         if not stdout_path.exists():
             continue
-        metadata = json.loads(
-            metadata_path.read_text(encoding="utf-8")
-        )
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         if metadata.get("status") != "success":
             continue
-        result = json.loads(
-            stdout_path.read_text(encoding="utf-8")
-        )
+        result = json.loads(stdout_path.read_text(encoding="utf-8"))
         flat = _flatten(result)
         run_id = str(metadata["run_id"])
         job_id = str(
@@ -130,17 +123,12 @@ def discover_run_records(
             "config_path": metadata.get("config_path"),
             "primary_metric": primary_metric,
             "primary_value": primary_value,
-            "duration_seconds": float(
-                metadata["duration_seconds"]
-            ),
+            "duration_seconds": float(metadata["duration_seconds"]),
             "stdout_sha256": _sha256(stdout_path),
             "metadata_sha256": _sha256(metadata_path),
         }
         for key, value in flat.items():
-            if (
-                isinstance(value, (int, float))
-                and not isinstance(value, bool)
-            ):
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
                 record[f"result.{key}"] = float(value)
         records.append(record)
     return records
@@ -166,12 +154,8 @@ def bootstrap_mean_ci(
     )
     means = array[indices].mean(axis=1)
     alpha = 1.0 - resolved.confidence
-    lower = float(
-        np.quantile(means, alpha / 2.0)
-    )
-    upper = float(
-        np.quantile(means, 1.0 - alpha / 2.0)
-    )
+    lower = float(np.quantile(means, alpha / 2.0))
+    upper = float(np.quantile(means, 1.0 - alpha / 2.0))
     return {
         "n": float(array.size),
         "mean": float(array.mean()),
@@ -242,7 +226,8 @@ def _write_markdown_table(
     ]
     lines = [
         "| " + " | ".join(columns) + " |",
-        "|" + "|".join(
+        "|"
+        + "|".join(
             [
                 "---",
                 "---",
@@ -252,17 +237,11 @@ def _write_markdown_table(
                 "---:",
                 "---:",
             ]
-        ) + "|",
+        )
+        + "|",
     ]
     for _, row in frame[columns].iterrows():
-        lines.append(
-            "| "
-            + " | ".join(
-                str(row[column])
-                for column in columns
-            )
-            + " |"
-        )
+        lines.append("| " + " | ".join(str(row[column]) for column in columns) + " |")
     path.write_text(
         "\n".join(lines) + "\n",
         encoding="utf-8",
@@ -281,10 +260,7 @@ def _plot_primary_metrics(
     )
     axis = figure.add_subplot(111)
     if not frame.empty:
-        labels = [
-            f"{row.suite}/{row.job_id}"
-            for row in frame.itertuples()
-        ]
+        labels = [f"{row.suite}/{row.job_id}" for row in frame.itertuples()]
         means = frame["mean"].to_numpy(dtype=float)
         lower = means - frame["ci_low"].to_numpy(dtype=float)
         upper = frame["ci_high"].to_numpy(dtype=float) - means
@@ -313,9 +289,7 @@ def _manifest_index(
 ) -> list[dict[str, Any]]:
     manifests: list[dict[str, Any]] = []
     for path in sorted(run_root.rglob("suite_manifest.json")):
-        data = json.loads(
-            path.read_text(encoding="utf-8")
-        )
+        data = json.loads(path.read_text(encoding="utf-8"))
         manifests.append(
             {
                 "suite": data["suite"],
