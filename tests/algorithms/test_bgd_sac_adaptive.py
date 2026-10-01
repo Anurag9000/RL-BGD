@@ -193,7 +193,9 @@ def test_adaptive_predictive_retention_trains_world_model_after_scoring() -> Non
                 batch.actions,
                 batch.next_observations,
                 batch.rewards,
-            ).mean().item()
+            )
+            .mean()
+            .item()
         )
     first = agent.update(batch)
     shifted = make_batch()
