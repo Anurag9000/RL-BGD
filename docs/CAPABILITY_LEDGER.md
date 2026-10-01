@@ -30,7 +30,7 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Generic context schedules | COMPLETE | abrupt/smooth/periodic/random-walk/recurring + tests |
 | Low-sigma movement mechanism | COMPLETE | identical-gradient movement test |
 | Long-horizon tempering mechanism | COMPLETE | vanilla-vs-tempered uncertainty test |
-| Synthetic benchmark family overall | PARTIAL | bandits pending; LQR-style control added |
+| Synthetic benchmark family overall | COMPLETE | quadratic streams + hidden-context Gaussian bandit with oracle regret + nonstationary LQR |
 | Continuous LQR-style smoke environment | COMPLETE | tensor-native finite-horizon control environment |
 | Boundary-free nonstationary LQR stream | COMPLETE | ScheduledLQREnv + leakage/unit test |
 | SAC actor/twin critics/targets | COMPLETE | agents/sac + unit tests |

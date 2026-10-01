@@ -1,5 +1,9 @@
 """Analytical synthetic benchmarks."""
 
+from rl_bgd.envs.synthetic.bandit import (
+    BanditEvaluationStep,
+    ScheduledGaussianBandit,
+)
 from rl_bgd.envs.synthetic.lqr import LinearQuadraticControlEnv, TensorBox
 from rl_bgd.envs.synthetic.nonstationary_lqr import ScheduledLQREnv
 from rl_bgd.envs.synthetic.quadratic import (
@@ -10,9 +14,11 @@ from rl_bgd.envs.synthetic.quadratic import (
 )
 
 __all__ = [
+    "BanditEvaluationStep",
     "LinearQuadraticControlEnv",
     "QuadraticStream",
     "QuadraticTask",
+    "ScheduledGaussianBandit",
     "ScheduledLQREnv",
     "TensorBox",
     "diagonal_quadratic",
