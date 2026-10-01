@@ -229,3 +229,52 @@ def test_asset_repair_never_overwrites_existing_benchmark_file(
 
     assert repaired == ()
     assert existing.read_bytes() == b"benchmark-version"
+
+
+def test_asset_repair_collapses_duplicated_legacy_root(
+    tmp_path: Path,
+) -> None:
+    continual_package = tmp_path / "continual_bench" / "envs"
+    metaworld_package = tmp_path / "metaworld"
+    destination_root = continual_package / "assets"
+    source_root = metaworld_package / "assets"
+
+    dependency_xml = (
+        destination_root
+        / "objects"
+        / "assets"
+        / "assembly_peg_dependencies.xml"
+    )
+    dependency_xml.parent.mkdir(parents=True)
+    dependency_xml.write_text(
+        '<mujoco><asset><mesh file="../objects/meshes/assembly_peg/handle.stl"/></asset></mujoco>',
+        encoding="utf-8",
+    )
+
+    canonical = (
+        source_root
+        / "objects"
+        / "meshes"
+        / "assembly_peg"
+        / "handle.stl"
+    )
+    canonical.parent.mkdir(parents=True)
+    canonical.write_bytes(b"canonical-mesh")
+
+    repaired = _repair_missing_metaworld_assets(
+        SimpleNamespace(__file__=str(continual_package / "__init__.py")),
+        SimpleNamespace(__file__=str(metaworld_package / "__init__.py")),
+    )
+
+    restored = (
+        destination_root
+        / "objects"
+        / "objects"
+        / "meshes"
+        / "assembly_peg"
+        / "handle.stl"
+    )
+    assert repaired == (
+        "objects/objects/meshes/assembly_peg/handle.stl",
+    )
+    assert restored.read_bytes() == b"canonical-mesh"
