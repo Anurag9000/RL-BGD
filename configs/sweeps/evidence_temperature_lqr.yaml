@@ -1,5 +1,5 @@
 study: generalized_bayes_evidence_temperature
-runner: rl_bgd.runners.evidence_temperature_sweep
+runner: rl_bgd.runners.evidence_temperature_lqr
 temperatures:
   - 0.25
   - 0.5
