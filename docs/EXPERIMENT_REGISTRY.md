@@ -13,7 +13,7 @@ No expensive experiment is marked executed until raw run artifacts exist.
 | E | Surprise-driven tempering adapts without boundary callbacks | IMPLEMENTED / TESTED on recurring LQR; external benchmark study pending |
 | F | Replay reuse accelerates posterior overconfidence without correction | IMPLEMENTED / TESTED replay-evidence mechanisms and synthetic precision comparison; benchmark study pending |
 | G | Actor/critic Bayesianization have different tradeoffs | actor-only, critic-only, and actor+critic modes IMPLEMENTED / TESTED; comparative study pending |
-| H | Recurrence and Bayesian consolidation address complementary failures | recurrent PPO/SAC and recurrent BGD paths IMPLEMENTED; matched learning study pending |
+| H | Recurrence and Bayesian consolidation address complementary failures | five-way matched hidden-context SAC suite IMPLEMENTED / TESTED; multi-seed comparative study pending |
 | CW-CAN10 | Canonical task-aware SAC reproduces the CW10 information/lifecycle protocol | IMPLEMENTED / NOT YET FULLY EXECUTED |
 | CW-CAN20 | Canonical task-aware SAC reproduces the CW20 occurrence-aware protocol | IMPLEMENTED / NOT YET FULLY EXECUTED |
 | CW-TA10 | Task-agnostic BGD-SAC can retain/adapt across CW10 without task identity | IMPLEMENTED / NOT YET FULLY EXECUTED |
