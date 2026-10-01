@@ -8,6 +8,7 @@ import os
 import subprocess
 import sys
 import time
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -17,6 +18,13 @@ from rl_bgd.artifacts.suite import (
     parse_runner_stdout,
     record_completed_suite_run,
     record_failed_suite_run,
+)
+from rl_bgd.artifacts import (
+    RunManifest,
+    RunSummary,
+    metrics_rows_from_result,
+    summarize_runner_result,
+    write_run_artifacts,
 )
 from rl_bgd.experiments.invoke import resolve_target
 
@@ -796,6 +804,252 @@ def materialize_suite(
     return manifest
 
 
+def _result_information_access(
+    result: Mapping[str, object],
+) -> dict[str, bool]:
+    raw = result.get(
+        "information_access",
+        {},
+    )
+    if not isinstance(
+        raw,
+        Mapping,
+    ):
+        return {}
+    return {
+        str(key): value
+        for key, value in raw.items()
+        if isinstance(
+            value,
+            bool,
+        )
+    }
+
+
+def _result_task_order(
+    result: Mapping[str, object],
+) -> tuple[str, ...]:
+    raw = result.get(
+        "task_names",
+        (),
+    )
+    if (
+        isinstance(
+            raw,
+            (str, bytes),
+        )
+        or not isinstance(
+            raw,
+            Sequence,
+        )
+    ):
+        return ()
+    return tuple(
+        str(value)
+        for value in raw
+    )
+
+
+def _resolve_primary_metric(
+    summary: RunSummary,
+    metric: str,
+) -> float:
+    if metric in summary.metrics:
+        return float(
+            summary.metrics[
+                metric
+            ]
+        )
+    if metric in summary.resources:
+        return float(
+            summary.resources[
+                metric
+            ]
+        )
+    matches = [
+        float(value)
+        for key, value in summary.metrics.items()
+        if key.endswith(
+            f".{metric}"
+        )
+    ]
+    if len(
+        matches
+    ) == 1:
+        return matches[
+            0
+        ]
+    if not matches:
+        raise ValueError(
+            f"declared primary metric {metric!r} is absent from run result"
+        )
+    raise ValueError(
+        f"declared primary metric {metric!r} is ambiguous across "
+        f"{len(matches)} numeric result paths"
+    )
+
+
+def _write_strict_suite_artifacts(
+    *,
+    suite_name: str,
+    suite_manifest: Mapping[str, object],
+    job: Mapping[str, object],
+    run_dir: Path,
+    result: Mapping[str, object],
+    duration_seconds: float,
+) -> None:
+    git_commit = suite_manifest.get(
+        "git_commit"
+    )
+    if (
+        not isinstance(
+            git_commit,
+            str,
+        )
+        or not git_commit
+    ):
+        raise ValueError(
+            "strict run provenance requires a concrete git commit"
+        )
+    run_id = str(
+        job[
+            "run_id"
+        ]
+    )
+    summary = summarize_runner_result(
+        run_id,
+        result,
+        duration_seconds=duration_seconds,
+    )
+    primary_metric = str(
+        job[
+            "primary_metric"
+        ]
+    )
+    primary_value = _resolve_primary_metric(
+        summary,
+        primary_metric,
+    )
+    if (
+        primary_metric
+        not in summary.metrics
+        and primary_metric
+        not in summary.resources
+    ):
+        summary = RunSummary(
+            run_id=summary.run_id,
+            metrics={
+                **summary.metrics,
+                primary_metric: primary_value,
+            },
+            task_metrics=summary.task_metrics,
+            resources=summary.resources,
+            metadata=summary.metadata,
+        )
+
+    manifest = RunManifest(
+        run_id=run_id,
+        method=str(
+            job[
+                "algorithm"
+            ]
+        ),
+        setting=str(
+            job[
+                "protocol"
+            ]
+        ),
+        benchmark=str(
+            job[
+                "environment"
+            ]
+        ),
+        seed=int(
+            job[
+                "seed"
+            ]
+        ),
+        git_commit=git_commit,
+        status="completed",
+        task_order=_result_task_order(
+            result
+        ),
+        information_access=_result_information_access(
+            result
+        ),
+        metadata={
+            "suite": suite_name,
+            "job_id": str(
+                job[
+                    "job_id"
+                ]
+            ),
+            "hypothesis_id": str(
+                job[
+                    "hypothesis_id"
+                ]
+            ),
+            "target": str(
+                job[
+                    "target"
+                ]
+            ),
+            "primary_metric": primary_metric,
+            "secondary_metrics": list(
+                job[
+                    "secondary_metrics"
+                ]
+            ),
+            "runtime_class": str(
+                job[
+                    "runtime_class"
+                ]
+            ),
+        },
+    )
+    write_run_artifacts(
+        run_dir,
+        manifest=manifest,
+        summary=summary,
+        resolved_config={
+            "suite": suite_name,
+            "job_id": job[
+                "job_id"
+            ],
+            "target": job[
+                "target"
+            ],
+            "kwargs": job[
+                "kwargs"
+            ],
+            "seed": job[
+                "seed"
+            ],
+            "algorithm": job[
+                "algorithm"
+            ],
+            "environment": job[
+                "environment"
+            ],
+            "protocol": job[
+                "protocol"
+            ],
+            "config_path": job[
+                "config_path"
+            ],
+            "primary_metric": primary_metric,
+            "secondary_metrics": list(
+                job[
+                    "secondary_metrics"
+                ]
+            ),
+        },
+        metrics_rows=metrics_rows_from_result(
+            result
+        ),
+    )
+
+
 def execute_suite(
     suite_name: str,
     output_root: str | Path,
@@ -808,20 +1062,43 @@ def execute_suite(
     )
     failures: list[str] = []
     for job in manifest["jobs"]:
-        run_dir = Path(job["run_dir"])
-        run_dir.mkdir(parents=True, exist_ok=True)
-        metadata_path = run_dir / "run_metadata.json"
-        stdout_path = run_dir / "stdout.json"
-        stderr_path = run_dir / "stderr.log"
-        started = datetime.now(UTC)
+        run_dir = Path(
+            job[
+                "run_dir"
+            ]
+        )
+        run_dir.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+        metadata_path = (
+            run_dir
+            / "run_metadata.json"
+        )
+        stdout_path = (
+            run_dir
+            / "stdout.json"
+        )
+        stderr_path = (
+            run_dir
+            / "stderr.log"
+        )
+        started = datetime.now(
+            UTC
+        )
         start_clock = time.perf_counter()
         completed = subprocess.run(
-            job["command"],
+            job[
+                "command"
+            ],
             capture_output=True,
             text=True,
             check=False,
         )
-        duration = time.perf_counter() - start_clock
+        duration = (
+            time.perf_counter()
+            - start_clock
+        )
         stdout_path.write_text(
             completed.stdout,
             encoding="utf-8",
@@ -830,88 +1107,172 @@ def execute_suite(
             completed.stderr,
             encoding="utf-8",
         )
-        status = "success" if completed.returncode == 0 else "failed"
+
+        status = (
+            "success"
+            if completed.returncode == 0
+            else "failed"
+        )
         artifact_error: str | None = None
-        git_commit = str(manifest.get("git_commit") or "")
-        if completed.returncode == 0:
+        if status == "success":
             try:
-                result = parse_runner_stdout(completed.stdout)
-                record_completed_suite_run(
-                    run_dir,
+                parsed = json.loads(
+                    completed.stdout
+                )
+                if not isinstance(
+                    parsed,
+                    Mapping,
+                ):
+                    raise TypeError(
+                        "runner stdout JSON must contain an object"
+                    )
+                _write_strict_suite_artifacts(
                     suite_name=suite_name,
-                    git_commit=git_commit,
+                    suite_manifest=manifest,
                     job=job,
-                    result=result,
+                    run_dir=run_dir,
+                    result={
+                        str(key): value
+                        for key, value in parsed.items()
+                    },
                     duration_seconds=duration,
                 )
             except (
-                OSError,
+                KeyError,
                 TypeError,
                 ValueError,
+                json.JSONDecodeError,
             ) as exc:
-                artifact_error = str(exc)
                 status = "failed"
-                record_failed_suite_run(
-                    run_dir,
-                    suite_name=suite_name,
-                    git_commit=git_commit,
-                    job=job,
-                    failure_reason=(f"artifact conversion failed: {artifact_error}"),
+                artifact_error = (
+                    f"{type(exc).__name__}: {exc}"
                 )
-        else:
-            record_failed_suite_run(
-                run_dir,
-                suite_name=suite_name,
-                git_commit=git_commit,
-                job=job,
-                failure_reason=(f"runner exited with return code {completed.returncode}"),
-            )
+                with stderr_path.open(
+                    "a",
+                    encoding="utf-8",
+                ) as handle:
+                    handle.write(
+                        "\nSTRICT_ARTIFACT_ERROR: "
+                        + artifact_error
+                        + "\n"
+                    )
 
         metadata = {
-            "schema_version": 1,
-            "run_id": job["run_id"],
+            "schema_version": 2,
+            "run_id": job[
+                "run_id"
+            ],
+            "job_id": job[
+                "job_id"
+            ],
             "suite": suite_name,
-            "git_commit": manifest["git_commit"],
-            "target": job["target"],
-            "kwargs": job["kwargs"],
-            "seed": job["seed"],
-            "algorithm": job["algorithm"],
-            "environment": job["environment"],
-            "protocol": job["protocol"],
-            "hypothesis_id": job["hypothesis_id"],
-            "config_path": job["config_path"],
-            "primary_metric": job["primary_metric"],
-            "secondary_metrics": job["secondary_metrics"],
-            "optional_extra": job["optional_extra"],
-            "runtime_class": job["runtime_class"],
+            "git_commit": manifest[
+                "git_commit"
+            ],
+            "target": job[
+                "target"
+            ],
+            "kwargs": job[
+                "kwargs"
+            ],
+            "seed": job[
+                "seed"
+            ],
+            "algorithm": job[
+                "algorithm"
+            ],
+            "environment": job[
+                "environment"
+            ],
+            "protocol": job[
+                "protocol"
+            ],
+            "hypothesis_id": job[
+                "hypothesis_id"
+            ],
+            "config_path": job[
+                "config_path"
+            ],
+            "primary_metric": job[
+                "primary_metric"
+            ],
+            "secondary_metrics": job[
+                "secondary_metrics"
+            ],
+            "optional_extra": job[
+                "optional_extra"
+            ],
+            "runtime_class": job[
+                "runtime_class"
+            ],
             "started_at_utc": started.isoformat(),
-            "finished_at_utc": datetime.now(UTC).isoformat(),
+            "finished_at_utc": datetime.now(
+                UTC
+            ).isoformat(),
             "duration_seconds": duration,
             "returncode": completed.returncode,
             "status": status,
             "artifact_error": artifact_error,
-            "stdout_path": str(stdout_path),
-            "stderr_path": str(stderr_path),
+            "stdout_path": str(
+                stdout_path
+            ),
+            "stderr_path": str(
+                stderr_path
+            ),
+            "strict_artifacts": (
+                status == "success"
+            ),
         }
         metadata_path.write_text(
-            json.dumps(metadata, indent=2, sort_keys=True),
+            json.dumps(
+                metadata,
+                indent=2,
+                sort_keys=True,
+            ),
             encoding="utf-8",
         )
         if status != "success":
-            failures.append(job["run_id"])
+            failures.append(
+                str(
+                    job[
+                        "run_id"
+                    ]
+                )
+            )
             if not continue_on_error:
                 break
 
     summary = {
         "suite": suite_name,
-        "manifest_path": manifest["manifest_path"],
-        "jobs_declared": len(manifest["jobs"]),
+        "manifest_path": manifest[
+            "manifest_path"
+        ],
+        "jobs_declared": len(
+            manifest[
+                "jobs"
+            ]
+        ),
         "failures": failures,
-        "status": "success" if not failures else "failed",
+        "status": (
+            "success"
+            if not failures
+            else "failed"
+        ),
     }
-    summary_path = Path(output_root) / suite_name / "suite_execution_summary.json"
+    summary_path = (
+        Path(
+            output_root
+        )
+        / suite_name
+        / "suite_execution_summary.json"
+    )
     summary_path.write_text(
-        json.dumps(summary, indent=2, sort_keys=True),
+        json.dumps(
+            summary,
+            indent=2,
+            sort_keys=True,
+        ),
         encoding="utf-8",
     )
     return summary
+
