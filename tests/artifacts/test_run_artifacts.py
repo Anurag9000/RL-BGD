@@ -70,28 +70,14 @@ def test_run_artifact_round_trip_preserves_provenance(
         ],
     )
 
-    loaded = load_run_directory(
-        tmp_path
-    )
-    assert (
-        loaded.manifest
-        == manifest
-    )
-    assert (
-        loaded.summary
-        == summary
-    )
-    assert list(
-        loaded.metrics[
-            "return"
-        ]
-    ) == [
+    loaded = load_run_directory(tmp_path)
+    assert loaded.manifest == manifest
+    assert loaded.summary == summary
+    assert list(loaded.metrics["return"]) == [
         0.1,
         0.2,
     ]
-    assert set(
-        loaded.source_hashes
-    ) == {
+    assert set(loaded.source_hashes) == {
         "manifest.json",
         "config.yaml",
         "metrics.csv",
@@ -133,9 +119,7 @@ def test_incomplete_run_is_rejected_by_default(
         ValueError,
         match="refuses incomplete",
     ):
-        load_run_directory(
-            tmp_path
-        )
+        load_run_directory(tmp_path)
 
 
 def test_manifest_rejects_string_task_order() -> None:
@@ -148,12 +132,8 @@ def test_manifest_rejects_string_task_order() -> None:
         "git_commit": "abc",
         "task_order": "not-a-task-list",
     }
-    with pytest.raises(
-        ValueError
-    ):
-        RunManifest.from_dict(
-            payload
-        )
+    with pytest.raises(ValueError):
+        RunManifest.from_dict(payload)
 
 
 def test_runner_result_converter_extracts_cw_metrics_and_tasks() -> None:
@@ -188,38 +168,16 @@ def test_runner_result_converter_extracts_cw_metrics_and_tasks() -> None:
         result,
         duration_seconds=5.0,
     )
-    assert summary.metrics[
-        "final_average"
-    ] == pytest.approx(
-        1.9
-    )
-    assert summary.metrics[
-        "forgetting"
-    ] == pytest.approx(
-        0.1
-    )
-    assert summary.metrics[
-        "bwt"
-    ] == pytest.approx(
-        -0.1
-    )
-    assert summary.metrics[
-        "final_10_mean_return"
-    ] == pytest.approx(
-        4.0
-    )
-    assert summary.task_metrics[
-        "a"
-    ] == {
+    assert summary.metrics["final_average"] == pytest.approx(1.9)
+    assert summary.metrics["forgetting"] == pytest.approx(0.1)
+    assert summary.metrics["bwt"] == pytest.approx(-0.1)
+    assert summary.metrics["final_10_mean_return"] == pytest.approx(4.0)
+    assert summary.task_metrics["a"] == {
         "final_performance": 0.8,
         "success_rate": 0.25,
         "forgetting": 0.2,
     }
-    assert summary.resources[
-        "duration_seconds"
-    ] == pytest.approx(
-        5.0
-    )
+    assert summary.resources["duration_seconds"] == pytest.approx(5.0)
 
 
 def test_timeline_rows_are_preferred_over_scalar_fallback() -> None:
@@ -283,18 +241,9 @@ def test_summary_run_id_mismatch_is_detected(
             }
         ],
     )
-    summary_path = (
-        tmp_path
-        / "summary.json"
-    )
-    payload = json.loads(
-        summary_path.read_text(
-            encoding="utf-8"
-        )
-    )
-    payload[
-        "run_id"
-    ] = "tampered"
+    summary_path = tmp_path / "summary.json"
+    payload = json.loads(summary_path.read_text(encoding="utf-8"))
+    payload["run_id"] = "tampered"
     summary_path.write_text(
         json.dumps(payload),
         encoding="utf-8",
@@ -303,6 +252,4 @@ def test_summary_run_id_mismatch_is_detected(
         ValueError,
         match="run_id mismatch",
     ):
-        load_run_directory(
-            tmp_path
-        )
+        load_run_directory(tmp_path)
