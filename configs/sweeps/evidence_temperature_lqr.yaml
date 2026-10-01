@@ -1,0 +1,19 @@
+study: generalized_bayes_evidence_temperature
+runner: rl_bgd.runners.evidence_temperature_sweep
+temperatures:
+  - 0.25
+  - 0.5
+  - 1.0
+  - 2.0
+steps: 600
+seed: 11
+device: auto
+bayesianization: critic_only
+matched_controls:
+  same_seed: true
+  same_environment: true
+  same_training_budget: true
+  same_architecture: true
+  same_bgd_eta: true
+  same_mc_samples: true
+  only_temperature_varies: true
