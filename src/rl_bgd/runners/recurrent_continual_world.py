@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator, Literal
+from typing import Literal
 
 import torch
 
