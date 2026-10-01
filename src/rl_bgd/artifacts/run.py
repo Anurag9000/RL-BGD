@@ -8,7 +8,7 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import pandas as pd
 import yaml
@@ -118,6 +118,23 @@ class RunManifest:
                 Mapping,
             ):
                 raise TypeError("metadata must be a mapping")
+            raw_task_order = payload.get(
+                "task_order",
+                (),
+            )
+            if (
+                isinstance(
+                    raw_task_order,
+                    (str, bytes),
+                )
+                or not isinstance(
+                    raw_task_order,
+                    Sequence,
+                )
+            ):
+                raise TypeError(
+                    "task_order must be a sequence of task names"
+                )
             manifest = cls(
                 run_id=str(payload["run_id"]),
                 method=str(payload["method"]),
@@ -133,10 +150,7 @@ class RunManifest:
                 ),  # type: ignore[arg-type]
                 task_order=tuple(
                     str(value)
-                    for value in payload.get(
-                        "task_order",
-                        (),
-                    )  # type: ignore[arg-type]
+                    for value in raw_task_order
                 ),
                 information_access={
                     str(key): value for key, value in information.items() if isinstance(value, bool)
@@ -419,6 +433,411 @@ def discover_run_directories(
     return tuple(sorted(path.parent for path in root.rglob("manifest.json")))
 
 
+def flatten_numeric_metrics(
+    payload: Mapping[str, object],
+    *,
+    prefix: str = "",
+) -> dict[str, float]:
+    """Flatten finite scalar numeric leaves using dotted provenance paths."""
+
+    flattened: dict[str, float] = {}
+    for key, value in payload.items():
+        if not isinstance(key, str) or not key:
+            continue
+        name = (
+            f"{prefix}.{key}"
+            if prefix
+            else key
+        )
+        if isinstance(value, bool):
+            continue
+        if isinstance(
+            value,
+            (int, float),
+        ):
+            converted = float(value)
+            if math.isfinite(converted):
+                flattened[name] = converted
+            continue
+        if isinstance(value, Mapping):
+            nested = flatten_numeric_metrics(
+                {
+                    str(nested_key): nested_value
+                    for nested_key, nested_value in value.items()
+                },
+                prefix=name,
+            )
+            flattened.update(nested)
+    return flattened
+
+
+def _numeric_mapping(
+    value: object,
+) -> dict[str, float]:
+    if not isinstance(value, Mapping):
+        return {}
+    result: dict[str, float] = {}
+    for key, item in value.items():
+        if (
+            isinstance(key, str)
+            and not isinstance(item, bool)
+            and isinstance(
+                item,
+                (int, float),
+            )
+        ):
+            converted = float(item)
+            if math.isfinite(converted):
+                result[key] = converted
+    return result
+
+
+def _task_metrics_from_result(
+    result: Mapping[str, object],
+) -> dict[str, dict[str, float]]:
+    task_names = result.get(
+        "task_names"
+    )
+    if (
+        isinstance(
+            task_names,
+            (str, bytes),
+        )
+        or not isinstance(
+            task_names,
+            Sequence,
+        )
+    ):
+        return {}
+    names = tuple(
+        str(value)
+        for value in task_names
+    )
+    if not names:
+        return {}
+
+    task_metrics: dict[
+        str,
+        dict[str, float],
+    ] = {
+        name: {}
+        for name in names
+    }
+
+    return_matrix = result.get(
+        "return_matrix"
+    )
+    if (
+        isinstance(
+            return_matrix,
+            Sequence,
+        )
+        and not isinstance(
+            return_matrix,
+            (str, bytes),
+        )
+        and return_matrix
+    ):
+        final_row = return_matrix[-1]
+        if (
+            isinstance(
+                final_row,
+                Sequence,
+            )
+            and not isinstance(
+                final_row,
+                (str, bytes),
+            )
+            and len(final_row) == len(names)
+        ):
+            for name, value in zip(
+                names,
+                final_row,
+                strict=True,
+            ):
+                if (
+                    not isinstance(
+                        value,
+                        bool,
+                    )
+                    and isinstance(
+                        value,
+                        (int, float),
+                    )
+                    and math.isfinite(
+                        float(value)
+                    )
+                ):
+                    task_metrics[name][
+                        "final_performance"
+                    ] = float(value)
+
+    success_matrix = result.get(
+        "success_matrix"
+    )
+    if (
+        isinstance(
+            success_matrix,
+            Sequence,
+        )
+        and not isinstance(
+            success_matrix,
+            (str, bytes),
+        )
+        and success_matrix
+    ):
+        final_row = success_matrix[-1]
+        if (
+            isinstance(
+                final_row,
+                Sequence,
+            )
+            and not isinstance(
+                final_row,
+                (str, bytes),
+            )
+            and len(final_row) == len(names)
+        ):
+            for name, value in zip(
+                names,
+                final_row,
+                strict=True,
+            ):
+                if (
+                    not isinstance(
+                        value,
+                        bool,
+                    )
+                    and isinstance(
+                        value,
+                        (int, float),
+                    )
+                    and math.isfinite(
+                        float(value)
+                    )
+                ):
+                    task_metrics[name][
+                        "success_rate"
+                    ] = float(value)
+
+    return_summary = result.get(
+        "return_summary"
+    )
+    if isinstance(
+        return_summary,
+        Mapping,
+    ):
+        forgetting = return_summary.get(
+            "forgetting_by_task"
+        )
+        if (
+            isinstance(
+                forgetting,
+                Sequence,
+            )
+            and not isinstance(
+                forgetting,
+                (str, bytes),
+            )
+            and len(forgetting)
+            == len(names)
+        ):
+            for name, value in zip(
+                names,
+                forgetting,
+                strict=True,
+            ):
+                if (
+                    not isinstance(
+                        value,
+                        bool,
+                    )
+                    and isinstance(
+                        value,
+                        (int, float),
+                    )
+                    and math.isfinite(
+                        float(value)
+                    )
+                ):
+                    task_metrics[name][
+                        "forgetting"
+                    ] = float(value)
+
+    return {
+        task: values
+        for task, values in task_metrics.items()
+        if values
+    }
+
+
+def summarize_runner_result(
+    run_id: str,
+    result: Mapping[str, object],
+    *,
+    duration_seconds: float | None = None,
+) -> RunSummary:
+    """Convert heterogeneous runner JSON into traceable scalar/task summaries."""
+
+    metrics = flatten_numeric_metrics(
+        result
+    )
+
+    # Promote standard nested summaries without discarding their dotted paths.
+    return_summary = _numeric_mapping(
+        result.get(
+            "return_summary"
+        )
+    )
+    for key, value in return_summary.items():
+        metrics.setdefault(
+            key,
+            value,
+        )
+    if "mean_forgetting" in return_summary:
+        metrics.setdefault(
+            "forgetting",
+            return_summary[
+                "mean_forgetting"
+            ],
+        )
+    if "backward_transfer" in return_summary:
+        metrics.setdefault(
+            "bwt",
+            return_summary[
+                "backward_transfer"
+            ],
+        )
+
+    training = _numeric_mapping(
+        result.get(
+            "training"
+        )
+    )
+    for key, value in training.items():
+        metrics.setdefault(
+            key,
+            value,
+        )
+
+    success_summary = _numeric_mapping(
+        result.get(
+            "success_summary"
+        )
+    )
+    if "final_average" in success_summary:
+        metrics.setdefault(
+            "success_rate",
+            success_summary[
+                "final_average"
+            ],
+        )
+
+    resources: dict[str, float] = {}
+    if duration_seconds is not None:
+        duration = float(
+            duration_seconds
+        )
+        if (
+            not math.isfinite(duration)
+            or duration < 0
+        ):
+            raise ValueError(
+                "duration_seconds must be finite and non-negative"
+            )
+        resources[
+            "duration_seconds"
+        ] = duration
+
+    return RunSummary(
+        run_id=run_id,
+        metrics=metrics,
+        task_metrics=(
+            _task_metrics_from_result(
+                result
+            )
+        ),
+        resources=resources,
+        metadata={
+            "numeric_metric_paths": sorted(
+                flatten_numeric_metrics(
+                    result
+                )
+            )
+        },
+    )
+
+
+def metrics_rows_from_result(
+    result: Mapping[str, object],
+) -> list[dict[str, object]]:
+    """Extract numeric timeline rows, falling back to one scalar summary row."""
+
+    rows: list[
+        dict[str, object]
+    ] = []
+    for series_name, value in result.items():
+        if (
+            isinstance(
+                value,
+                (str, bytes),
+            )
+            or not isinstance(
+                value,
+                Sequence,
+            )
+        ):
+            continue
+        mapping_rows = [
+            row
+            for row in value
+            if isinstance(
+                row,
+                Mapping,
+            )
+        ]
+        if (
+            not mapping_rows
+            or len(mapping_rows)
+            != len(value)
+        ):
+            continue
+        for index, row in enumerate(
+            mapping_rows
+        ):
+            numeric = flatten_numeric_metrics(
+                {
+                    str(key): item
+                    for key, item in row.items()
+                }
+            )
+            if numeric:
+                rows.append(
+                    {
+                        "series": series_name,
+                        "row_index": index,
+                        **numeric,
+                    }
+                )
+    if rows:
+        return rows
+
+    flattened = flatten_numeric_metrics(
+        result
+    )
+    if not flattened:
+        raise ValueError(
+            "runner result contains no finite scalar or timeline metrics"
+        )
+    return [
+        {
+            "series": "summary",
+            "row_index": 0,
+            **flattened,
+        }
+    ]
+
+
 def write_run_artifacts(
     run_dir: str | Path,
     *,
@@ -441,6 +860,14 @@ def write_run_artifacts(
         Mapping,
     ):
         raise TypeError("resolved_config must be a mapping")
+
+    metrics = pd.DataFrame(
+        list(metrics_rows)
+    )
+    if metrics.columns.empty:
+        raise ValueError(
+            "metrics_rows must produce at least one column"
+        )
 
     root = Path(run_dir)
     root.mkdir(
@@ -487,9 +914,6 @@ def write_run_artifacts(
         + "\n",
         encoding="utf-8",
     )
-    metrics = pd.DataFrame(list(metrics_rows))
-    if metrics.columns.empty:
-        raise ValueError("metrics_rows must produce at least one column")
     metrics.to_csv(
         metrics_path,
         index=False,
