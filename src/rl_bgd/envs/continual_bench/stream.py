@@ -34,13 +34,6 @@ class ContinualBenchImportError(ImportError):
     """Raised when the optional ContinualBench dependency is unavailable."""
 
 
-_REQUIRED_METAWORLD_TEXTURES: tuple[str, ...] = (
-    "wood2.png",
-    "floor2.png",
-    "metal.png",
-)
-
-
 def _repair_missing_metaworld_assets(
     continual_bench_envs: Any,
     metaworld_module: Any,
@@ -67,28 +60,56 @@ def _repair_missing_metaworld_assets(
         raise ContinualBenchImportError(
             "cannot locate installed benchmark packages for asset repair"
         )
-    destination = Path(continual_file).resolve().parent / "assets" / "textures"
-    source = Path(metaworld_file).resolve().parent / "assets" / "textures"
-    destination.mkdir(
-        parents=True,
-        exist_ok=True,
+    package_root = Path(
+        continual_file
+    ).resolve().parent
+    source = (
+        Path(metaworld_file)
+        .resolve()
+        .parent
+        / "assets"
+        / "textures"
+    )
+    if not source.is_dir():
+        raise ContinualBenchImportError(
+            "canonical Meta-World texture directory is unavailable"
+        )
+
+    destinations = (
+        package_root / "assets" / "textures",
+        package_root
+        / "assets"
+        / "objects"
+        / "textures",
     )
     repaired: list[str] = []
-    for filename in _REQUIRED_METAWORLD_TEXTURES:
-        target = destination / filename
-        if target.exists():
-            continue
-        canonical = source / filename
-        if not canonical.is_file():
-            raise ContinualBenchImportError(
-                "ContinualBench is missing a required Meta-World asset and "
-                f"the canonical source is unavailable: {filename}"
-            )
-        copy2(
-            canonical,
-            target,
+    for destination in destinations:
+        destination.mkdir(
+            parents=True,
+            exist_ok=True,
         )
-        repaired.append(filename)
+        for canonical in sorted(
+            source.iterdir()
+        ):
+            if not canonical.is_file():
+                continue
+            target = (
+                destination
+                / canonical.name
+            )
+            if target.exists():
+                continue
+            copy2(
+                canonical,
+                target,
+            )
+            repaired.append(
+                str(
+                    target.relative_to(
+                        package_root
+                    )
+                )
+            )
     return tuple(repaired)
 
 
