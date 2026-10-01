@@ -19,13 +19,16 @@ def posterior_diagnostics(
     stds: Mapping[str, Tensor],
     *,
     eta: float,
+    evidence_temperature: float = 1.0,
     collapse_threshold: float = 1e-4,
 ) -> dict[str, float]:
+    if eta <= 0 or evidence_temperature <= 0:
+        raise ValueError("eta and evidence_temperature must be strictly positive")
     sigma = _flatten(stds)
     if torch.any(sigma <= 0) or not torch.isfinite(sigma).all():
         raise FloatingPointError("posterior standard deviations must be finite and positive")
     precision = sigma.reciprocal().square()
-    effective_lr = eta * sigma.square()
+    effective_lr = eta * evidence_temperature * sigma.square()
     entropy = 0.5 * torch.log(2.0 * math.pi * math.e * sigma.square())
     quantiles = torch.quantile(sigma, torch.tensor([0.05, 0.25, 0.5, 0.75, 0.95]))
     lr_quantiles = torch.quantile(effective_lr, torch.tensor([0.05, 0.25, 0.5, 0.75, 0.95]))
@@ -51,6 +54,16 @@ def posterior_diagnostics(
 
 
 def layerwise_posterior_diagnostics(
-    stds: Mapping[str, Tensor], *, eta: float
+    stds: Mapping[str, Tensor],
+    *,
+    eta: float,
+    evidence_temperature: float = 1.0,
 ) -> dict[str, dict[str, float]]:
-    return {name: posterior_diagnostics({name: std}, eta=eta) for name, std in stds.items()}
+    return {
+        name: posterior_diagnostics(
+            {name: std},
+            eta=eta,
+            evidence_temperature=evidence_temperature,
+        )
+        for name, std in stds.items()
+    }
