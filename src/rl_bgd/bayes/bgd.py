@@ -127,9 +127,7 @@ class BGDUpdater:
         """Take one BGD step using distinct mean/evidence gradient channels."""
 
         applied_retention = self._temper(retention)
-        applied_evidence_temperature = self._evidence_temperature(
-            evidence_temperature
-        )
+        applied_evidence_temperature = self._evidence_temperature(evidence_temperature)
         epsilons = self.posterior.sample_epsilons(
             samples=self.config.mc_samples,
             antithetic=self.config.antithetic,
@@ -150,10 +148,7 @@ class BGDUpdater:
                 self._check_scalar_loss(mean_loss, "mean")
                 self._check_scalar_loss(uncertainty_loss, "uncertainty")
                 tempered_mean_loss = applied_evidence_temperature * mean_loss
-                tempered_uncertainty_loss = (
-                    applied_evidence_temperature
-                    * uncertainty_loss
-                )
+                tempered_uncertainty_loss = applied_evidence_temperature * uncertainty_loss
                 grads_tuple = torch.autograd.grad(
                     tempered_mean_loss,
                     tuple(sampled[name] for name in ordered_names),
