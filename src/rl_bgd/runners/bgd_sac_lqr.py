@@ -32,6 +32,7 @@ def run_bgd_sac_lqr(
     seed: int = 11,
     device: str = "auto",
     bayesianization: str = "critic_only",
+    evidence_temperature: float = 1.0,
 ) -> dict[str, object]:
     seed_everything(seed, deterministic=True)
     resolved = resolve_device(device)
@@ -54,11 +55,13 @@ def run_bgd_sac_lqr(
                 eta=0.1,
                 mc_samples=2,
                 antithetic=True,
+                evidence_temperature=evidence_temperature,
             ),
             critic_bgd=BGDConfig(
                 eta=0.1,
                 mc_samples=2,
                 antithetic=True,
+                evidence_temperature=evidence_temperature,
             ),
         ),
         device=resolved,
@@ -86,6 +89,7 @@ def run_bgd_sac_lqr(
     )
     return {
         "bayesianization": bayesianization,
+        "evidence_temperature": evidence_temperature,
         "steps": steps,
         "pre_return": pre_return,
         "post_return": post_return,
