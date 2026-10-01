@@ -8,6 +8,9 @@ from rl_bgd.bayes.diagonal_gaussian import DiagonalGaussianPosterior
 
 def make_updater(
     temperature: float,
+    *,
+    eta: float = 0.1,
+    mc_samples: int = 2,
 ) -> BGDUpdater:
     module = nn.Linear(
         1,
@@ -23,8 +26,8 @@ def make_updater(
     return BGDUpdater(
         posterior,
         BGDConfig(
-            eta=0.1,
-            mc_samples=2,
+            eta=eta,
+            mc_samples=mc_samples,
             antithetic=True,
             evidence_temperature=temperature,
         ),
@@ -81,3 +84,50 @@ def test_step_override_does_not_mutate_configured_temperature() -> None:
 def test_nonpositive_evidence_temperature_is_rejected() -> None:
     with pytest.raises(ValueError):
         BGDConfig(evidence_temperature=0.0).validate()
+
+
+def test_evidence_temperature_is_not_equivalent_to_eta() -> None:
+    eta_scaled = make_updater(
+        1.0,
+        eta=0.2,
+        mc_samples=64,
+    )
+    temperature_scaled = make_updater(
+        2.0,
+        eta=0.1,
+        mc_samples=64,
+    )
+    eta_generator = torch.Generator().manual_seed(
+        777
+    )
+    temperature_generator = torch.Generator().manual_seed(
+        777
+    )
+
+    eta_scaled.step(
+        quadratic_objective,
+        generator=eta_generator,
+    )
+    temperature_scaled.step(
+        quadratic_objective,
+        generator=temperature_generator,
+    )
+
+    torch.testing.assert_close(
+        eta_scaled.posterior.means[
+            "weight"
+        ],
+        temperature_scaled.posterior.means[
+            "weight"
+        ],
+        atol=1e-6,
+        rtol=1e-6,
+    )
+    assert torch.all(
+        temperature_scaled.posterior.stds[
+            "weight"
+        ]
+        < eta_scaled.posterior.stds[
+            "weight"
+        ]
+    )
