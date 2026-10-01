@@ -30,6 +30,7 @@ class FakeTaskEnv:
             high=torch.tensor([10.0]),
         )
         self._step = 0
+        self.reset_count = 0
 
     def reset(
         self,
@@ -41,6 +42,7 @@ class FakeTaskEnv:
     ]:
         del seed
         self._step = 0
+        self.reset_count += 1
         return (
             torch.tensor([self.value]),
             {
@@ -132,14 +134,16 @@ def test_hidden_task_switch_emits_no_boundary_or_identity_signal() -> None:
     }
 
 
-def test_natural_episode_end_can_carry_pending_hidden_switch() -> None:
+def test_natural_truncation_bootstraps_next_task_and_reuses_reset() -> None:
+    first = FakeTaskEnv(
+        1.0,
+        horizon=2,
+    )
+    second = FakeTaskEnv(2.0)
     env = ContinualWorldStreamEnv(
         [
-            FakeTaskEnv(
-                1.0,
-                horizon=2,
-            ),
-            FakeTaskEnv(2.0),
+            first,
+            second,
         ],
         [
             "first-v3",
@@ -149,19 +153,24 @@ def test_natural_episode_end_can_carry_pending_hidden_switch() -> None:
     )
     env.reset(seed=9)
     env.step(torch.zeros(1))
-    _, _, terminated, truncated, info = env.step(torch.zeros(1))
+    observation, _, terminated, truncated, info = env.step(torch.zeros(1))
     assert not terminated
     assert truncated
     assert info == {}
-    assert env.evaluation_context["task_index"] == 0
-
-    observation, info = env.reset()
     torch.testing.assert_close(
         observation,
         torch.tensor([2.0]),
     )
-    assert info == {}
     assert env.evaluation_context["task_index"] == 1
+    assert second.reset_count == 1
+
+    reset_observation, reset_info = env.reset()
+    torch.testing.assert_close(
+        reset_observation,
+        observation,
+    )
+    assert reset_info == {}
+    assert second.reset_count == 1
 
 
 def test_stream_rejects_steps_after_total_budget() -> None:

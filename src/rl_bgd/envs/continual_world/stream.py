@@ -89,10 +89,11 @@ class ContinualWorldStreamConfig:
 class ContinualWorldStreamEnv:
     """Compose task environments without exposing task IDs or switch callbacks.
 
-    If a task budget expires mid-episode, the next task is reset internally and
-    its first observation becomes the transition's next observation. No
-    synthetic termination/truncation flag is emitted solely because a task
-    changed. Natural episode endings are preserved.
+    When a task budget expires, the next task is reset internally and its first
+    observation becomes the transition's next observation. If the previous task
+    also ended naturally, that observation is cached so the caller's subsequent
+    reset returns the same state instead of resetting twice. No synthetic
+    termination/truncation flag is emitted solely because a task changed.
     """
 
     def __init__(
@@ -121,7 +122,7 @@ class ContinualWorldStreamEnv:
         self.task_index = 0
         self.task_step = 0
         self.environment_step = 0
-        self._switch_on_reset = False
+        self._pending_reset_observation: Tensor | None = None
         self._internal_reset_counter = 0
 
     @property
@@ -146,7 +147,6 @@ class ContinualWorldStreamEnv:
             raise RuntimeError("Continual World stream is exhausted")
         self.task_index += 1
         self.task_step = 0
-        self._switch_on_reset = False
 
     def _internal_reset(
         self,
@@ -168,8 +168,10 @@ class ContinualWorldStreamEnv:
             # Permit that reset, but keep any further step invalid.
             observation, _ = self.envs[self.task_index].reset(seed=seed)
             return observation, {}
-        if self._switch_on_reset:
-            self._advance_task()
+        if self._pending_reset_observation is not None:
+            observation = self._pending_reset_observation
+            self._pending_reset_observation = None
+            return observation, {}
         observation, _ = self.envs[self.task_index].reset(seed=seed)
         # Strict path intentionally strips task/context metadata.
         return observation, {}
@@ -200,11 +202,10 @@ class ContinualWorldStreamEnv:
         has_next_task = self.task_index + 1 < len(self.envs)
 
         if hit_task_budget and has_next_task:
+            self._advance_task()
+            observation = self._internal_reset()
             if terminated or truncated:
-                self._switch_on_reset = True
-            else:
-                self._advance_task()
-                observation = self._internal_reset()
+                self._pending_reset_observation = observation
 
         # Do not return task IDs, names, indices, context, or switch flags.
         return (
