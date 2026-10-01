@@ -6,6 +6,11 @@ from rl_bgd.analysis.artifacts import (
     bootstrap_mean_ci,
     build_paper_artifacts,
 )
+from rl_bgd.artifacts import (
+    RunManifest,
+    RunSummary,
+    write_run_artifacts,
+)
 
 
 def _fake_run(
@@ -14,37 +19,48 @@ def _fake_run(
     seed: int,
     value: float,
 ) -> None:
-    run = root / "smoke" / f"demo__seed_{seed}"
-    run.mkdir(parents=True)
-    metadata = {
-        "run_id": f"demo__seed_{seed}",
-        "job_id": "demo",
-        "suite": "smoke",
-        "seed": seed,
-        "git_commit": "abc123",
-        "algorithm": "demo",
-        "environment": "synthetic",
-        "protocol": "stationary",
-        "hypothesis_id": "A",
-        "config_path": None,
-        "primary_metric": "post_return",
-        "duration_seconds": 1.5 + seed,
-        "status": "success",
-    }
-    (run / "run_metadata.json").write_text(
-        json.dumps(metadata),
-        encoding="utf-8",
+    run_id = f"demo__seed_{seed}"
+    run = root / "smoke" / run_id
+    manifest = RunManifest(
+        run_id=run_id,
+        method="demo",
+        setting="stationary",
+        benchmark="synthetic",
+        seed=seed,
+        git_commit="abc123",
+        metadata={
+            "suite": "smoke",
+            "job_id": "demo",
+            "hypothesis_id": "A",
+            "primary_metric": "post_return",
+            "secondary_metrics": [
+                "final_10_mean_return",
+            ],
+            "source_config_path": None,
+        },
     )
-    (run / "stdout.json").write_text(
-        json.dumps(
+    summary = RunSummary(
+        run_id=run_id,
+        metrics={
+            "post_return": value,
+            "final_10_mean_return": value - 0.5,
+        },
+        resources={
+            "duration_seconds": 1.5 + seed,
+        },
+    )
+    write_run_artifacts(
+        run,
+        manifest=manifest,
+        summary=summary,
+        resolved_config={
+            "seed": seed,
+        },
+        metrics_rows=[
             {
                 "post_return": value,
-                "training": {
-                    "final_10_mean_return": value - 0.5,
-                },
             }
-        ),
-        encoding="utf-8",
+        ],
     )
 
 
@@ -98,6 +114,7 @@ def test_paper_artifact_pipeline_requires_no_manual_transcription(
             seed=10,
         ),
     )
+    assert report["schema_version"] == 2
     assert report["runs_aggregated"] == 3
     assert report["bootstrap_groups"] == 1
     assert report["manifests_indexed"] == 1
@@ -105,3 +122,80 @@ def test_paper_artifact_pipeline_requires_no_manual_transcription(
         path = output / name
         assert path.exists()
         assert path.stat().st_size > 0
+
+
+def test_failed_run_is_excluded_but_completed_missing_metric_fails(
+    tmp_path: Path,
+) -> None:
+    failed = tmp_path / "runs" / "smoke" / "failed__seed_0"
+    failed.mkdir(parents=True)
+    failed_manifest = RunManifest(
+        run_id="failed__seed_0",
+        method="demo",
+        setting="stationary",
+        benchmark="synthetic",
+        seed=0,
+        git_commit="abc123",
+        status="failed",
+        metadata={
+            "suite": "smoke",
+            "job_id": "failed",
+            "hypothesis_id": "A",
+            "primary_metric": "score",
+        },
+    )
+    (failed / "manifest.json").write_text(
+        json.dumps(
+            failed_manifest.to_dict()
+        ),
+        encoding="utf-8",
+    )
+
+    completed = tmp_path / "runs" / "smoke" / "bad__seed_1"
+    write_run_artifacts(
+        completed,
+        manifest=RunManifest(
+            run_id="bad__seed_1",
+            method="demo",
+            setting="stationary",
+            benchmark="synthetic",
+            seed=1,
+            git_commit="abc123",
+            metadata={
+                "suite": "smoke",
+                "job_id": "bad",
+                "hypothesis_id": "A",
+                "primary_metric": "missing_score",
+            },
+        ),
+        summary=RunSummary(
+            run_id="bad__seed_1",
+            metrics={
+                "other_score": 1.0,
+            },
+        ),
+        resolved_config={
+            "seed": 1,
+        },
+        metrics_rows=[
+            {
+                "other_score": 1.0,
+            }
+        ],
+    )
+
+    output = tmp_path / "paper"
+    try:
+        build_paper_artifacts(
+            tmp_path / "runs",
+            output,
+            bootstrap=BootstrapConfig(
+                samples=500,
+            ),
+        )
+    except ValueError as exc:
+        assert "missing_score" in str(exc)
+    else:
+        raise AssertionError(
+            "completed run with missing primary metric was silently accepted"
+        )
