@@ -26,9 +26,7 @@ from rl_bgd.envs.synthetic.lqr import (
 
 def test_bgd_recurrent_ppo_smoke_updates_posteriors() -> None:
     torch.manual_seed(72)
-    env = LinearQuadraticControlEnv(
-        horizon=16
-    )
+    env = LinearQuadraticControlEnv(horizon=16)
     agent = BGDRecurrentPPOAgent(
         1,
         1,
@@ -67,18 +65,7 @@ def test_bgd_recurrent_ppo_smoke_updates_posteriors() -> None:
             seed=72,
         ),
     )
-    metrics = summary[
-        "last_update_metrics"
-    ]
-    assert metrics[
-        "actor_sigma_mean"
-    ] > 0.0
-    assert metrics[
-        "value_sigma_mean"
-    ] > 0.0
-    assert (
-        metrics[
-            "uncertainty_evidence_weight_mean"
-        ]
-        == 0.5
-    )
+    metrics = summary["last_update_metrics"]
+    assert metrics["actor_sigma_mean"] > 0.0
+    assert metrics["value_sigma_mean"] > 0.0
+    assert metrics["uncertainty_evidence_weight_mean"] == 0.5

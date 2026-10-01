@@ -61,9 +61,7 @@ def run_recurrent_ppo_recurring_lqr(
         seed,
         deterministic=True,
     )
-    resolved = resolve_device(
-        device
-    )
+    resolved = resolve_device(device)
     schedule = ContextSchedule(
         ContextScheduleConfig(
             mode="recurring",
@@ -98,58 +96,48 @@ def run_recurrent_ppo_recurring_lqr(
         update_epochs=2,
         minibatch_size=16,
     )
-    recurrent_config = (
-        RecurrentPPOConfig(
-            recurrent_hidden_dim=24,
-            sequence_length=16,
-            encoder_hidden_dims=(
-                24,
-            ),
-        )
+    recurrent_config = RecurrentPPOConfig(
+        recurrent_hidden_dim=24,
+        sequence_length=16,
+        encoder_hidden_dims=(24,),
     )
     if optimizer == "adam":
-        agent: RecurrentPPOAgent = (
-            RecurrentPPOAgent(
-                1,
-                1,
-                action_low=env.action_space.low,
-                action_high=env.action_space.high,
-                ppo_config=ppo_config,
-                recurrent_config=recurrent_config,
-                device=resolved,
-            )
+        agent: RecurrentPPOAgent = RecurrentPPOAgent(
+            1,
+            1,
+            action_low=env.action_space.low,
+            action_high=env.action_space.high,
+            ppo_config=ppo_config,
+            recurrent_config=recurrent_config,
+            device=resolved,
         )
     elif optimizer == "bgd":
-        agent = (
-            BGDRecurrentPPOAgent(
-                1,
-                1,
-                action_low=env.action_space.low,
-                action_high=env.action_space.high,
-                ppo_config=ppo_config,
-                recurrent_config=recurrent_config,
-                bgd_config=BGDPPOConfig(
-                    bayesianization="actor_and_value",
-                    posterior_std=0.1,
-                    evidence_mode="first_epoch_only",
-                    actor_bgd=BGDConfig(
-                        eta=0.1,
-                        mc_samples=2,
-                        antithetic=True,
-                    ),
-                    value_bgd=BGDConfig(
-                        eta=0.1,
-                        mc_samples=2,
-                        antithetic=True,
-                    ),
+        agent = BGDRecurrentPPOAgent(
+            1,
+            1,
+            action_low=env.action_space.low,
+            action_high=env.action_space.high,
+            ppo_config=ppo_config,
+            recurrent_config=recurrent_config,
+            bgd_config=BGDPPOConfig(
+                bayesianization="actor_and_value",
+                posterior_std=0.1,
+                evidence_mode="first_epoch_only",
+                actor_bgd=BGDConfig(
+                    eta=0.1,
+                    mc_samples=2,
+                    antithetic=True,
                 ),
-                device=resolved,
-            )
+                value_bgd=BGDConfig(
+                    eta=0.1,
+                    mc_samples=2,
+                    antithetic=True,
+                ),
+            ),
+            device=resolved,
         )
     else:
-        raise ValueError(
-            f"unsupported optimizer family: {optimizer}"
-        )
+        raise ValueError(f"unsupported optimizer family: {optimizer}")
 
     summary = train_recurrent_ppo(
         env,
@@ -164,22 +152,14 @@ def run_recurrent_ppo_recurring_lqr(
         "optimizer": optimizer,
         "steps": steps,
         "environment_steps": env.environment_step,
-        "final_evaluation_context": (
-            env.evaluation_context
-        ),
+        "final_evaluation_context": (env.evaluation_context),
         "training": summary,
         "information_access": {
             "receives_task_id": False,
             "receives_task_boundary": False,
             "receives_context": False,
             "hidden_state_resets_only_on_episode_end": (
-                summary[
-                    "recurrent_reset_count"
-                ]
-                == summary[
-                    "episodes"
-                ]
-                + 1
+                summary["recurrent_reset_count"] == summary["episodes"] + 1
             ),
         },
     }
