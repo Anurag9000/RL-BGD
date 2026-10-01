@@ -236,6 +236,7 @@ class BGDUpdater:
             diagnostics=posterior_diagnostics(
                 self.posterior.stds,
                 eta=self.config.eta,
+                evidence_temperature=applied_evidence_temperature,
             ),
             gradient_norm=gradient_norm,
             uncertainty_gradient_norm=uncertainty_gradient_norm,
