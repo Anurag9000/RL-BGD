@@ -14,6 +14,7 @@ from rl_bgd.replay.buffer import ReplayBuffer
 
 UpdateObserver = Callable[[int, dict[str, float]], None]
 EpisodeObserver = Callable[[int, float], None]
+PostStepObserver = Callable[[int, SACAgent], None]
 
 
 class ContinuousEnv(Protocol):
@@ -55,6 +56,7 @@ def train_sac(
     config: SACTrainConfig,
     update_observer: UpdateObserver | None = None,
     episode_observer: EpisodeObserver | None = None,
+    post_step_observer: PostStepObserver | None = None,
 ) -> dict[str, object]:
     if (
         config.total_steps < 1
@@ -125,6 +127,12 @@ def train_sac(
                         step,
                         dict(last_metrics),
                     )
+
+        if post_step_observer is not None:
+            post_step_observer(
+                step + 1,
+                agent,
+            )
 
     return {
         "steps": config.total_steps,
