@@ -253,3 +253,48 @@ def test_summary_run_id_mismatch_is_detected(
         match="run_id mismatch",
     ):
         load_run_directory(tmp_path)
+
+
+def test_matrix_rows_preserve_stage_and_task_identity() -> None:
+    rows = metrics_rows_from_result(
+        {
+            "task_names": [
+                "a",
+                "b",
+            ],
+            "return_stage_labels": [
+                "after_a",
+                "after_b",
+            ],
+            "return_matrix": [
+                [
+                    1.0,
+                    2.0,
+                ],
+                [
+                    3.0,
+                    4.0,
+                ],
+            ],
+        }
+    )
+    matrix_rows = [
+        row
+        for row in rows
+        if row[
+            "series"
+        ]
+        == "return_matrix"
+    ]
+    assert len(
+        matrix_rows
+    ) == 4
+    assert matrix_rows[-1] == {
+        "series": "return_matrix",
+        "row_index": 3,
+        "stage_index": 1,
+        "task_index": 1,
+        "stage_label": "after_b",
+        "task_name": "b",
+        "value": 4.0,
+    }
