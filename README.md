@@ -30,7 +30,7 @@ python -m pip install -e ".[dev]"
 pytest
 python scripts/smoke_test.py
 python scripts/run_paper_suite.py smoke --output-root artifacts/suites
-python scripts/build_paper_artifacts.py --run-root artifacts/suites --output-dir artifacts/paper
+python scripts/build_paper_artifacts.py --results-root artifacts/suites --output-dir artifacts/paper
 ```
 
 The smoke test runs a small quadratic BGD optimization and prints posterior diagnostics; it does not require MuJoCo or external benchmark downloads.
