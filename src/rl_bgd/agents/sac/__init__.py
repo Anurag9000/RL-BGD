@@ -12,6 +12,10 @@ from rl_bgd.agents.sac.recurrent_train import (
     evaluate_recurrent_sac,
     train_recurrent_sac,
 )
+from rl_bgd.agents.sac.regularized_agent import (
+    RegularizedSACAgent,
+    RegularizedSACConfig,
+)
 from rl_bgd.agents.sac.task_aware_agent import TaskAwareSACAgent
 from rl_bgd.agents.sac.task_aware_train import (
     CanonicalSACTrainConfig,
@@ -26,6 +30,8 @@ __all__ = [
     "RecurrentSACAgent",
     "RecurrentSACConfig",
     "RecurrentSACTrainConfig",
+    "RegularizedSACAgent",
+    "RegularizedSACConfig",
     "SACAgent",
     "SACConfig",
     "TaskAwareSACAgent",
