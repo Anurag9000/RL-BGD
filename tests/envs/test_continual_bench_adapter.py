@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
@@ -9,6 +11,9 @@ import torch
 from rl_bgd.envs.continual_bench import (
     ContinualBenchStreamConfig,
     ContinualBenchStreamEnv,
+)
+from rl_bgd.envs.continual_bench.stream import (
+    _repair_missing_metaworld_assets,
 )
 
 
@@ -186,3 +191,28 @@ def test_success_switch_supports_five_value_api() -> None:
     assert info == {}
     assert env.evaluation_context["task_name"] == "door"
     assert observation[0].item() == pytest.approx(1.0)
+
+
+
+def test_missing_visual_assets_are_repaired_from_metaworld(
+    tmp_path: Path,
+) -> None:
+    continual_package = tmp_path / "continual_bench" / "envs"
+    metaworld_package = tmp_path / "metaworld"
+    destination = continual_package / "assets" / "textures"
+    source = metaworld_package / "assets" / "textures"
+    destination.mkdir(parents=True)
+    source.mkdir(parents=True)
+    for filename in ("wood2.png", "floor2.png", "metal.png"):
+        (source / filename).write_bytes(filename.encode("utf-8"))
+    (destination / "wood2.png").write_bytes(b"existing")
+
+    repaired = _repair_missing_metaworld_assets(
+        SimpleNamespace(__file__=str(continual_package / "__init__.py")),
+        SimpleNamespace(__file__=str(metaworld_package / "__init__.py")),
+    )
+
+    assert repaired == ("floor2.png", "metal.png")
+    assert (destination / "wood2.png").read_bytes() == b"existing"
+    assert (destination / "floor2.png").read_bytes() == b"floor2.png"
+    assert (destination / "metal.png").read_bytes() == b"metal.png"

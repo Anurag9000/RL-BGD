@@ -29,6 +29,7 @@ carl = ["carl-bench==1.1.1"]
 continual-world = ["gymnasium>=1.0", "mujoco>=3.2", "metaworld>=3.0"]
 continual-bench = [
   "continual-bench @ git+https://github.com/sail-sg/ContinualBench.git@a4fdb3b94a07a40d76e28d3aeab0f8ca97519dad",
+  "metaworld>=3.0",
   "gym==0.26.2",
   "mujoco>=3.2,<4",
   "dm-tree>=0.1.8",

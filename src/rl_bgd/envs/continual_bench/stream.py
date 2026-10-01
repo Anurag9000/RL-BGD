@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from importlib import import_module
+from pathlib import Path
+from shutil import copy2
 from typing import Any, Literal
 
 import numpy as np
@@ -30,6 +32,80 @@ SwitchMode = Literal[
 
 class ContinualBenchImportError(ImportError):
     """Raised when the optional ContinualBench dependency is unavailable."""
+
+
+_REQUIRED_METAWORLD_TEXTURES: tuple[str, ...] = (
+    "wood2.png",
+    "floor2.png",
+    "metal.png",
+)
+
+
+def _repair_missing_metaworld_assets(
+    continual_bench_envs: Any,
+    metaworld_module: Any,
+) -> tuple[str, ...]:
+    """Restore source-missing visual assets from canonical Meta-World.
+
+    The pinned ContinualBench source references three Meta-World textures but
+    does not contain them. Copy only absent files with the same canonical
+    filenames from the installed Farama Meta-World package. This changes no
+    XML, dynamics, rewards, task state, or observation semantics.
+    """
+
+    continual_file = getattr(
+        continual_bench_envs,
+        "__file__",
+        None,
+    )
+    metaworld_file = getattr(
+        metaworld_module,
+        "__file__",
+        None,
+    )
+    if continual_file is None or metaworld_file is None:
+        raise ContinualBenchImportError(
+            "cannot locate installed benchmark packages for asset repair"
+        )
+    destination = (
+        Path(continual_file)
+        .resolve()
+        .parent
+        / "assets"
+        / "textures"
+    )
+    source = (
+        Path(metaworld_file)
+        .resolve()
+        .parent
+        / "assets"
+        / "textures"
+    )
+    destination.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    repaired: list[str] = []
+    for filename in _REQUIRED_METAWORLD_TEXTURES:
+        target = destination / filename
+        if target.exists():
+            continue
+        canonical = source / filename
+        if not canonical.is_file():
+            raise ContinualBenchImportError(
+                "ContinualBench is missing a required Meta-World asset and "
+                f"the canonical source is unavailable: {filename}"
+            )
+        copy2(
+            canonical,
+            target,
+        )
+        repaired.append(
+            filename
+        )
+    return tuple(
+        repaired
+    )
 
 
 @dataclass(frozen=True)
@@ -305,10 +381,15 @@ def make_continual_bench_stream(
 
     try:
         envs = import_module("continual_bench.envs")
+        metaworld = import_module("metaworld")
     except ImportError as exc:
         raise ContinualBenchImportError(
             "ContinualBench is optional. Install the 'continual-bench' extra."
         ) from exc
+    _repair_missing_metaworld_assets(
+        envs,
+        metaworld,
+    )
     env_class = getattr(envs, "ContinualBenchEnv", None)
     if env_class is None:
         raise ContinualBenchImportError(
