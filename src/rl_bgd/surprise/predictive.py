@@ -70,9 +70,7 @@ class GaussianTransitionModel(nn.Module):
             self.output_dim,
             hidden_dims=hidden_dims,
         )
-        self.log_std = nn.Parameter(
-            torch.zeros(self.output_dim, dtype=torch.float32)
-        )
+        self.log_std = nn.Parameter(torch.zeros(self.output_dim, dtype=torch.float32))
 
     def forward(
         self,
@@ -108,9 +106,7 @@ class GaussianTransitionModel(nn.Module):
             raise ValueError("predictive-model target shape mismatch")
         inv_variance = torch.exp(-2.0 * log_std)
         elementwise = (
-            0.5 * (target - mean).square() * inv_variance
-            + log_std
-            + 0.5 * math.log(2.0 * math.pi)
+            0.5 * (target - mean).square() * inv_variance + log_std + 0.5 * math.log(2.0 * math.pi)
         )
         nll = elementwise.sum(dim=-1, keepdim=True)
         if not torch.isfinite(nll).all():
