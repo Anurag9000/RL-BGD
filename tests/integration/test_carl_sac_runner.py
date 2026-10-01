@@ -21,6 +21,4 @@ def test_live_carl_sac_runner_is_strict_task_agnostic() -> None:
     assert access["receives_task_boundary"] is False
     assert access["receives_context"] is False
     assert access["context_hidden_by_adapter"] is True
-    assert math.isfinite(
-        result["training"]["last_update_metrics"]["critic_loss"]
-    )
+    assert math.isfinite(result["training"]["last_update_metrics"]["critic_loss"])
