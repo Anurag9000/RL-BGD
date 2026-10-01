@@ -174,11 +174,13 @@ class RegularizedSACAgent(SACAgent):
                 def output_closure(
                     observation: Tensor = observation,
                 ) -> Tensor:
-                    distribution = self.actor.distribution(observation)
+                    mean, log_std = self.actor.distribution_parameters(
+                        observation
+                    )
                     return torch.cat(
                         [
-                            distribution.mean,
-                            distribution.scale.log(),
+                            mean,
+                            log_std,
                         ],
                         dim=-1,
                     )
