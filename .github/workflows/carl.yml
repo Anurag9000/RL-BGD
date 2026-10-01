@@ -19,4 +19,4 @@ jobs:
       - name: Install isolated CARL dependency set
         run: pip install -e ".[carl]"
       - name: Run live CARL adapter smoke
-        run: pytest tests/envs/test_carl_live.py -m benchmark -q
+        run: pytest tests/envs/test_carl_live.py tests/integration/test_carl_sac_runner.py -m benchmark -q
