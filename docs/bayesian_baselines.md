@@ -41,3 +41,39 @@ Primary implementations consulted:
 
 - https://github.com/chenzeno/FOO-VB
 - https://github.com/csm9493/UCL
+
+## UCL-PPO oracle-boundary baseline
+
+The original UCL reinforcement-learning code is explicitly task/boundary aware:
+the training driver iterates named tasks, passes task_num into the policy, and
+after every task calls update_old_actor_critic(). The saved previous-task
+posterior is then used by PPO-UCL's uncertainty-guided regularizer.
+
+RL-BGD therefore labels UCL-PPO as an oracle-boundary comparator. It does not
+place it in the strict task-agnostic column.
+
+The implementation preserves the source mechanism:
+
+- Gaussian Bayesian hidden layers;
+- Adam PPO optimization, not the BGD fixed-point optimizer;
+- a frozen previous-task posterior snapshot;
+- mean-change penalties scaled by saved uncertainty and previous-layer
+  uncertainty;
+- the saved-posterior L1 term after the first completed task;
+- variance-ratio and variance-normalization penalties controlled by beta;
+- deterministic action/value output heads, matching the original design where
+  UCL regularization excludes the policy distribution and critic output heads.
+
+The official RL source contains an internal mismatch: ppo_ucl.py references
+bias_mu and bias_rho while its checked-in BayesianLinear exposes a deterministic
+bias only. RL-BGD repairs that inconsistency by giving bias an explicit
+Gaussian posterior and testing its regularization/checkpoint behavior.
+
+Runnable command:
+
+    python scripts/run_ucl_ppo_lqr.py
+
+This baseline receives true phase boundaries solely to snapshot the previous
+posterior. It receives no task ID and uses no task-specific head in the RL-BGD
+synthetic runner, so it is stricter than the original task-indexed UCL policy,
+but it is still not task-agnostic because boundary access remains oracle.
