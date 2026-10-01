@@ -102,9 +102,7 @@ def run_carl_pendulum_sac(
             bgd_config=BGDSACConfig(
                 bayesianization="critic_only",
                 posterior_std=0.1,
-                replay_evidence=ReplayEvidenceConfig(
-                    mode="inverse_reuse_weight"
-                ),
+                replay_evidence=ReplayEvidenceConfig(mode="inverse_reuse_weight"),
                 adaptive_td_retention=(
                     AdaptiveTDRetentionConfig(
                         mapping=RetentionMappingConfig(
