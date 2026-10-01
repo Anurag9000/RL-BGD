@@ -181,8 +181,7 @@ def test_missing_visual_assets_are_repaired_from_metaworld(
     dependency_xml = destination_root / "objects" / "assets" / "buttonbox_dependencies.xml"
     dependency_xml.parent.mkdir(parents=True)
     dependency_xml.write_text(
-        '<mujocoinclude><asset><texture file="../textures/metal1.png"/>'
-        '</asset></mujocoinclude>',
+        '<mujocoinclude><asset><texture file="../textures/metal1.png"/></asset></mujocoinclude>',
         encoding="utf-8",
     )
 
