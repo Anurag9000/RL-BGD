@@ -98,10 +98,17 @@ def _repair_missing_metaworld_assets(
                 continue
 
             canonical = source_root / relative
+            if not canonical.is_file() and "textures" in relative.parts:
+                canonical = (
+                    source_root
+                    / "textures"
+                    / relative.name
+                )
             if not canonical.is_file():
                 raise ContinualBenchImportError(
-                    "ContinualBench references a missing asset and the same "
-                    f"canonical Meta-World path is unavailable: {relative.as_posix()}"
+                    "ContinualBench references a missing asset and no canonical "
+                    "Meta-World source is available for "
+                    f"{relative.as_posix()}"
                 )
 
             target.parent.mkdir(parents=True, exist_ok=True)
