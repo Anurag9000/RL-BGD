@@ -1,51 +1,48 @@
-# Automatic paper artifact pipeline
+# Paper artifact pipeline
 
-Phase 15 is generated from raw per-run directories; paper numbers are never
-manually transcribed.
+Phase 15 consumes only canonical completed run directories created by the
+Phase 14 suite launcher.
 
-A completed run contains:
-
-- `manifest.json`: run ID, method, setting, benchmark, seed, git commit,
-  task order, information-access assumptions, and scientific metadata;
-- `config.yaml`: the resolved invocation and source configuration;
-- `metrics.csv`: timeline rows or a scalar-result row;
-- `summary.json`: finite scalar metrics, per-task metrics, and resource
-  measurements.
-
-The Phase-14 suite launcher writes this schema automatically after each
-successful JSON-producing job. Process failures or artifact-conversion failures
-receive a failed manifest; the paper builder refuses to aggregate them by
-default, so failed seeds cannot disappear silently.
-
-Build all paper artifacts with:
+Run:
 
     python scripts/build_paper_artifacts.py \
-      --results-root results \
-      --output-dir artifacts/paper
+        --run-root artifacts/suites \
+        --output-dir artifacts/paper
 
-The builder performs seed-level percentile bootstrap confidence intervals,
-matched-seed paired method differences, and hierarchical seed-then-task
-bootstrap intervals for task-level measurements. It rejects duplicate run IDs,
-duplicate seeds inside one experiment/method/setting/benchmark group,
-information-access inconsistencies, and metrics missing from only a subset of
-matched seeds.
+## Canonical raw-run contract
 
-Generated tables include:
+Every completed run is authoritative only when its directory contains:
 
-- aggregate scalar statistics;
-- hierarchical task statistics;
-- paired method differences;
-- a human-facing results summary;
-- information-access assumptions;
-- a run/provenance index.
+- manifest.json;
+- config.yaml;
+- metrics.csv;
+- summary.json.
 
-Every table is exported as CSV, Markdown, and LaTeX. The generated
-`paper_manifest.json` records every source run path, git commit, source-file
-SHA-256 hash, statistical configuration, generated artifact, and skipped figure
-with its reason.
+The strict loader validates schema versions, run IDs, completion state, source
+files, and provenance hashes before a run can enter paper aggregation.
+stdout.json, stderr.log, and execution_metadata.json may also exist for
+debugging, but they are not scientific input to tables or figures.
 
-Figures are created only when their required raw metrics exist. Missing
-evidence produces an explicit skipped-figure entry rather than an invented
-value. Large CW10/CW20 paper runs remain not executed until raw run directories
-exist; the artifact pipeline does not convert runnable code into an empirical
-claim.
+## Automatic aggregation
+
+The pipeline:
+
+1. discovers canonical run directories;
+2. excludes explicitly failed/partial runs;
+3. fails closed if a completed run is corrupt or missing its declared primary
+   metric;
+4. records SHA-256 hashes for canonical raw artifacts;
+5. flattens scalar summary/resource/task metrics into all_runs.csv;
+6. groups seed replicates by suite, job, and declared primary metric;
+7. computes deterministic nonparametric bootstrap confidence intervals;
+8. writes CSV and Markdown paper tables;
+9. generates a primary-metric figure with confidence intervals;
+10. indexes and hashes every suite_manifest.json;
+11. writes artifact_report.json with the exact aggregation settings.
+
+No metric is manually transcribed into a table or figure, and no missing metric
+is silently replaced with a different statistic.
+
+The generic all-runs table retains every scalar summary metric plus task-level
+and resource metrics, so later paper-specific analyses can be regenerated from
+the same provenance-checked evidence.
