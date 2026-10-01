@@ -184,14 +184,26 @@ def make_predictive_agent() -> BGDSACAgent:
 def test_adaptive_predictive_retention_trains_world_model_after_scoring() -> None:
     torch.manual_seed(54)
     agent = make_predictive_agent()
-    first = agent.update(make_batch())
+    batch = make_batch()
+    assert agent.predictive_model is not None
+    with torch.no_grad():
+        expected_pre_update_nll = float(
+            agent.predictive_model.negative_log_likelihood(
+                batch.observations,
+                batch.actions,
+                batch.next_observations,
+                batch.rewards,
+            ).mean().item()
+        )
+    first = agent.update(batch)
     shifted = make_batch()
     shifted.next_observations.add_(5.0)
     shifted.rewards.add_(3.0)
     second = agent.update(shifted)
     assert 0.35 <= first["retention_lambda"] <= 1.0
     assert 0.35 <= second["retention_lambda"] <= 1.0
-    assert first["predictive_model_loss"] >= 0.0
+    assert first["surprise_raw"] == pytest.approx(expected_pre_update_nll)
+    assert torch.isfinite(torch.tensor(first["predictive_model_loss"]))
     assert second["surprise_normalized"] >= 0.0
     assert agent.predictive_surprise is not None
     assert agent.predictive_surprise.normalizer.count == 2
