@@ -69,7 +69,7 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | PPO rollout checkpointing | COMPLETE | partial/update-ready behavior statistics + GAE round trip |
 | PPO + Adam/BGD overall | COMPLETE | stationary and recurring task-agnostic validation |
 | Recurrent PPO Adam | COMPLETE | GRU actor/value + sequence rollout + checkpoint + smoke test |
-| Recurrent BGD-PPO | PARTIAL | matched GRU architecture + posterior/update/checkpoint tests; learning acceptance pending |
+| Recurrent BGD-PPO | COMPLETE | matched GRU architecture + posterior/update/checkpoint tests + matched Adam/BGD stationary learning acceptance |
 | Recurrent sequence rollout semantics | COMPLETE | behavior hidden snapshots + episode masks + truncated-BPTT chunks |
 | Recurrent hidden-state task-leakage guard | COMPLETE | recurring LQR runner verifies resets only on episode end |
 | Recurrent SAC / sequence replay | COMPLETE | recurrent Adam SAC + burn-in/unroll sequence replay + hidden-state lifecycle + recurring LQR integration test |
