@@ -6,7 +6,7 @@ import json
 
 from rl_bgd.agents.ppo.agent import PPOConfig
 from rl_bgd.agents.ppo.bgd_agent import BGDPPOConfig
-from rl_bgd.agents.ppo.recurrent_agent import RecurrentPPOConfig
+from rl_bgd.agents.ppo.recurrent_agent import RecurrentPPOAgent, RecurrentPPOConfig
 from rl_bgd.agents.ppo.recurrent_bgd_agent import BGDRecurrentPPOAgent
 from rl_bgd.agents.ppo.recurrent_train import (
     RecurrentPPOTrainConfig,
@@ -29,9 +29,82 @@ from rl_bgd.utils.device import resolve_device
 from rl_bgd.utils.randomness import seed_everything
 
 
+def _recurrent_ppo_acceptance_env(
+    *,
+    device: object,
+) -> LinearQuadraticControlEnv:
+    return LinearQuadraticControlEnv(
+        horizon=40,
+        dynamics=1.0,
+        control_gain=0.5,
+        action_cost=0.02,
+        device=device,
+    )
+
+
+def run_recurrent_adam_ppo_lqr(
+    *,
+    steps: int = 2_000,
+    seed: int = 100,
+    device: str = "auto",
+) -> dict[str, object]:
+    """Matched recurrent-Adam control on the PPO acceptance environment."""
+
+    seed_everything(seed, deterministic=True)
+    resolved = resolve_device(device)
+    env = _recurrent_ppo_acceptance_env(device=resolved)
+    agent = RecurrentPPOAgent(
+        1,
+        1,
+        action_low=env.action_space.low,
+        action_high=env.action_space.high,
+        ppo_config=PPOConfig(
+            actor_lr=1e-3,
+            value_lr=1e-3,
+            update_epochs=4,
+            minibatch_size=64,
+        ),
+        recurrent_config=RecurrentPPOConfig(
+            recurrent_hidden_dim=24,
+            sequence_length=16,
+            encoder_hidden_dims=(24,),
+        ),
+        device=resolved,
+    )
+    pre_return = evaluate_recurrent_ppo(
+        env,
+        agent,
+        episodes=5,
+        seed=60_000,
+    )
+    training = train_recurrent_ppo(
+        env,
+        agent,
+        config=RecurrentPPOTrainConfig(
+            total_steps=steps,
+            rollout_steps=128,
+            seed=seed,
+        ),
+    )
+    post_return = evaluate_recurrent_ppo(
+        env,
+        agent,
+        episodes=5,
+        seed=60_000,
+    )
+    return {
+        "algorithm": "recurrent_adam_ppo",
+        "steps": steps,
+        "pre_return": pre_return,
+        "post_return": post_return,
+        "improvement": post_return - pre_return,
+        "training": training,
+    }
+
+
 def run_recurrent_bgd_ppo_lqr(
     *,
-    steps: int = 1_000,
+    steps: int = 2_000,
     seed: int = 101,
     device: str = "auto",
     bayesianization: str = "actor_only",
@@ -40,9 +113,8 @@ def run_recurrent_bgd_ppo_lqr(
 
     seed_everything(seed, deterministic=True)
     resolved = resolve_device(device)
-    env = LinearQuadraticControlEnv(
-        horizon=30,
-        device=resolved,
+    env = _recurrent_ppo_acceptance_env(
+        device=resolved
     )
     agent = BGDRecurrentPPOAgent(
         1,
@@ -191,7 +263,8 @@ def main() -> None:
     print(
         json.dumps(
             {
-                "ppo": run_recurrent_bgd_ppo_lqr(),
+                "adam_ppo": run_recurrent_adam_ppo_lqr(),
+                "bgd_ppo": run_recurrent_bgd_ppo_lqr(),
                 "sac": run_recurrent_bgd_sac_lqr(),
             },
             indent=2,
