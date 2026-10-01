@@ -95,8 +95,12 @@ def run_ucl_ppo_recurring_lqr(
                 }
             )
 
+    final_phase_return = float(
+        phase_summaries[-1]["final_10_mean_return"]
+    )
     return {
         "algorithm": "ucl_ppo",
+        "final_phase_return": final_phase_return,
         "protocol": "oracle_boundary",
         "steps": phase_steps * phases,
         "phase_steps": phase_steps,
