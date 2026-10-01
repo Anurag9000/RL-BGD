@@ -705,17 +705,10 @@ def execute_suite(
         )
         status = "success" if completed.returncode == 0 else "failed"
         artifact_error: str | None = None
-        git_commit = str(
-            manifest.get(
-                "git_commit"
-            )
-            or ""
-        )
+        git_commit = str(manifest.get("git_commit") or "")
         if completed.returncode == 0:
             try:
-                result = parse_runner_stdout(
-                    completed.stdout
-                )
+                result = parse_runner_stdout(completed.stdout)
                 record_completed_suite_run(
                     run_dir,
                     suite_name=suite_name,
@@ -736,10 +729,7 @@ def execute_suite(
                     suite_name=suite_name,
                     git_commit=git_commit,
                     job=job,
-                    failure_reason=(
-                        "artifact conversion failed: "
-                        f"{artifact_error}"
-                    ),
+                    failure_reason=(f"artifact conversion failed: {artifact_error}"),
                 )
         else:
             record_failed_suite_run(
@@ -747,10 +737,7 @@ def execute_suite(
                 suite_name=suite_name,
                 git_commit=git_commit,
                 job=job,
-                failure_reason=(
-                    "runner exited with return code "
-                    f"{completed.returncode}"
-                ),
+                failure_reason=(f"runner exited with return code {completed.returncode}"),
             )
 
         metadata = {
