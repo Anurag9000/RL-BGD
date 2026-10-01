@@ -6,9 +6,7 @@ from rl_bgd.agents.sac.recurrent_agent import (
     RecurrentSACAgent,
     RecurrentSACConfig,
 )
-from rl_bgd.agents.sac.recurrent_bgd_agent import (
-    BGDRecurrentSACAgent,
-)
+from rl_bgd.agents.sac.recurrent_bgd_agent import BGDRecurrentSACAgent
 from rl_bgd.agents.sac.recurrent_train import (
     RecurrentSACTrainConfig,
     evaluate_recurrent_sac,
