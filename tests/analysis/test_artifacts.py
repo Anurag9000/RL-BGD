@@ -114,7 +114,7 @@ def test_paper_artifact_pipeline_requires_no_manual_transcription(
             seed=10,
         ),
     )
-    assert report["schema_version"] == 2
+    assert report["schema_version"] == 3
     assert report["runs_aggregated"] == 3
     assert report["bootstrap_groups"] == 1
     assert report["manifests_indexed"] == 1
@@ -192,6 +192,6 @@ def test_failed_run_is_excluded_but_completed_missing_metric_fails(
             ),
         )
     except ValueError as exc:
-        assert "missing_score" in str(exc)
+        assert "refuses incomplete" in str(exc)
     else:
-        raise AssertionError("completed run with missing primary metric was silently accepted")
+        raise AssertionError("failed seed was silently removed from paper aggregation")
