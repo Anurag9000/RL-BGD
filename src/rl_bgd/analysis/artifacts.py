@@ -47,20 +47,14 @@ def _sha256(path: Path) -> str:
 def _read_manifest_status(path: Path) -> RunManifest:
     manifest_path = path / "manifest.json"
     try:
-        payload = json.loads(
-            manifest_path.read_text(encoding="utf-8")
-        )
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (
         OSError,
         json.JSONDecodeError,
     ) as exc:
-        raise ValueError(
-            f"cannot read canonical run manifest: {manifest_path}"
-        ) from exc
+        raise ValueError(f"cannot read canonical run manifest: {manifest_path}") from exc
     if not isinstance(payload, dict):
-        raise ValueError(
-            f"run manifest must contain an object: {manifest_path}"
-        )
+        raise ValueError(f"run manifest must contain an object: {manifest_path}")
     return RunManifest.from_dict(payload)
 
 
@@ -75,10 +69,7 @@ def _primary_value(
         return float(metrics[metric])
     if metric in resources:
         return float(resources[metric])
-    raise ValueError(
-        f"completed run {run_id!r} does not expose declared "
-        f"primary metric {metric!r}"
-    )
+    raise ValueError(f"completed run {run_id!r} does not expose declared primary metric {metric!r}")
 
 
 def discover_run_records(
@@ -102,9 +93,7 @@ def discover_run_records(
         metadata = manifest.metadata
         primary_metric = metadata.get("primary_metric")
         if not isinstance(primary_metric, str) or not primary_metric:
-            raise ValueError(
-                f"completed run {manifest.run_id!r} lacks primary_metric metadata"
-            )
+            raise ValueError(f"completed run {manifest.run_id!r} lacks primary_metric metadata")
         primary_value = _primary_value(
             run_id=manifest.run_id,
             metric=primary_metric,
@@ -115,17 +104,11 @@ def discover_run_records(
         job_id = metadata.get("job_id")
         hypothesis_id = metadata.get("hypothesis_id")
         if not isinstance(suite, str) or not suite:
-            raise ValueError(
-                f"completed run {manifest.run_id!r} lacks suite metadata"
-            )
+            raise ValueError(f"completed run {manifest.run_id!r} lacks suite metadata")
         if not isinstance(job_id, str) or not job_id:
-            raise ValueError(
-                f"completed run {manifest.run_id!r} lacks job_id metadata"
-            )
+            raise ValueError(f"completed run {manifest.run_id!r} lacks job_id metadata")
         if not isinstance(hypothesis_id, str) or not hypothesis_id:
-            raise ValueError(
-                f"completed run {manifest.run_id!r} lacks hypothesis metadata"
-            )
+            raise ValueError(f"completed run {manifest.run_id!r} lacks hypothesis metadata")
 
         record: dict[str, Any] = {
             "suite": suite,
@@ -140,9 +123,7 @@ def discover_run_records(
             "config_path": metadata.get("source_config_path"),
             "primary_metric": primary_metric,
             "primary_value": primary_value,
-            "duration_seconds": summary.resources.get(
-                "duration_seconds"
-            ),
+            "duration_seconds": summary.resources.get("duration_seconds"),
         }
         for key, value in summary.metrics.items():
             record[f"metric.{key}"] = float(value)
@@ -182,11 +163,7 @@ def bootstrap_mean_ci(
     return {
         "n": float(array.size),
         "mean": float(array.mean()),
-        "std": (
-            float(array.std(ddof=1))
-            if array.size > 1
-            else 0.0
-        ),
+        "std": (float(array.std(ddof=1)) if array.size > 1 else 0.0),
         "ci_low": lower,
         "ci_high": upper,
         "confidence": resolved.confidence,
@@ -209,14 +186,10 @@ def _bootstrap_table(
             str(record["job_id"]),
             str(record["primary_metric"]),
         )
-        groups.setdefault(key, []).append(
-            float(record["primary_value"])
-        )
+        groups.setdefault(key, []).append(float(record["primary_value"]))
 
     rows: list[dict[str, Any]] = []
-    for (suite, job_id, metric), values in sorted(
-        groups.items()
-    ):
+    for (suite, job_id, metric), values in sorted(groups.items()):
         stats = bootstrap_mean_ci(
             values,
             config=config,
@@ -269,14 +242,7 @@ def _write_markdown_table(
         + "|",
     ]
     for _, row in frame[columns].iterrows():
-        lines.append(
-            "| "
-            + " | ".join(
-                str(row[column])
-                for column in columns
-            )
-            + " |"
-        )
+        lines.append("| " + " | ".join(str(row[column]) for column in columns) + " |")
     path.write_text(
         "\n".join(lines) + "\n",
         encoding="utf-8",
@@ -295,19 +261,10 @@ def _plot_primary_metrics(
     )
     axis = figure.add_subplot(111)
     if not frame.empty:
-        labels = [
-            f"{row.suite}/{row.job_id}"
-            for row in frame.itertuples()
-        ]
+        labels = [f"{row.suite}/{row.job_id}" for row in frame.itertuples()]
         means = frame["mean"].to_numpy(dtype=float)
-        lower = (
-            means
-            - frame["ci_low"].to_numpy(dtype=float)
-        )
-        upper = (
-            frame["ci_high"].to_numpy(dtype=float)
-            - means
-        )
+        lower = means - frame["ci_low"].to_numpy(dtype=float)
+        upper = frame["ci_high"].to_numpy(dtype=float) - means
         positions = np.arange(len(labels))
         axis.bar(
             positions,
@@ -322,9 +279,7 @@ def _plot_primary_metrics(
             ha="right",
         )
     axis.set_ylabel("primary metric mean")
-    axis.set_title(
-        "Paper suite primary metrics with bootstrap intervals"
-    )
+    axis.set_title("Paper suite primary metrics with bootstrap intervals")
     figure.tight_layout()
     figure.savefig(path, dpi=180)
     plt.close(figure)
@@ -334,12 +289,8 @@ def _manifest_index(
     run_root: Path,
 ) -> list[dict[str, Any]]:
     manifests: list[dict[str, Any]] = []
-    for path in sorted(
-        run_root.rglob("suite_manifest.json")
-    ):
-        data = json.loads(
-            path.read_text(encoding="utf-8")
-        )
+    for path in sorted(run_root.rglob("suite_manifest.json")):
+        data = json.loads(path.read_text(encoding="utf-8"))
         manifests.append(
             {
                 "suite": data["suite"],
@@ -409,9 +360,7 @@ def build_paper_artifacts(
 
     report = {
         "schema_version": 2,
-        "run_schema": (
-            "manifest.json + config.yaml + metrics.csv + summary.json"
-        ),
+        "run_schema": ("manifest.json + config.yaml + metrics.csv + summary.json"),
         "run_root": str(root),
         "runs_aggregated": len(records),
         "bootstrap_groups": int(len(primary_frame)),
