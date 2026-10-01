@@ -81,5 +81,5 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | CORA metric/protocol compatibility | COMPLETE | canonical Atari/Procgen sequence metadata + isolated-forgetting/zero-shot-forward-transfer formulas + tests |
 | CORA legacy environment runtime | BLOCKED | upstream develop stack pins gym<=0.25.2/atari-py/setuptools versions incompatible with the modern base; keep isolated rather than downgrade primary runtime |
 | EWC/Online-EWC/SI/MAS | COMPLETE | actor/critic SAC wiring + fixed-update task-agnostic consolidation + oracle-boundary protocol + checkpoint/tests |
-| Mechanistic experiments | PARTIAL | curvature + movement + long-horizon + replay evidence + surprise timeline |
-| Paper tables/figures | NOT STARTED | phase 15 |
+| Mechanistic experiments | PARTIAL | Phase-13 curvature/movement/perturbation/freezing/uncertainty-quality artifact engine + replay/surprise mechanisms implemented; full external comparative runs pending |
+| Paper tables/figures | PARTIAL | automatic raw-run aggregation, provenance hashes, bootstrap tables/CI figures, and tests implemented; final artifacts await full benchmark runs |
