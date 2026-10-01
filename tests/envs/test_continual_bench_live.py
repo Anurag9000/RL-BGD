@@ -30,10 +30,7 @@ def test_live_continual_bench_two_task_hidden_stream() -> None:
         assert torch.isfinite(observation).all()
         assert info == {}
 
-        action = (
-            env.action_space.low
-            + env.action_space.high
-        ) / 2.0
+        action = (env.action_space.low + env.action_space.high) / 2.0
         for _ in range(3):
             (
                 observation,
@@ -44,9 +41,7 @@ def test_live_continual_bench_two_task_hidden_stream() -> None:
             ) = env.step(action)
             assert observation.ndim == 1
             assert torch.isfinite(observation).all()
-            assert torch.isfinite(
-                torch.tensor(reward)
-            )
+            assert torch.isfinite(torch.tensor(reward))
             assert isinstance(terminated, bool)
             assert isinstance(truncated, bool)
             assert info == {}

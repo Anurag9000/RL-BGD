@@ -37,10 +37,7 @@ def test_live_carl_pendulum_strict_hidden_context_stream() -> None:
         assert "context_id" not in info
         assert "context" not in info
 
-        action = (
-            env.action_space.low
-            + env.action_space.high
-        ) / 2.0
+        action = (env.action_space.low + env.action_space.high) / 2.0
         for _ in range(3):
             (
                 observation,

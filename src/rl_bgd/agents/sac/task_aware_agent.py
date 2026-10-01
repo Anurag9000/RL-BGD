@@ -85,8 +85,7 @@ class TaskAwareSACAgent:
             lr=self.config.actor_lr,
         )
         self.critic_optimizer = torch.optim.Adam(
-            list(self.critic1.parameters())
-            + list(self.critic2.parameters()),
+            list(self.critic1.parameters()) + list(self.critic2.parameters()),
             lr=self.config.critic_lr,
         )
         self.alpha_optimizer = torch.optim.Adam(
@@ -102,10 +101,7 @@ class TaskAwareSACAgent:
         return observation[..., -self.num_tasks :]
 
     def _log_alpha_for(self, observation: Tensor) -> Tensor:
-        return (
-            self._task_weights(observation)
-            * self.log_alpha
-        ).sum(dim=-1, keepdim=True)
+        return (self._task_weights(observation) * self.log_alpha).sum(dim=-1, keepdim=True)
 
     def _alpha_for(self, observation: Tensor) -> Tensor:
         if self.config.automatic_entropy_tuning:
@@ -152,9 +148,7 @@ class TaskAwareSACAgent:
         self,
         batch: ReplayBatch,
     ) -> Tensor:
-        next_action, next_log_prob, _ = self.actor.sample(
-            batch.next_observations
-        )
+        next_action, next_log_prob, _ = self.actor.sample(batch.next_observations)
         target_q = torch.minimum(
             self.target1(
                 batch.next_observations,
@@ -165,18 +159,8 @@ class TaskAwareSACAgent:
                 next_action,
             ),
         )
-        target_q -= (
-            self._alpha_for(
-                batch.next_observations
-            )
-            * next_log_prob
-        )
-        return (
-            batch.rewards
-            + self.config.gamma
-            * batch.bootstrap_mask
-            * target_q
-        )
+        target_q -= self._alpha_for(batch.next_observations) * next_log_prob
+        return batch.rewards + self.config.gamma * batch.bootstrap_mask * target_q
 
     def update(
         self,
@@ -191,22 +175,16 @@ class TaskAwareSACAgent:
             batch.observations,
             batch.actions,
         )
-        critic_loss = (
-            torch.nn.functional.mse_loss(q1, target)
-            + torch.nn.functional.mse_loss(q2, target)
+        critic_loss = torch.nn.functional.mse_loss(q1, target) + torch.nn.functional.mse_loss(
+            q2, target
         )
         self.critic_optimizer.zero_grad(set_to_none=True)
         critic_loss.backward()
-        critic_parameters = (
-            list(self.critic1.parameters())
-            + list(self.critic2.parameters())
-        )
+        critic_parameters = list(self.critic1.parameters()) + list(self.critic2.parameters())
         self._clip_gradients(critic_parameters)
         self.critic_optimizer.step()
 
-        sampled_action, log_prob, _ = self.actor.sample(
-            batch.observations
-        )
+        sampled_action, log_prob, _ = self.actor.sample(batch.observations)
         q_pi = torch.minimum(
             self.critic1(
                 batch.observations,
@@ -217,18 +195,10 @@ class TaskAwareSACAgent:
                 sampled_action,
             ),
         )
-        actor_loss = (
-            self._alpha_for(
-                batch.observations
-            ).detach()
-            * log_prob
-            - q_pi
-        ).mean()
+        actor_loss = (self._alpha_for(batch.observations).detach() * log_prob - q_pi).mean()
         self.actor_optimizer.zero_grad(set_to_none=True)
         actor_loss.backward()
-        self._clip_gradients(
-            list(self.actor.parameters())
-        )
+        self._clip_gradients(list(self.actor.parameters()))
         self.actor_optimizer.step()
 
         alpha_loss = torch.zeros(
@@ -237,13 +207,7 @@ class TaskAwareSACAgent:
         )
         if self.config.automatic_entropy_tuning:
             alpha_loss = -(
-                self._log_alpha_for(
-                    batch.observations
-                )
-                * (
-                    log_prob.detach()
-                    + self.target_entropy
-                )
+                self._log_alpha_for(batch.observations) * (log_prob.detach() + self.target_entropy)
             ).mean()
             self.alpha_optimizer.zero_grad(set_to_none=True)
             alpha_loss.backward()
@@ -252,40 +216,17 @@ class TaskAwareSACAgent:
         self._polyak_update()
         self.update_count += 1
         metrics = {
-            "critic_loss": float(
-                critic_loss.detach().item()
-            ),
-            "actor_loss": float(
-                actor_loss.detach().item()
-            ),
-            "alpha_loss": float(
-                alpha_loss.detach().item()
-            ),
-            "alpha": float(
-                self._alpha_for(
-                    batch.observations
-                ).detach().mean().item()
-            ),
-            "q1_mean": float(
-                q1.detach().mean().item()
-            ),
-            "q2_mean": float(
-                q2.detach().mean().item()
-            ),
-            "target_q_mean": float(
-                target.detach().mean().item()
-            ),
-            "policy_entropy_estimate": float(
-                (-log_prob.detach()).mean().item()
-            ),
+            "critic_loss": float(critic_loss.detach().item()),
+            "actor_loss": float(actor_loss.detach().item()),
+            "alpha_loss": float(alpha_loss.detach().item()),
+            "alpha": float(self._alpha_for(batch.observations).detach().mean().item()),
+            "q1_mean": float(q1.detach().mean().item()),
+            "q2_mean": float(q2.detach().mean().item()),
+            "target_q_mean": float(target.detach().mean().item()),
+            "policy_entropy_estimate": float((-log_prob.detach()).mean().item()),
         }
-        if not all(
-            torch.isfinite(torch.tensor(value))
-            for value in metrics.values()
-        ):
-            raise FloatingPointError(
-                "nonfinite task-aware SAC update metric"
-            )
+        if not all(torch.isfinite(torch.tensor(value)) for value in metrics.values()):
+            raise FloatingPointError("nonfinite task-aware SAC update metric")
         return metrics
 
     @torch.no_grad()
@@ -324,9 +265,7 @@ class TaskAwareSACAgent:
         state: dict[str, Any],
     ) -> None:
         if state.get("checkpoint_version") != 1:
-            raise ValueError(
-                "unsupported task-aware SAC checkpoint version"
-            )
+            raise ValueError("unsupported task-aware SAC checkpoint version")
         for name in (
             "actor",
             "critic1",
@@ -334,22 +273,10 @@ class TaskAwareSACAgent:
             "target1",
             "target2",
         ):
-            getattr(self, name).load_state_dict(
-                state[name]
-            )
-        self.actor_optimizer.load_state_dict(
-            state["actor_optimizer"]
-        )
-        self.critic_optimizer.load_state_dict(
-            state["critic_optimizer"]
-        )
-        self.log_alpha.data.copy_(
-            state["log_alpha"].to(self.device)
-        )
-        self.alpha_optimizer.load_state_dict(
-            state["alpha_optimizer"]
-        )
+            getattr(self, name).load_state_dict(state[name])
+        self.actor_optimizer.load_state_dict(state["actor_optimizer"])
+        self.critic_optimizer.load_state_dict(state["critic_optimizer"])
+        self.log_alpha.data.copy_(state["log_alpha"].to(self.device))
+        self.alpha_optimizer.load_state_dict(state["alpha_optimizer"])
         self.update_count = int(state["update_count"])
-        self.optimizer_reset_count = int(
-            state.get("optimizer_reset_count", 0)
-        )
+        self.optimizer_reset_count = int(state.get("optimizer_reset_count", 0))

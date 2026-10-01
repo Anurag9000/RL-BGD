@@ -12,24 +12,10 @@ def test_recurrent_bgd_sac_recurring_stream_is_finite() -> None:
         device="cpu",
         optimizer="bgd",
     )
-    metrics = result[
-        "training"
-    ][
-        "last_update_metrics"
-    ]
-    assert metrics[
-        "actor_sigma_mean"
-    ] > 0.0
-    assert metrics[
-        "critic1_sigma_mean"
-    ] > 0.0
-    assert torch.isfinite(
-        torch.tensor(
-            metrics[
-                "critic_loss"
-            ]
-        )
-    )
+    metrics = result["training"]["last_update_metrics"]
+    assert metrics["actor_sigma_mean"] > 0.0
+    assert metrics["critic1_sigma_mean"] > 0.0
+    assert torch.isfinite(torch.tensor(metrics["critic_loss"]))
 
 
 def test_recurrent_adaptive_bgd_sac_recurring_stream_emits_retention() -> None:

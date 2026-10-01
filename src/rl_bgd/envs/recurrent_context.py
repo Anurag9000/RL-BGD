@@ -144,9 +144,7 @@ class PreviousTransitionContextEnv:
         return (
             self._augment(
                 observation,
-                previous_action=torch.zeros_like(
-                    self.action_space.low
-                ),
+                previous_action=torch.zeros_like(self.action_space.low),
                 previous_reward=0.0,
                 previous_done=True,
             ),

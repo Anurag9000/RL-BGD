@@ -84,7 +84,7 @@ class CORATrace:
         cls,
         steps: Sequence[float],
         returns: Sequence[float],
-    ) -> "CORATrace":
+    ) -> CORATrace:
         x = np.asarray(steps, dtype=np.float64)
         y = np.asarray(returns, dtype=np.float64)
         if x.ndim != 1 or y.ndim != 1 or x.shape != y.shape or x.size == 0:
@@ -103,21 +103,11 @@ def _region(
 ) -> np.ndarray:
     """Match CORA's strict x>low and x<high region selection."""
 
-    lower = (
-        trace.steps > low
-        if low is not None
-        else np.ones(trace.steps.shape, dtype=bool)
-    )
-    upper = (
-        trace.steps < high
-        if high is not None
-        else np.ones(trace.steps.shape, dtype=bool)
-    )
+    lower = trace.steps > low if low is not None else np.ones(trace.steps.shape, dtype=bool)
+    upper = trace.steps < high if high is not None else np.ones(trace.steps.shape, dtype=bool)
     values = trace.returns[lower & upper]
     if values.size == 0:
-        raise ValueError(
-            f"CORA metric region ({low}, {high}) contains no evaluations"
-        )
+        raise ValueError(f"CORA metric region ({low}, {high}) contains no evaluations")
     return values
 
 
@@ -128,9 +118,7 @@ def cora_return_scale(traces: Sequence[CORATrace]) -> float:
         raise ValueError("at least one CORA trace is required")
     maximum = max(float(np.abs(trace.returns).max()) for trace in traces)
     if maximum == 0.0:
-        raise ZeroDivisionError(
-            "CORA normalization is undefined when all task returns are zero"
-        )
+        raise ZeroDivisionError("CORA normalization is undefined when all task returns are zero")
     return 1.0 / maximum
 
 
@@ -146,15 +134,11 @@ def cora_isolated_forgetting(
     """Reproduce CORA's isolated-forgetting computation."""
 
     if min(task_steps, num_tasks, num_cycles) < 1:
-        raise ValueError(
-            "CORA task_steps, num_tasks and num_cycles must be positive"
-        )
+        raise ValueError("CORA task_steps, num_tasks and num_cycles must be positive")
     if not 0 <= task_id < num_tasks:
         raise ValueError("CORA task_id is out of range")
     scale = cora_return_scale(traces) if return_scale is None else float(return_scale)
-    output: dict[int, dict[int, list[float]]] = {
-        index: {} for index in range(num_tasks)
-    }
+    output: dict[int, dict[int, list[float]]] = {index: {} for index in range(num_tasks)}
 
     for trace in traces:
         scaled = CORATrace(
@@ -178,9 +162,7 @@ def cora_isolated_forgetting(
                     (stage + 1) * task_steps,
                 )
                 forgetting = float(pre_stage[-1] - stage_values[-1])
-                output[subsequent_task_id].setdefault(cycle_id, []).append(
-                    forgetting
-                )
+                output[subsequent_task_id].setdefault(cycle_id, []).append(forgetting)
     return output
 
 
@@ -222,7 +204,5 @@ def cora_isolated_zero_shot_forward_transfer(
                         prior_task_id * task_steps,
                     )[-1]
                 )
-            output[prior_task_id].append(
-                float(stage_values[-1] - baseline)
-            )
+            output[prior_task_id].append(float(stage_values[-1] - baseline))
     return output

@@ -88,12 +88,7 @@ class FakeContinualBench:
     ) -> tuple[Any, ...]:
         assert action.shape == (1,)
         self.steps += 1
-        success = (
-            self.success_on_step
-            is not None
-            and self.steps
-            == self.success_on_step
-        )
+        success = self.success_on_step is not None and self.steps == self.success_on_step
         observation = np.asarray(
             [
                 float(self.all_tasks.index(self.task)),
@@ -101,21 +96,9 @@ class FakeContinualBench:
             ],
             dtype=np.float32,
         )
-        rewards = {
-            name: float(index + 1)
-            for index, name in enumerate(
-                self.all_tasks
-            )
-        }
+        rewards = {name: float(index + 1) for index, name in enumerate(self.all_tasks)}
         info = {
-            name: {
-                "success": (
-                    success
-                    if name == self.task
-                    else False
-                )
-            }
-            for name in self.all_tasks
+            name: {"success": (success if name == self.task else False)} for name in self.all_tasks
         }
         if self.five_value:
             return (
@@ -150,17 +133,13 @@ def test_fixed_step_switch_hides_task_and_selects_active_reward() -> None:
     assert observation.shape == (2,)
     assert info == {}
 
-    _, reward, terminated, truncated, info = env.step(
-        torch.tensor([0.0])
-    )
+    _, reward, terminated, truncated, info = env.step(torch.tensor([0.0]))
     assert reward == pytest.approx(1.0)
     assert not terminated
     assert not truncated
     assert info == {}
 
-    observation, reward, _, _, info = env.step(
-        torch.tensor([0.0])
-    )
+    observation, reward, _, _, info = env.step(torch.tensor([0.0]))
     assert reward == pytest.approx(1.0)
     assert info == {}
     assert env.evaluation_context["task_name"] == "door"
@@ -182,16 +161,13 @@ def test_success_switch_supports_five_value_api() -> None:
         ),
     )
     env.reset()
-    observation, reward, terminated, truncated, info = env.step(
-        torch.tensor([0.0])
-    )
+    observation, reward, terminated, truncated, info = env.step(torch.tensor([0.0]))
     assert reward == pytest.approx(1.0)
     assert not terminated
     assert not truncated
     assert info == {}
     assert env.evaluation_context["task_name"] == "door"
     assert observation[0].item() == pytest.approx(1.0)
-
 
 
 def test_missing_visual_assets_are_repaired_from_metaworld(

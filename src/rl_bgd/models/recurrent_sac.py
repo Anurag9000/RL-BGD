@@ -28,33 +28,20 @@ class RecurrentSACActor(nn.Module):
         log_std_max: float = 2.0,
     ) -> None:
         super().__init__()
-        if min(
-            observation_dim,
-            action_dim,
-            recurrent_hidden_dim,
-        ) < 1:
-            raise ValueError(
-                "recurrent SAC dimensions must be positive"
-            )
         if (
-            action_low.shape
-            != (action_dim,)
-            or action_high.shape
-            != (action_dim,)
-        ):
-            raise ValueError(
-                "action bounds must be vectors of action_dim"
+            min(
+                observation_dim,
+                action_dim,
+                recurrent_hidden_dim,
             )
-        if not torch.all(
-            action_high
-            > action_low
+            < 1
         ):
-            raise ValueError(
-                "action_high must exceed action_low elementwise"
-            )
-        self.recurrent_hidden_dim = (
-            recurrent_hidden_dim
-        )
+            raise ValueError("recurrent SAC dimensions must be positive")
+        if action_low.shape != (action_dim,) or action_high.shape != (action_dim,):
+            raise ValueError("action bounds must be vectors of action_dim")
+        if not torch.all(action_high > action_low):
+            raise ValueError("action_high must exceed action_low elementwise")
+        self.recurrent_hidden_dim = recurrent_hidden_dim
         self.encoder = MLP(
             observation_dim,
             recurrent_hidden_dim,
@@ -76,23 +63,11 @@ class RecurrentSACActor(nn.Module):
         self.log_std_max = log_std_max
         self.register_buffer(
             "action_scale",
-            (
-                (
-                    action_high
-                    - action_low
-                )
-                / 2.0
-            ).float(),
+            ((action_high - action_low) / 2.0).float(),
         )
         self.register_buffer(
             "action_bias",
-            (
-                (
-                    action_high
-                    + action_low
-                )
-                / 2.0
-            ).float(),
+            ((action_high + action_low) / 2.0).float(),
         )
 
     def initial_state(
@@ -100,9 +75,7 @@ class RecurrentSACActor(nn.Module):
         batch_size: int = 1,
     ) -> Tensor:
         if batch_size < 1:
-            raise ValueError(
-                "batch_size must be positive"
-            )
+            raise ValueError("batch_size must be positive")
         return torch.zeros(
             batch_size,
             self.recurrent_hidden_dim,
@@ -116,9 +89,7 @@ class RecurrentSACActor(nn.Module):
         hidden: Tensor,
     ) -> Tensor:
         return self.recurrent(
-            self.encoder(
-                observation
-            ),
+            self.encoder(observation),
             hidden,
         )
 
@@ -126,17 +97,10 @@ class RecurrentSACActor(nn.Module):
         self,
         hidden: Tensor,
     ) -> Normal:
-        mean = self.mean_head(
-            hidden
-        )
-        log_std = (
-            self.log_std_head(
-                hidden
-            )
-            .clamp(
-                self.log_std_min,
-                self.log_std_max,
-            )
+        mean = self.mean_head(hidden)
+        log_std = self.log_std_head(hidden).clamp(
+            self.log_std_min,
+            self.log_std_max,
         )
         return Normal(
             mean,
@@ -151,34 +115,16 @@ class RecurrentSACActor(nn.Module):
         Tensor,
         Tensor,
     ]:
-        squashed = torch.tanh(
-            pre_tanh
-        )
-        action = (
-            squashed
-            * self.action_scale
-            + self.action_bias
-        )
+        squashed = torch.tanh(pre_tanh)
+        action = squashed * self.action_scale + self.action_bias
         correction = 2.0 * (
-            math.log(2.0)
-            - pre_tanh
-            - torch.nn.functional.softplus(
-                -2.0
-                * pre_tanh
-            )
+            math.log(2.0) - pre_tanh - torch.nn.functional.softplus(-2.0 * pre_tanh)
         )
-        log_prob = (
-            normal.log_prob(
-                pre_tanh
-            )
-            - correction
-        ).sum(
+        log_prob = (normal.log_prob(pre_tanh) - correction).sum(
             dim=-1,
             keepdim=True,
         )
-        log_prob -= torch.log(
-            self.action_scale
-        ).sum()
+        log_prob -= torch.log(self.action_scale).sum()
         return (
             action,
             log_prob,
@@ -194,17 +140,11 @@ class RecurrentSACActor(nn.Module):
         Tensor,
         Tensor,
     ]:
-        next_hidden = (
-            self.step_hidden(
-                observation,
-                hidden,
-            )
+        next_hidden = self.step_hidden(
+            observation,
+            hidden,
         )
-        normal = (
-            self._distribution(
-                next_hidden
-            )
-        )
+        normal = self._distribution(next_hidden)
         pre_tanh = normal.rsample()
         (
             action,
@@ -213,13 +153,7 @@ class RecurrentSACActor(nn.Module):
             normal,
             pre_tanh,
         )
-        deterministic = (
-            torch.tanh(
-                normal.mean
-            )
-            * self.action_scale
-            + self.action_bias
-        )
+        deterministic = torch.tanh(normal.mean) * self.action_scale + self.action_bias
         return (
             action,
             log_prob,
@@ -235,24 +169,12 @@ class RecurrentSACActor(nn.Module):
         Tensor,
         Tensor,
     ]:
-        next_hidden = (
-            self.step_hidden(
-                observation,
-                hidden,
-            )
+        next_hidden = self.step_hidden(
+            observation,
+            hidden,
         )
-        normal = (
-            self._distribution(
-                next_hidden
-            )
-        )
-        action = (
-            torch.tanh(
-                normal.mean
-            )
-            * self.action_scale
-            + self.action_bias
-        )
+        normal = self._distribution(next_hidden)
+        action = torch.tanh(normal.mean) * self.action_scale + self.action_bias
         return (
             action,
             next_hidden,
@@ -268,63 +190,39 @@ class RecurrentSACActor(nn.Module):
         Tensor,
     ]:
         if observations.ndim != 3:
-            raise ValueError(
-                "observations must have shape [batch, time, features]"
-            )
+            raise ValueError("observations must have shape [batch, time, features]")
         if episode_starts.shape != (
             observations.shape[0],
             observations.shape[1],
             1,
         ):
-            raise ValueError(
-                "episode_starts must have shape [batch, time, 1]"
-            )
-        batch_size = observations.shape[
-            0
-        ]
+            raise ValueError("episode_starts must have shape [batch, time, 1]")
+        batch_size = observations.shape[0]
         hidden = (
-            self.initial_state(
-                batch_size
-            )
-            if initial_hidden
-            is None
+            self.initial_state(batch_size)
+            if initial_hidden is None
             else initial_hidden.reshape(
                 batch_size,
                 self.recurrent_hidden_dim,
             )
         )
-        outputs: list[
-            Tensor
-        ] = []
-        for index in range(
-            observations.shape[
-                1
-            ]
-        ):
+        outputs: list[Tensor] = []
+        for index in range(observations.shape[1]):
             keep = (
                 ~episode_starts[
                     :,
                     index,
                 ]
-            ).to(
-                hidden.dtype
+            ).to(hidden.dtype)
+            hidden = hidden * keep
+            hidden = self.step_hidden(
+                observations[
+                    :,
+                    index,
+                ],
+                hidden,
             )
-            hidden = (
-                hidden
-                * keep
-            )
-            hidden = (
-                self.step_hidden(
-                    observations[
-                        :,
-                        index,
-                    ],
-                    hidden,
-                )
-            )
-            outputs.append(
-                hidden
-            )
+            outputs.append(hidden)
         return (
             torch.stack(
                 outputs,
@@ -353,9 +251,7 @@ class RecurrentSACActor(nn.Module):
             episode_starts,
             initial_hidden,
         )
-        normal = self._distribution(
-            hidden_sequence
-        )
+        normal = self._distribution(hidden_sequence)
         pre_tanh = normal.rsample()
         (
             action,
@@ -364,13 +260,7 @@ class RecurrentSACActor(nn.Module):
             normal,
             pre_tanh,
         )
-        deterministic = (
-            torch.tanh(
-                normal.mean
-            )
-            * self.action_scale
-            + self.action_bias
-        )
+        deterministic = torch.tanh(normal.mean) * self.action_scale + self.action_bias
         return (
             action,
             log_prob,
@@ -389,44 +279,24 @@ class RecurrentSACActor(nn.Module):
         Tensor,
         Tensor,
     ]:
-        if (
-            next_observations.shape[
-                :2
-            ]
-            != current_hidden.shape[
-                :2
-            ]
-        ):
-            raise ValueError(
-                "next observations/current hidden batch-time shapes differ"
-            )
-        batch_size, time_steps = (
-            next_observations.shape[
-                :2
-            ]
-        )
-        next_hidden = (
-            self.step_hidden(
-                next_observations.reshape(
-                    batch_size
-                    * time_steps,
-                    -1,
-                ),
-                current_hidden.reshape(
-                    batch_size
-                    * time_steps,
-                    -1,
-                ),
-            )
-            .reshape(
-                batch_size,
-                time_steps,
+        if next_observations.shape[:2] != current_hidden.shape[:2]:
+            raise ValueError("next observations/current hidden batch-time shapes differ")
+        batch_size, time_steps = next_observations.shape[:2]
+        next_hidden = self.step_hidden(
+            next_observations.reshape(
+                batch_size * time_steps,
                 -1,
-            )
+            ),
+            current_hidden.reshape(
+                batch_size * time_steps,
+                -1,
+            ),
+        ).reshape(
+            batch_size,
+            time_steps,
+            -1,
         )
-        normal = self._distribution(
-            next_hidden
-        )
+        normal = self._distribution(next_hidden)
         pre_tanh = normal.rsample()
         (
             action,
@@ -435,13 +305,7 @@ class RecurrentSACActor(nn.Module):
             normal,
             pre_tanh,
         )
-        deterministic = (
-            torch.tanh(
-                normal.mean
-            )
-            * self.action_scale
-            + self.action_bias
-        )
+        deterministic = torch.tanh(normal.mean) * self.action_scale + self.action_bias
         return (
             action,
             log_prob,
@@ -486,17 +350,16 @@ class RecurrentQNetwork(nn.Module):
         ),
     ) -> None:
         super().__init__()
-        if min(
-            observation_dim,
-            action_dim,
-            recurrent_hidden_dim,
-        ) < 1:
-            raise ValueError(
-                "recurrent critic dimensions must be positive"
+        if (
+            min(
+                observation_dim,
+                action_dim,
+                recurrent_hidden_dim,
             )
-        self.recurrent_hidden_dim = (
-            recurrent_hidden_dim
-        )
+            < 1
+        ):
+            raise ValueError("recurrent critic dimensions must be positive")
+        self.recurrent_hidden_dim = recurrent_hidden_dim
         self.encoder = MLP(
             observation_dim,
             recurrent_hidden_dim,
@@ -507,8 +370,7 @@ class RecurrentQNetwork(nn.Module):
             recurrent_hidden_dim,
         )
         self.q_head = MLP(
-            recurrent_hidden_dim
-            + action_dim,
+            recurrent_hidden_dim + action_dim,
             1,
             hidden_dims=q_hidden_dims,
         )
@@ -518,12 +380,8 @@ class RecurrentQNetwork(nn.Module):
         batch_size: int,
     ) -> Tensor:
         if batch_size < 1:
-            raise ValueError(
-                "batch_size must be positive"
-            )
-        parameter = next(
-            self.parameters()
-        )
+            raise ValueError("batch_size must be positive")
+        parameter = next(self.parameters())
         return torch.zeros(
             batch_size,
             self.recurrent_hidden_dim,
@@ -537,9 +395,7 @@ class RecurrentQNetwork(nn.Module):
         hidden: Tensor,
     ) -> Tensor:
         return self.recurrent(
-            self.encoder(
-                observation
-            ),
+            self.encoder(observation),
             hidden,
         )
 
@@ -553,62 +409,38 @@ class RecurrentQNetwork(nn.Module):
         Tensor,
     ]:
         if observations.ndim != 3:
-            raise ValueError(
-                "critic observations must have shape [batch, time, features]"
-            )
+            raise ValueError("critic observations must have shape [batch, time, features]")
         if episode_starts.shape != (
             observations.shape[0],
             observations.shape[1],
             1,
         ):
-            raise ValueError(
-                "critic episode_starts shape mismatch"
-            )
-        batch_size = observations.shape[
-            0
-        ]
+            raise ValueError("critic episode_starts shape mismatch")
+        batch_size = observations.shape[0]
         hidden = (
-            self.initial_state(
-                batch_size
-            )
-            if initial_hidden
-            is None
+            self.initial_state(batch_size)
+            if initial_hidden is None
             else initial_hidden.reshape(
                 batch_size,
                 self.recurrent_hidden_dim,
             )
         )
-        outputs: list[
-            Tensor
-        ] = []
-        for index in range(
-            observations.shape[
-                1
-            ]
-        ):
-            hidden = (
-                hidden
-                * (
-                    ~episode_starts[
-                        :,
-                        index,
-                    ]
-                ).to(
-                    hidden.dtype
-                )
+        outputs: list[Tensor] = []
+        for index in range(observations.shape[1]):
+            hidden = hidden * (
+                ~episode_starts[
+                    :,
+                    index,
+                ]
+            ).to(hidden.dtype)
+            hidden = self.step_hidden(
+                observations[
+                    :,
+                    index,
+                ],
+                hidden,
             )
-            hidden = (
-                self.step_hidden(
-                    observations[
-                        :,
-                        index,
-                    ],
-                    hidden,
-                )
-            )
-            outputs.append(
-                hidden
-            )
+            outputs.append(hidden)
         return (
             torch.stack(
                 outputs,
@@ -622,17 +454,8 @@ class RecurrentQNetwork(nn.Module):
         hidden: Tensor,
         actions: Tensor,
     ) -> Tensor:
-        if (
-            hidden.shape[
-                :2
-            ]
-            != actions.shape[
-                :2
-            ]
-        ):
-            raise ValueError(
-                "critic hidden/action batch-time shapes differ"
-            )
+        if hidden.shape[:2] != actions.shape[:2]:
+            raise ValueError("critic hidden/action batch-time shapes differ")
         return self.q_head(
             torch.cat(
                 [
@@ -652,40 +475,22 @@ class RecurrentQNetwork(nn.Module):
         Tensor,
         Tensor,
     ]:
-        if (
-            next_observations.shape[
-                :2
-            ]
-            != current_hidden.shape[
-                :2
-            ]
-        ):
-            raise ValueError(
-                "next observation/current hidden batch-time shapes differ"
-            )
-        batch_size, time_steps = (
-            next_observations.shape[
-                :2
-            ]
-        )
-        next_hidden = (
-            self.step_hidden(
-                next_observations.reshape(
-                    batch_size
-                    * time_steps,
-                    -1,
-                ),
-                current_hidden.reshape(
-                    batch_size
-                    * time_steps,
-                    -1,
-                ),
-            )
-            .reshape(
-                batch_size,
-                time_steps,
+        if next_observations.shape[:2] != current_hidden.shape[:2]:
+            raise ValueError("next observation/current hidden batch-time shapes differ")
+        batch_size, time_steps = next_observations.shape[:2]
+        next_hidden = self.step_hidden(
+            next_observations.reshape(
+                batch_size * time_steps,
                 -1,
-            )
+            ),
+            current_hidden.reshape(
+                batch_size * time_steps,
+                -1,
+            ),
+        ).reshape(
+            batch_size,
+            time_steps,
+            -1,
         )
         return (
             self.q_from_hidden(
@@ -702,12 +507,10 @@ class RecurrentQNetwork(nn.Module):
         episode_starts: Tensor,
         initial_hidden: Tensor | None = None,
     ) -> Tensor:
-        hidden, _ = (
-            self.hidden_sequence(
-                observations,
-                episode_starts,
-                initial_hidden,
-            )
+        hidden, _ = self.hidden_sequence(
+            observations,
+            episode_starts,
+            initial_hidden,
         )
         return self.q_from_hidden(
             hidden,

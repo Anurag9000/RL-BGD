@@ -113,9 +113,7 @@ def run_recurrent_bgd_ppo_lqr(
 
     seed_everything(seed, deterministic=True)
     resolved = resolve_device(device)
-    env = _recurrent_ppo_acceptance_env(
-        device=resolved
-    )
+    env = _recurrent_ppo_acceptance_env(device=resolved)
     agent = BGDRecurrentPPOAgent(
         1,
         1,
@@ -213,9 +211,7 @@ def run_recurrent_bgd_sac_lqr(
         bgd_config=BGDSACConfig(
             bayesianization="critic_only",
             posterior_std=0.1,
-            replay_evidence=ReplayEvidenceConfig(
-                mode="inverse_reuse_weight"
-            ),
+            replay_evidence=ReplayEvidenceConfig(mode="inverse_reuse_weight"),
             critic_bgd=BGDConfig(
                 eta=0.1,
                 mc_samples=2,

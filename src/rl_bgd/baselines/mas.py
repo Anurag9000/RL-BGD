@@ -24,12 +24,8 @@ class MASRegularizer:
         strength: float = 1.0,
     ) -> None:
         if strength < 0:
-            raise ValueError(
-                "MAS strength must be non-negative"
-            )
-        self.strength = float(
-            strength
-        )
+            raise ValueError("MAS strength must be non-negative")
+        self.strength = float(strength)
         self.anchor: ParameterState | None = None
         self.importance: ParameterState | None = None
 
@@ -45,54 +41,24 @@ class MASRegularizer:
             module,
             importance,
         )
-        incoming = {
-            name: value.detach().float().clone()
-            for name, value in importance.items()
-        }
+        incoming = {name: value.detach().float().clone() for name, value in importance.items()}
         if self.importance is None:
             self.importance = incoming
         else:
-            if (
-                set(
-                    self.importance
-                )
-                != set(
-                    incoming
-                )
-            ):
-                raise ValueError(
-                    "MAS parameter set changed"
-                )
+            if set(self.importance) != set(incoming):
+                raise ValueError("MAS parameter set changed")
             self.importance = {
-                name: (
-                    self.importance[
-                        name
-                    ].to(
-                        incoming[
-                            name
-                        ].device
-                    )
-                    + incoming[
-                        name
-                    ]
-                )
+                name: (self.importance[name].to(incoming[name].device) + incoming[name])
                 for name in incoming
             }
-        self.anchor = snapshot_parameters(
-            module
-        )
+        self.anchor = snapshot_parameters(module)
 
     def penalty(
         self,
         module: nn.Module,
     ) -> Tensor:
-        if (
-            self.anchor is None
-            or self.importance is None
-        ):
-            parameter = next(
-                module.parameters()
-            )
+        if self.anchor is None or self.importance is None:
+            parameter = next(module.parameters())
             return torch.zeros(
                 (),
                 device=parameter.device,
@@ -116,20 +82,13 @@ class MASRegularizer:
         ) -> ParameterState | None:
             if state is None:
                 return None
-            return {
-                name: value.detach().float().clone()
-                for name, value in state.items()
-            }
+            return {name: value.detach().float().clone() for name, value in state.items()}
 
         return {
             "version": 1,
             "strength": self.strength,
-            "anchor": clone(
-                self.anchor
-            ),
-            "importance": clone(
-                self.importance
-            ),
+            "anchor": clone(self.anchor),
+            "importance": clone(self.importance),
         }
 
     def load_state_dict(
@@ -139,35 +98,15 @@ class MASRegularizer:
             Any,
         ],
     ) -> None:
-        if state.get(
-            "version"
-        ) != 1:
-            raise ValueError(
-                "unsupported MAS checkpoint version"
-            )
-        self.strength = float(
-            state[
-                "strength"
-            ]
-        )
+        if state.get("version") != 1:
+            raise ValueError("unsupported MAS checkpoint version")
+        self.strength = float(state["strength"])
         if self.strength < 0:
-            raise ValueError(
-                "invalid MAS checkpoint strength"
-            )
-        anchor = state.get(
-            "anchor"
-        )
-        importance = state.get(
-            "importance"
-        )
-        if (
-            anchor is None
-        ) != (
-            importance is None
-        ):
-            raise ValueError(
-                "MAS checkpoint has incomplete state"
-            )
+            raise ValueError("invalid MAS checkpoint strength")
+        anchor = state.get("anchor")
+        importance = state.get("importance")
+        if (anchor is None) != (importance is None):
+            raise ValueError("MAS checkpoint has incomplete state")
 
         def clone(
             value: Any,
@@ -178,17 +117,8 @@ class MASRegularizer:
                 value,
                 Mapping,
             ):
-                raise TypeError(
-                    "MAS state must be a mapping"
-                )
-            return {
-                name: tensor.detach().float().clone()
-                for name, tensor in value.items()
-            }
+                raise TypeError("MAS state must be a mapping")
+            return {name: tensor.detach().float().clone() for name, tensor in value.items()}
 
-        self.anchor = clone(
-            anchor
-        )
-        self.importance = clone(
-            importance
-        )
+        self.anchor = clone(anchor)
+        self.importance = clone(importance)

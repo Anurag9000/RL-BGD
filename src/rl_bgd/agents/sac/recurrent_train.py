@@ -53,13 +53,9 @@ class RecurrentSACTrainConfig:
             or self.unroll < 1
             or self.updates_per_step < 1
         ):
-            raise ValueError(
-                "invalid recurrent SAC sequence/update configuration"
-            )
+            raise ValueError("invalid recurrent SAC sequence/update configuration")
         if self.replay_capacity < self.burn_in + self.unroll:
-            raise ValueError(
-                "replay capacity is shorter than one sequence window"
-            )
+            raise ValueError("replay capacity is shorter than one sequence window")
 
 
 def train_recurrent_sac(
@@ -78,9 +74,7 @@ def train_recurrent_sac(
         action_dim,
         storage_device=agent.device,
     )
-    generator = torch.Generator(device=agent.device).manual_seed(
-        config.seed + 27
-    )
+    generator = torch.Generator(device=agent.device).manual_seed(config.seed + 27)
     observation, _ = env.reset(seed=config.seed)
     agent.reset_recurrent_state()
     episode_start = True
@@ -156,9 +150,7 @@ def train_recurrent_sac(
         "steps": config.total_steps,
         "episodes": len(completed_returns),
         "mean_episode_return": (
-            sum(completed_returns) / len(completed_returns)
-            if completed_returns
-            else float("nan")
+            sum(completed_returns) / len(completed_returns) if completed_returns else float("nan")
         ),
         "final_10_mean_return": (
             sum(completed_returns[-10:]) / min(10, len(completed_returns))

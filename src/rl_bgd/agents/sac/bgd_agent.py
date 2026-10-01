@@ -74,13 +74,8 @@ class BGDSACConfig:
             self.sigma_max,
         ).validate()
         self.replay_evidence.validate()
-        if (
-            self.adaptive_td_retention is not None
-            and self.adaptive_ensemble_retention is not None
-        ):
-            raise ValueError(
-                "configure at most one adaptive retention surprise source"
-            )
+        if self.adaptive_td_retention is not None and self.adaptive_ensemble_retention is not None:
+            raise ValueError("configure at most one adaptive retention surprise source")
         if self.adaptive_td_retention is not None:
             self.adaptive_td_retention.validate()
         if self.adaptive_ensemble_retention is not None:
@@ -130,9 +125,7 @@ class BGDSACAgent(SACAgent):
         self.ensemble_surprise: EnsembleDisagreementSurprise | None = None
 
         if self.bgd_config.adaptive_td_retention is not None:
-            self.td_surprise = TDSurprise(
-                self.bgd_config.adaptive_td_retention.surprise
-            )
+            self.td_surprise = TDSurprise(self.bgd_config.adaptive_td_retention.surprise)
         if self.bgd_config.adaptive_ensemble_retention is not None:
             self.ensemble_surprise = EnsembleDisagreementSurprise(
                 self.bgd_config.adaptive_ensemble_retention.normalizer
@@ -191,10 +184,7 @@ class BGDSACAgent(SACAgent):
             return retention, observation
 
         ensemble_config = self.bgd_config.adaptive_ensemble_retention
-        if (
-            ensemble_config is not None
-            and self.ensemble_surprise is not None
-        ):
+        if ensemble_config is not None and self.ensemble_surprise is not None:
             with torch.no_grad():
                 predictions = torch.stack(
                     (
@@ -460,9 +450,7 @@ class BGDSACAgent(SACAgent):
         state["bgd_sac_version"] = 1
         state["bayesianization"] = self.bgd_config.bayesianization
         state["replay_evidence_mode"] = self.bgd_config.replay_evidence.mode
-        state["adaptive_td_retention"] = (
-            self.bgd_config.adaptive_td_retention is not None
-        )
+        state["adaptive_td_retention"] = self.bgd_config.adaptive_td_retention is not None
         state["adaptive_ensemble_retention"] = (
             self.bgd_config.adaptive_ensemble_retention is not None
         )
@@ -487,23 +475,11 @@ class BGDSACAgent(SACAgent):
             raise ValueError("BGD-SAC checkpoint Bayesianization mode mismatch")
         if state.get("replay_evidence_mode", "all_replay") != self.bgd_config.replay_evidence.mode:
             raise ValueError("BGD-SAC checkpoint replay evidence mode mismatch")
-        expected_td_adaptive = (
-            self.bgd_config.adaptive_td_retention is not None
-        )
-        if (
-            bool(state.get("adaptive_td_retention", False))
-            != expected_td_adaptive
-        ):
-            raise ValueError(
-                "BGD-SAC checkpoint TD adaptive-retention configuration mismatch"
-            )
-        expected_ensemble_adaptive = (
-            self.bgd_config.adaptive_ensemble_retention is not None
-        )
-        if (
-            bool(state.get("adaptive_ensemble_retention", False))
-            != expected_ensemble_adaptive
-        ):
+        expected_td_adaptive = self.bgd_config.adaptive_td_retention is not None
+        if bool(state.get("adaptive_td_retention", False)) != expected_td_adaptive:
+            raise ValueError("BGD-SAC checkpoint TD adaptive-retention configuration mismatch")
+        expected_ensemble_adaptive = self.bgd_config.adaptive_ensemble_retention is not None
+        if bool(state.get("adaptive_ensemble_retention", False)) != expected_ensemble_adaptive:
             raise ValueError(
                 "BGD-SAC checkpoint ensemble adaptive-retention configuration mismatch"
             )
@@ -516,9 +492,7 @@ class BGDSACAgent(SACAgent):
         if self.ensemble_surprise is not None:
             payload = state["ensemble_surprise"]
             if not isinstance(payload, dict):
-                raise TypeError(
-                    "ensemble-surprise checkpoint state must be a dictionary"
-                )
+                raise TypeError("ensemble-surprise checkpoint state must be a dictionary")
             self.ensemble_surprise.load_state_dict(payload)
         if self.actor_bgd is not None:
             self.actor_bgd.load_state_dict(

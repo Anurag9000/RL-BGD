@@ -151,9 +151,7 @@ def train_canonical_task_aware_sac(
         "steps": config.total_steps,
         "episodes": len(completed_returns),
         "mean_episode_return": (
-            sum(completed_returns) / len(completed_returns)
-            if completed_returns
-            else float("nan")
+            sum(completed_returns) / len(completed_returns) if completed_returns else float("nan")
         ),
         "final_10_mean_return": (
             sum(completed_returns[-10:]) / min(10, len(completed_returns))

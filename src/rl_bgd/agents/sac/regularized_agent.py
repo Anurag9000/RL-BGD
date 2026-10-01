@@ -23,12 +23,7 @@ from rl_bgd.utils.randomness import preserved_random_state
 
 RegularizationMethod = Literal["ewc", "online_ewc", "si", "mas"]
 RegularizationTarget = Literal["actor_only", "critic_only", "actor_and_critic"]
-Regularizer = (
-    EWCRegularizer
-    | OnlineEWCRegularizer
-    | MASRegularizer
-    | SynapticIntelligence
-)
+Regularizer = EWCRegularizer | OnlineEWCRegularizer | MASRegularizer | SynapticIntelligence
 
 
 @dataclass(frozen=True)
@@ -104,9 +99,7 @@ class RegularizedSACAgent(SACAgent):
             config=sac_config,
             device=device,
         )
-        self.regularization_config = (
-            regularization_config or RegularizedSACConfig()
-        )
+        self.regularization_config = regularization_config or RegularizedSACConfig()
         self.regularization_config.validate()
         self.critic_pair = nn.ModuleDict(
             {
@@ -174,9 +167,7 @@ class RegularizedSACAgent(SACAgent):
                 def output_closure(
                     observation: Tensor = observation,
                 ) -> Tensor:
-                    mean, log_std = self.actor.distribution_parameters(
-                        observation
-                    )
+                    mean, log_std = self.actor.distribution_parameters(observation)
                     return torch.cat(
                         [mean, log_std],
                         dim=-1,
@@ -197,9 +188,7 @@ class RegularizedSACAgent(SACAgent):
                     self.critic1(observation, action),
                     self.critic2(observation, action),
                 )
-                return (
-                    self.alpha.detach() * log_prob - q_value
-                ).mean()
+                return (self.alpha.detach() * log_prob - q_value).mean()
 
             closures.append(loss_closure)
         return empirical_fisher_diagonal(self.actor, closures)
@@ -298,9 +287,8 @@ class RegularizedSACAgent(SACAgent):
         target = self._target_values(batch)
         q1 = self.critic1(batch.observations, batch.actions)
         q2 = self.critic2(batch.observations, batch.actions)
-        critic_base_loss = (
-            torch.nn.functional.mse_loss(q1, target)
-            + torch.nn.functional.mse_loss(q2, target)
+        critic_base_loss = torch.nn.functional.mse_loss(q1, target) + torch.nn.functional.mse_loss(
+            q2, target
         )
         critic_penalty = self._penalty(
             self.critic_regularizer,
@@ -317,10 +305,7 @@ class RegularizedSACAgent(SACAgent):
 
         self.critic_optimizer.zero_grad(set_to_none=True)
         critic_total_loss.backward()
-        critic_parameters = (
-            list(self.critic1.parameters())
-            + list(self.critic2.parameters())
-        )
+        critic_parameters = list(self.critic1.parameters()) + list(self.critic2.parameters())
         self._clip_gradients(critic_parameters)
         self.critic_optimizer.step()
         if (
@@ -337,9 +322,7 @@ class RegularizedSACAgent(SACAgent):
             self.critic1(batch.observations, sampled_action),
             self.critic2(batch.observations, sampled_action),
         )
-        actor_base_loss = (
-            self.alpha.detach() * log_prob - q_pi
-        ).mean()
+        actor_base_loss = (self.alpha.detach() * log_prob - q_pi).mean()
         actor_penalty = self._penalty(
             self.actor_regularizer,
             self.actor,
@@ -368,21 +351,14 @@ class RegularizedSACAgent(SACAgent):
 
         alpha_loss = torch.zeros((), device=self.device)
         if self.config.automatic_entropy_tuning:
-            alpha_loss = -(
-                self.log_alpha
-                * (log_prob.detach() + self.target_entropy)
-            ).mean()
+            alpha_loss = -(self.log_alpha * (log_prob.detach() + self.target_entropy)).mean()
             self.alpha_optimizer.zero_grad(set_to_none=True)
             alpha_loss.backward()
             self.alpha_optimizer.step()
 
         self._polyak_update()
         self.update_count += 1
-        if (
-            self.update_count
-            % self.regularization_config.consolidation_interval_updates
-            == 0
-        ):
+        if self.update_count % self.regularization_config.consolidation_interval_updates == 0:
             self.consolidate_from_batch(
                 batch,
                 critic_target=target,
@@ -390,29 +366,20 @@ class RegularizedSACAgent(SACAgent):
 
         metrics = {
             "critic_loss": float(critic_base_loss.detach().item()),
-            "critic_regularization_penalty": float(
-                critic_penalty.detach().item()
-            ),
+            "critic_regularization_penalty": float(critic_penalty.detach().item()),
             "critic_total_loss": float(critic_total_loss.detach().item()),
             "actor_loss": float(actor_base_loss.detach().item()),
-            "actor_regularization_penalty": float(
-                actor_penalty.detach().item()
-            ),
+            "actor_regularization_penalty": float(actor_penalty.detach().item()),
             "actor_total_loss": float(actor_total_loss.detach().item()),
             "alpha_loss": float(alpha_loss.detach().item()),
             "alpha": float(self.alpha.detach().item()),
             "q1_mean": float(q1.detach().mean().item()),
             "q2_mean": float(q2.detach().mean().item()),
             "target_q_mean": float(target.detach().mean().item()),
-            "policy_entropy_estimate": float(
-                (-log_prob.detach()).mean().item()
-            ),
+            "policy_entropy_estimate": float((-log_prob.detach()).mean().item()),
             "consolidation_count": float(self.consolidation_count),
         }
-        if not all(
-            torch.isfinite(torch.tensor(value))
-            for value in metrics.values()
-        ):
+        if not all(torch.isfinite(torch.tensor(value)) for value in metrics.values()):
             raise FloatingPointError("nonfinite regularized SAC update metric")
         return metrics
 
@@ -423,14 +390,10 @@ class RegularizedSACAgent(SACAgent):
             "config": asdict(self.regularization_config),
             "consolidation_count": self.consolidation_count,
             "actor_regularizer": (
-                None
-                if self.actor_regularizer is None
-                else self.actor_regularizer.state_dict()
+                None if self.actor_regularizer is None else self.actor_regularizer.state_dict()
             ),
             "critic_regularizer": (
-                None
-                if self.critic_regularizer is None
-                else self.critic_regularizer.state_dict()
+                None if self.critic_regularizer is None else self.critic_regularizer.state_dict()
             ),
         }
         return state
@@ -442,9 +405,7 @@ class RegularizedSACAgent(SACAgent):
             raise ValueError("missing or unsupported regularized SAC state")
         if regularized.get("config") != asdict(self.regularization_config):
             raise ValueError("regularized SAC checkpoint configuration mismatch")
-        self.consolidation_count = int(
-            regularized["consolidation_count"]
-        )
+        self.consolidation_count = int(regularized["consolidation_count"])
         for key, regularizer in (
             ("actor_regularizer", self.actor_regularizer),
             ("critic_regularizer", self.critic_regularizer),
@@ -452,9 +413,7 @@ class RegularizedSACAgent(SACAgent):
             saved = regularized[key]
             if regularizer is None:
                 if saved is not None:
-                    raise ValueError(
-                        f"unexpected checkpoint state for {key}"
-                    )
+                    raise ValueError(f"unexpected checkpoint state for {key}")
             else:
                 if not isinstance(saved, dict):
                     raise TypeError(f"checkpoint {key} must be a mapping")

@@ -43,11 +43,7 @@ def test_foo_vb_diagonal_matches_eta_one_bgd_exactly() -> None:
     )
 
     def objective(params: dict[str, torch.Tensor]) -> torch.Tensor:
-        prediction = (
-            torch.tensor([[0.5, -1.0]])
-            @ params["weight"].T
-            + params["bias"]
-        )
+        prediction = torch.tensor([[0.5, -1.0]]) @ params["weight"].T + params["bias"]
         return prediction.square().mean()
 
     foo.step(

@@ -103,9 +103,7 @@ class TaskAwareSquashedGaussianActor(nn.Module):
         return (reshaped * weights).sum(dim=-1)
 
     def distribution(self, observation: Tensor) -> Normal:
-        features = self.body(
-            observation[..., : self.base_observation_dim]
-        )
+        features = self.body(observation[..., : self.base_observation_dim])
         mean = self._select_head(
             self.mean_head(features),
             observation,
@@ -125,28 +123,16 @@ class TaskAwareSquashedGaussianActor(nn.Module):
         squashed = torch.tanh(pre_tanh)
         action = squashed * self.action_scale + self.action_bias
         correction = 2.0 * (
-            math.log(2.0)
-            - pre_tanh
-            - torch.nn.functional.softplus(-2.0 * pre_tanh)
+            math.log(2.0) - pre_tanh - torch.nn.functional.softplus(-2.0 * pre_tanh)
         )
-        log_prob = (
-            normal.log_prob(pre_tanh) - correction
-        ).sum(dim=-1, keepdim=True)
+        log_prob = (normal.log_prob(pre_tanh) - correction).sum(dim=-1, keepdim=True)
         log_prob -= torch.log(self.action_scale).sum()
-        deterministic = (
-            torch.tanh(normal.mean)
-            * self.action_scale
-            + self.action_bias
-        )
+        deterministic = torch.tanh(normal.mean) * self.action_scale + self.action_bias
         return action, log_prob, deterministic
 
     def deterministic(self, observation: Tensor) -> Tensor:
         normal = self.distribution(observation)
-        return (
-            torch.tanh(normal.mean)
-            * self.action_scale
-            + self.action_bias
-        )
+        return torch.tanh(normal.mean) * self.action_scale + self.action_bias
 
 
 class TaskAwareQNetwork(nn.Module):
@@ -182,9 +168,7 @@ class TaskAwareQNetwork(nn.Module):
         action: Tensor,
     ) -> Tensor:
         task_weights = observation[..., -self.num_tasks :]
-        base_observation = observation[
-            ..., : self.base_observation_dim
-        ]
+        base_observation = observation[..., : self.base_observation_dim]
         features = self.body(
             torch.cat(
                 [base_observation, action],
@@ -192,6 +176,4 @@ class TaskAwareQNetwork(nn.Module):
             )
         )
         all_heads = self.head(features)
-        return (
-            all_heads * task_weights
-        ).sum(dim=-1, keepdim=True)
+        return (all_heads * task_weights).sum(dim=-1, keepdim=True)

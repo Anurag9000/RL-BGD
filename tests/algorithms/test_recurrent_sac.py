@@ -18,9 +18,7 @@ from rl_bgd.envs.synthetic.lqr import (
 
 def test_recurrent_sac_stationary_smoke_is_finite() -> None:
     torch.manual_seed(82)
-    env = LinearQuadraticControlEnv(
-        horizon=16
-    )
+    env = LinearQuadraticControlEnv(horizon=16)
     agent = RecurrentSACAgent(
         1,
         1,
@@ -50,20 +48,10 @@ def test_recurrent_sac_stationary_smoke_is_finite() -> None:
             seed=82,
         ),
     )
-    metrics = summary[
-        "last_update_metrics"
-    ]
+    metrics = summary["last_update_metrics"]
     assert metrics
-    assert torch.isfinite(
-        torch.tensor(
-            metrics[
-                "critic_loss"
-            ]
-        )
-    )
-    assert summary[
-        "replay_size"
-    ] == 96
+    assert torch.isfinite(torch.tensor(metrics["critic_loss"]))
+    assert summary["replay_size"] == 96
 
 
 def test_recurrent_sac_checkpoint_preserves_online_hidden_state() -> None:
@@ -71,42 +59,28 @@ def test_recurrent_sac_checkpoint_preserves_online_hidden_state() -> None:
     agent = RecurrentSACAgent(
         2,
         1,
-        action_low=torch.tensor(
-            [-1.0]
-        ),
-        action_high=torch.tensor(
-            [1.0]
-        ),
+        action_low=torch.tensor([-1.0]),
+        action_high=torch.tensor([1.0]),
         recurrent_config=RecurrentSACConfig(
             recurrent_hidden_dim=8,
             encoder_hidden_dims=(8,),
             q_hidden_dims=(8,),
         ),
     )
-    agent.act_recurrent(
-        torch.tensor(
-            [0.2, -0.3]
-        )
-    )
+    agent.act_recurrent(torch.tensor([0.2, -0.3]))
     state = agent.state_dict()
     restored = RecurrentSACAgent(
         2,
         1,
-        action_low=torch.tensor(
-            [-1.0]
-        ),
-        action_high=torch.tensor(
-            [1.0]
-        ),
+        action_low=torch.tensor([-1.0]),
+        action_high=torch.tensor([1.0]),
         recurrent_config=RecurrentSACConfig(
             recurrent_hidden_dim=8,
             encoder_hidden_dims=(8,),
             q_hidden_dims=(8,),
         ),
     )
-    restored.load_state_dict(
-        state
-    )
+    restored.load_state_dict(state)
     torch.testing.assert_close(
         restored.actor_hidden,
         agent.actor_hidden,

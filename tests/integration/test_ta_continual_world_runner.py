@@ -27,7 +27,6 @@ def test_ta_cw10_runner_builds_complete_evaluation_matrix() -> None:
     assert all(len(row) == 10 for row in result["success_matrix"])
 
 
-
 def test_ta_runner_always_closes_protocol_bundle(monkeypatch: pytest.MonkeyPatch) -> None:
     import rl_bgd.runners.continual_world_sac as runner
     from rl_bgd.envs.continual_world.evaluation import TaskEvaluation

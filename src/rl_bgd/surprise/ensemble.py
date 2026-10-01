@@ -19,12 +19,8 @@ from rl_bgd.surprise.base import (
 class AdaptiveEnsembleRetentionConfig:
     """Configuration for critic-disagreement-driven posterior tempering."""
 
-    normalizer: EMANormalizerConfig = field(
-        default_factory=EMANormalizerConfig
-    )
-    mapping: RetentionMappingConfig = field(
-        default_factory=RetentionMappingConfig
-    )
+    normalizer: EMANormalizerConfig = field(default_factory=EMANormalizerConfig)
+    mapping: RetentionMappingConfig = field(default_factory=RetentionMappingConfig)
 
     def validate(self) -> None:
         self.normalizer.validate()

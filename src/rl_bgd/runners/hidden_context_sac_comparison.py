@@ -61,9 +61,7 @@ def _run_feedforward(
             bgd_config=BGDSACConfig(
                 bayesianization="actor_and_critic",
                 posterior_std=0.1,
-                replay_evidence=ReplayEvidenceConfig(
-                    mode="inverse_reuse_weight"
-                ),
+                replay_evidence=ReplayEvidenceConfig(mode="inverse_reuse_weight"),
                 actor_bgd=BGDConfig(
                     eta=0.1,
                     mc_samples=2,

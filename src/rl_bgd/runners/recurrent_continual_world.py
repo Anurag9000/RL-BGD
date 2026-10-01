@@ -104,11 +104,7 @@ def evaluate_recurrent_task(
 
     return TaskEvaluation(
         mean_return=float(sum(returns) / len(returns)),
-        success_rate=(
-            float(sum(successes) / len(successes))
-            if successes
-            else None
-        ),
+        success_rate=(float(sum(successes) / len(successes)) if successes else None),
     )
 
 
@@ -154,10 +150,7 @@ def run_recurrent_ta_continual_world_sac(
         episode_horizon=episode_horizon,
     )
     train_env = PreviousTransitionContextEnv(bundle.train_env)
-    evaluation_envs = tuple(
-        PreviousTransitionContextEnv(env)
-        for env in bundle.evaluation_envs
-    )
+    evaluation_envs = tuple(PreviousTransitionContextEnv(env) for env in bundle.evaluation_envs)
 
     observation_dim = int(train_env.observation_space.low.numel())
     action_dim = int(train_env.action_space.low.numel())
@@ -196,9 +189,7 @@ def run_recurrent_ta_continual_world_sac(
             bgd_config=BGDSACConfig(
                 bayesianization="actor_and_critic",
                 posterior_std=0.1,
-                replay_evidence=ReplayEvidenceConfig(
-                    mode="inverse_reuse_weight"
-                ),
+                replay_evidence=ReplayEvidenceConfig(mode="inverse_reuse_weight"),
                 adaptive_td_retention=(
                     AdaptiveTDRetentionConfig(
                         mapping=RetentionMappingConfig(
@@ -223,9 +214,7 @@ def run_recurrent_ta_continual_world_sac(
             device=resolved,
         )
     else:
-        raise ValueError(
-            f"unsupported recurrent CW optimizer: {optimizer}"
-        )
+        raise ValueError(f"unsupported recurrent CW optimizer: {optimizer}")
 
     return_matrix = PerformanceMatrixRecorder(bundle.task_names)
     success_matrix = PerformanceMatrixRecorder(bundle.task_names)
@@ -238,28 +227,19 @@ def run_recurrent_ta_continual_world_sac(
             return
         stage_index = completed_steps // steps_per_task - 1
         evaluations: list[TaskEvaluation] = []
-        with preserved_random_state(), preserve_recurrent_online_state(
-            current_agent
-        ):
+        with preserved_random_state(), preserve_recurrent_online_state(current_agent):
             for task_index, env in enumerate(evaluation_envs):
                 evaluations.append(
                     evaluate_recurrent_task(
                         current_agent,
                         env,
                         episodes=evaluation_episodes,
-                        seed=(
-                            80_000
-                            + stage_index * 100_000
-                            + task_index * 10_000
-                        ),
+                        seed=(80_000 + stage_index * 100_000 + task_index * 10_000),
                         max_episode_steps=episode_horizon,
                     )
                 )
 
-        stage_label = (
-            f"after_{stage_index + 1:02d}_"
-            f"{bundle.task_names[stage_index]}"
-        )
+        stage_label = f"after_{stage_index + 1:02d}_{bundle.task_names[stage_index]}"
         return_matrix.append(
             stage_label,
             [result.mean_return for result in evaluations],
@@ -267,9 +247,7 @@ def run_recurrent_ta_continual_world_sac(
         success_scores: list[float] = []
         for result in evaluations:
             if result.success_rate is None:
-                raise RuntimeError(
-                    "Continual World evaluation did not expose success"
-                )
+                raise RuntimeError("Continual World evaluation did not expose success")
             success_scores.append(result.success_rate)
         success_matrix.append(stage_label, success_scores)
 

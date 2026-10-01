@@ -111,9 +111,7 @@ def test_bandit_rejects_noncontiguous_arm_keys() -> None:
     schedule = ContextSchedule(
         ContextScheduleConfig(
             mode="abrupt",
-            anchors=(
-                {"arm_0": 0.0, "arm_2": 1.0},
-            ),
+            anchors=({"arm_0": 0.0, "arm_2": 1.0},),
         )
     )
     with pytest.raises(ValueError):

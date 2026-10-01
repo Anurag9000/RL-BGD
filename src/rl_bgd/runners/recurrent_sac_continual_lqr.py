@@ -80,9 +80,7 @@ def run_recurrent_sac_recurring_lqr(
             bgd_config=BGDSACConfig(
                 bayesianization="actor_and_critic",
                 posterior_std=0.1,
-                replay_evidence=ReplayEvidenceConfig(
-                    mode="inverse_reuse_weight"
-                ),
+                replay_evidence=ReplayEvidenceConfig(mode="inverse_reuse_weight"),
                 adaptive_td_retention=(
                     AdaptiveTDRetentionConfig(
                         mapping=RetentionMappingConfig(
@@ -107,9 +105,7 @@ def run_recurrent_sac_recurring_lqr(
             device=resolved,
         )
     else:
-        raise ValueError(
-            f"unsupported optimizer family: {optimizer}"
-        )
+        raise ValueError(f"unsupported optimizer family: {optimizer}")
 
     try:
         summary = train_recurrent_sac(
@@ -143,8 +139,7 @@ def run_recurrent_sac_recurring_lqr(
                     "previous_done",
                 ],
                 "hidden_state_resets_only_on_episode_end": (
-                    summary["recurrent_reset_count"]
-                    == summary["episodes"] + 1
+                    summary["recurrent_reset_count"] == summary["episodes"] + 1
                 ),
             },
         }

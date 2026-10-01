@@ -63,13 +63,9 @@ def make_batch() -> SequenceReplayBatch:
 
 
 def test_inverse_sequence_evidence_weights_follow_usage_counts() -> None:
-    summary = (
-        sequence_replay_evidence_weights(
-            make_batch(),
-            ReplayEvidenceConfig(
-                mode="inverse_reuse_weight"
-            ),
-        )
+    summary = sequence_replay_evidence_weights(
+        make_batch(),
+        ReplayEvidenceConfig(mode="inverse_reuse_weight"),
     )
     expected = torch.tensor(
         [
@@ -84,13 +80,9 @@ def test_inverse_sequence_evidence_weights_follow_usage_counts() -> None:
 
 
 def test_fresh_sequence_evidence_only_counts_first_uses() -> None:
-    summary = (
-        sequence_replay_evidence_weights(
-            make_batch(),
-            ReplayEvidenceConfig(
-                mode="fresh_only_uncertainty"
-            ),
-        )
+    summary = sequence_replay_evidence_weights(
+        make_batch(),
+        ReplayEvidenceConfig(mode="fresh_only_uncertainty"),
     )
     assert summary.weights.sum().item() == 3.0
 

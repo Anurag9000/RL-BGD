@@ -20,8 +20,6 @@ def test_hidden_context_comparison_exposes_required_five_variants() -> None:
     assert result["comparison_contract"]["task_id_hidden"] is True
     assert result["comparison_contract"]["task_boundary_hidden"] is True
     assert (
-        variants["recurrent_adaptive_bgd"]["training"][
-            "last_update_metrics"
-        ]["retention_lambda"]
+        variants["recurrent_adaptive_bgd"]["training"]["last_update_metrics"]["retention_lambda"]
         <= 1.0
     )

@@ -11,12 +11,8 @@ def test_recurrent_sac_actor_reset_breaks_prior_history() -> None:
     actor = RecurrentSACActor(
         1,
         1,
-        action_low=torch.tensor(
-            [-1.0]
-        ),
-        action_high=torch.tensor(
-            [1.0]
-        ),
+        action_low=torch.tensor([-1.0]),
+        action_high=torch.tensor([1.0]),
         recurrent_hidden_dim=8,
         encoder_hidden_dims=(8,),
     )
@@ -50,17 +46,13 @@ def test_recurrent_sac_actor_reset_breaks_prior_history() -> None:
             ]
         ]
     )
-    left_hidden, _ = (
-        actor.hidden_sequence(
-            left,
-            starts,
-        )
+    left_hidden, _ = actor.hidden_sequence(
+        left,
+        starts,
     )
-    right_hidden, _ = (
-        actor.hidden_sequence(
-            right,
-            starts,
-        )
+    right_hidden, _ = actor.hidden_sequence(
+        right,
+        starts,
     )
     torch.testing.assert_close(
         left_hidden[
@@ -103,22 +95,18 @@ def test_recurrent_q_sequence_and_next_state_shapes() -> None:
         :,
         0,
     ] = True
-    hidden, _ = (
-        critic.hidden_sequence(
-            observations,
-            starts,
-        )
+    hidden, _ = critic.hidden_sequence(
+        observations,
+        starts,
     )
     q = critic.q_from_hidden(
         hidden,
         actions,
     )
-    next_q, next_hidden = (
-        critic.next_q_from_hidden(
-            observations + 0.1,
-            actions,
-            hidden,
-        )
+    next_q, next_hidden = critic.next_q_from_hidden(
+        observations + 0.1,
+        actions,
+        hidden,
     )
     assert q.shape == (
         3,

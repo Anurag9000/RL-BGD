@@ -192,9 +192,7 @@ class SequenceReplayBuffer:
         self.usage_counts[index, 0] = 0
         self._fresh[index, 0] = True
         self._next_transition_id += 1
-        self._position = (
-            self._position + 1
-        ) % self.capacity
+        self._position = (self._position + 1) % self.capacity
         self._size = min(
             self._size + 1,
             self.capacity,
@@ -202,9 +200,7 @@ class SequenceReplayBuffer:
         return transition_id
 
     def _logical_physical_indices(self) -> Tensor:
-        oldest = (
-            self._position - self._size
-        ) % self.capacity
+        oldest = (self._position - self._size) % self.capacity
         return (
             oldest
             + torch.arange(
@@ -236,9 +232,7 @@ class SequenceReplayBuffer:
             0,
         ].clone()
 
-        sorted_indices, order = torch.sort(
-            flat
-        )
+        sorted_indices, order = torch.sort(flat)
         positions = torch.arange(
             flat.numel(),
             device=self.device,
@@ -249,39 +243,25 @@ class SequenceReplayBuffer:
             dtype=torch.bool,
         )
         if flat.numel() > 1:
-            group_start[1:] = (
-                sorted_indices[1:]
-                != sorted_indices[:-1]
-            )
+            group_start[1:] = sorted_indices[1:] != sorted_indices[:-1]
         start_positions = torch.where(
             group_start,
             positions,
-            torch.zeros_like(
-                positions
-            ),
+            torch.zeros_like(positions),
         )
         latest_start = torch.cummax(
             start_positions,
             dim=0,
         ).values
-        ranks_sorted = (
-            positions - latest_start
-        )
-        ranks = torch.empty_like(
-            ranks_sorted
-        )
+        ranks_sorted = positions - latest_start
+        ranks = torch.empty_like(ranks_sorted)
         ranks[order] = ranks_sorted
 
-        usage = (
-            prior + ranks + 1
-        ).reshape(
+        usage = (prior + ranks + 1).reshape(
             *physical_indices.shape,
             1,
         )
-        fresh = (
-            fresh_before
-            & (ranks == 0)
-        ).reshape(
+        fresh = (fresh_before & (ranks == 0)).reshape(
             *physical_indices.shape,
             1,
         )
@@ -314,25 +294,15 @@ class SequenceReplayBuffer:
         generator: torch.Generator | None = None,
     ) -> SequenceReplayBatch:
         if batch_size < 1:
-            raise ValueError(
-                "batch_size must be positive"
-            )
+            raise ValueError("batch_size must be positive")
         if burn_in < 0 or unroll < 1:
-            raise ValueError(
-                "burn_in must be non-negative and unroll positive"
-            )
+            raise ValueError("burn_in must be non-negative and unroll positive")
         window = burn_in + unroll
-        available_windows = (
-            self._size - window + 1
-        )
+        available_windows = self._size - window + 1
         if available_windows < batch_size:
-            raise ValueError(
-                "not enough chronological windows for requested sequence batch"
-            )
+            raise ValueError("not enough chronological windows for requested sequence batch")
 
-        logical = (
-            self._logical_physical_indices()
-        )
+        logical = self._logical_physical_indices()
         chosen = torch.randperm(
             available_windows,
             device=self.device,
@@ -343,50 +313,23 @@ class SequenceReplayBuffer:
             device=self.device,
             dtype=torch.long,
         )
-        logical_positions = (
-            chosen.unsqueeze(1)
-            + offsets.unsqueeze(0)
-        )
-        physical = logical[
-            logical_positions
-        ]
+        logical_positions = chosen.unsqueeze(1) + offsets.unsqueeze(0)
+        physical = logical[logical_positions]
         unroll_physical = physical[
             :,
             burn_in:,
         ]
-        usage_counts, fresh = (
-            self._record_evidence_usage(
-                unroll_physical
-            )
-        )
+        usage_counts, fresh = self._record_evidence_usage(unroll_physical)
         return SequenceReplayBatch(
-            observations=self.observations[
-                physical
-            ],
-            actions=self.actions[
-                physical
-            ],
-            rewards=self.rewards[
-                physical
-            ],
-            next_observations=self.next_observations[
-                physical
-            ],
-            terminated=self.terminated[
-                physical
-            ],
-            truncated=self.truncated[
-                physical
-            ],
-            episode_starts=self.episode_starts[
-                physical
-            ],
-            transition_ids=self.transition_ids[
-                physical
-            ],
-            insertion_steps=self.insertion_steps[
-                physical
-            ],
+            observations=self.observations[physical],
+            actions=self.actions[physical],
+            rewards=self.rewards[physical],
+            next_observations=self.next_observations[physical],
+            terminated=self.terminated[physical],
+            truncated=self.truncated[physical],
+            episode_starts=self.episode_starts[physical],
+            transition_ids=self.transition_ids[physical],
+            insertion_steps=self.insertion_steps[physical],
             usage_counts=usage_counts,
             fresh=fresh,
             burn_in=burn_in,
@@ -400,82 +343,38 @@ class SequenceReplayBuffer:
             "size": size,
             "position": self._position,
             "next_transition_id": self._next_transition_id,
-            "observation_dim": int(
-                self.observations.shape[1]
-            ),
-            "action_dim": int(
-                self.actions.shape[1]
-            ),
-            "observations": self.observations[
-                :size
-            ].clone(),
-            "actions": self.actions[
-                :size
-            ].clone(),
-            "rewards": self.rewards[
-                :size
-            ].clone(),
-            "next_observations": self.next_observations[
-                :size
-            ].clone(),
-            "terminated": self.terminated[
-                :size
-            ].clone(),
-            "truncated": self.truncated[
-                :size
-            ].clone(),
-            "episode_starts": self.episode_starts[
-                :size
-            ].clone(),
-            "transition_ids": self.transition_ids[
-                :size
-            ].clone(),
-            "insertion_steps": self.insertion_steps[
-                :size
-            ].clone(),
-            "usage_counts": self.usage_counts[
-                :size
-            ].clone(),
-            "fresh": self._fresh[
-                :size
-            ].clone(),
+            "observation_dim": int(self.observations.shape[1]),
+            "action_dim": int(self.actions.shape[1]),
+            "observations": self.observations[:size].clone(),
+            "actions": self.actions[:size].clone(),
+            "rewards": self.rewards[:size].clone(),
+            "next_observations": self.next_observations[:size].clone(),
+            "terminated": self.terminated[:size].clone(),
+            "truncated": self.truncated[:size].clone(),
+            "episode_starts": self.episode_starts[:size].clone(),
+            "transition_ids": self.transition_ids[:size].clone(),
+            "insertion_steps": self.insertion_steps[:size].clone(),
+            "usage_counts": self.usage_counts[:size].clone(),
+            "fresh": self._fresh[:size].clone(),
         }
 
     def load_state_dict(
         self,
         state: dict[str, Any],
     ) -> None:
-        if state.get(
-            "version"
-        ) != 1:
-            raise ValueError(
-                "unsupported sequence replay checkpoint version"
-            )
+        if state.get("version") != 1:
+            raise ValueError("unsupported sequence replay checkpoint version")
         expected = {
             "capacity": self.capacity,
-            "observation_dim": int(
-                self.observations.shape[1]
-            ),
-            "action_dim": int(
-                self.actions.shape[1]
-            ),
+            "observation_dim": int(self.observations.shape[1]),
+            "action_dim": int(self.actions.shape[1]),
         }
         for name, value in expected.items():
-            if int(
-                state[name]
-            ) != value:
-                raise ValueError(
-                    f"sequence replay {name} mismatch"
-                )
-        size = int(
-            state[
-                "size"
-            ]
-        )
+            if int(state[name]) != value:
+                raise ValueError(f"sequence replay {name} mismatch")
+        size = int(state["size"])
         if not 0 <= size <= self.capacity:
-            raise ValueError(
-                "invalid sequence replay size"
-            )
+            raise ValueError("invalid sequence replay size")
         fields = {
             "observations": self.observations,
             "actions": self.actions,
@@ -495,31 +394,15 @@ class SequenceReplayBuffer:
                 source,
                 Tensor,
             ):
-                raise TypeError(
-                    f"sequence replay field {name} must be a tensor"
-                )
-            if source.shape != target[
-                :size
-            ].shape:
-                raise ValueError(
-                    f"sequence replay shape mismatch for {name}"
-                )
-            target[
-                :size
-            ].copy_(
+                raise TypeError(f"sequence replay field {name} must be a tensor")
+            if source.shape != target[:size].shape:
+                raise ValueError(f"sequence replay shape mismatch for {name}")
+            target[:size].copy_(
                 source.to(
                     device=self.device,
                     dtype=target.dtype,
                 )
             )
         self._size = size
-        self._position = int(
-            state[
-                "position"
-            ]
-        )
-        self._next_transition_id = int(
-            state[
-                "next_transition_id"
-            ]
-        )
+        self._position = int(state["position"])
+        self._next_transition_id = int(state["next_transition_id"])

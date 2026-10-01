@@ -81,7 +81,6 @@ def test_adaptive_td_surprise_checkpoint_round_trip() -> None:
     assert restored.td_surprise.normalizer.count == agent.td_surprise.normalizer.count
 
 
-
 def make_ensemble_agent() -> BGDSACAgent:
     adaptive = AdaptiveEnsembleRetentionConfig(
         normalizer=EMANormalizerConfig(
@@ -133,10 +132,7 @@ def test_adaptive_ensemble_surprise_checkpoint_round_trip() -> None:
     restored.load_state_dict(state)
     assert restored.ensemble_surprise is not None
     assert agent.ensemble_surprise is not None
-    assert (
-        restored.ensemble_surprise.normalizer.count
-        == agent.ensemble_surprise.normalizer.count
-    )
+    assert restored.ensemble_surprise.normalizer.count == agent.ensemble_surprise.normalizer.count
 
 
 def test_adaptive_retention_rejects_two_surprise_sources() -> None:

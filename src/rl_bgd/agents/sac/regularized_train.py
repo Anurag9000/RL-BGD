@@ -50,20 +50,20 @@ class BoundaryRegularizedSACTrainConfig:
             raise ValueError("total_steps must be positive")
         if self.random_steps < 0 or self.updates_per_step < 1:
             raise ValueError("invalid SAC warmup/update configuration")
-        if min(
-            self.batch_size,
-            self.replay_capacity,
-            self.importance_batch_size,
-        ) < 1:
+        if (
+            min(
+                self.batch_size,
+                self.replay_capacity,
+                self.importance_batch_size,
+            )
+            < 1
+        ):
             raise ValueError("replay and batch sizes must be positive")
         if self.replay_capacity < self.batch_size:
             raise ValueError("replay_capacity must be at least batch_size")
         if tuple(sorted(set(self.consolidation_steps))) != self.consolidation_steps:
             raise ValueError("consolidation_steps must be sorted and unique")
-        if any(
-            step <= 0 or step >= self.total_steps
-            for step in self.consolidation_steps
-        ):
+        if any(step <= 0 or step >= self.total_steps for step in self.consolidation_steps):
             raise ValueError("consolidation step lies outside the training stream")
 
 
@@ -89,12 +89,8 @@ def train_boundary_regularized_sac(
 
     replay = new_replay(config.replay_capacity)
     phase_replay = new_replay(config.replay_capacity)
-    train_generator = torch.Generator(device=agent.device).manual_seed(
-        config.seed + 17
-    )
-    consolidation_generator = torch.Generator(device=agent.device).manual_seed(
-        config.seed + 9_001
-    )
+    train_generator = torch.Generator(device=agent.device).manual_seed(config.seed + 17)
+    consolidation_generator = torch.Generator(device=agent.device).manual_seed(config.seed + 9_001)
     observation, _ = env.reset(seed=config.seed)
     episode_return = 0.0
     completed_returns: list[float] = []
@@ -161,9 +157,7 @@ def train_boundary_regularized_sac(
         "steps": config.total_steps,
         "episodes": len(completed_returns),
         "mean_episode_return": (
-            sum(completed_returns) / len(completed_returns)
-            if completed_returns
-            else float("nan")
+            sum(completed_returns) / len(completed_returns) if completed_returns else float("nan")
         ),
         "final_10_mean_return": (
             sum(completed_returns[-10:]) / min(10, len(completed_returns))

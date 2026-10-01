@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass
 from importlib import import_module
 from pathlib import Path
@@ -67,20 +67,8 @@ def _repair_missing_metaworld_assets(
         raise ContinualBenchImportError(
             "cannot locate installed benchmark packages for asset repair"
         )
-    destination = (
-        Path(continual_file)
-        .resolve()
-        .parent
-        / "assets"
-        / "textures"
-    )
-    source = (
-        Path(metaworld_file)
-        .resolve()
-        .parent
-        / "assets"
-        / "textures"
-    )
+    destination = Path(continual_file).resolve().parent / "assets" / "textures"
+    source = Path(metaworld_file).resolve().parent / "assets" / "textures"
     destination.mkdir(
         parents=True,
         exist_ok=True,
@@ -100,12 +88,8 @@ def _repair_missing_metaworld_assets(
             canonical,
             target,
         )
-        repaired.append(
-            filename
-        )
-    return tuple(
-        repaired
-    )
+        repaired.append(filename)
+    return tuple(repaired)
 
 
 @dataclass(frozen=True)
@@ -124,17 +108,13 @@ class ContinualBenchStreamConfig:
             raise ValueError("ContinualBench task sequence must not contain duplicates")
         unknown = set(self.task_sequence) - set(CONTINUAL_BENCH_TASKS)
         if unknown:
-            raise ValueError(
-                f"unsupported ContinualBench tasks: {sorted(unknown)}"
-            )
+            raise ValueError(f"unsupported ContinualBench tasks: {sorted(unknown)}")
         if self.switch_mode not in {
             "success",
             "fixed_steps",
             "success_or_budget",
         }:
-            raise ValueError(
-                f"unsupported ContinualBench switch mode: {self.switch_mode}"
-            )
+            raise ValueError(f"unsupported ContinualBench switch mode: {self.switch_mode}")
         if self.steps_per_task < 1:
             raise ValueError("steps_per_task must be positive")
 
@@ -201,9 +181,7 @@ class ContinualBenchStreamEnv:
 
     def _tensor_box(self, space: Any) -> TensorBox:
         if not hasattr(space, "low") or not hasattr(space, "high"):
-            raise TypeError(
-                "ContinualBench adapter requires continuous Box spaces"
-            )
+            raise TypeError("ContinualBench adapter requires continuous Box spaces")
         return TensorBox(
             low=torch.as_tensor(
                 np.asarray(space.low),
@@ -220,9 +198,7 @@ class ContinualBenchStreamEnv:
     def _set_active_task(self) -> None:
         setter = getattr(self.env, "set_task", None)
         if setter is None:
-            raise TypeError(
-                "ContinualBench environment does not expose set_task"
-            )
+            raise TypeError("ContinualBench environment does not expose set_task")
         setter(self.active_task)
 
     def _external_reset(
@@ -248,9 +224,7 @@ class ContinualBenchStreamEnv:
     def _reward(self, payload: Any) -> float:
         if isinstance(payload, Mapping):
             if self.active_task not in payload:
-                raise KeyError(
-                    f"reward mapping lacks active task {self.active_task!r}"
-                )
+                raise KeyError(f"reward mapping lacks active task {self.active_task!r}")
             payload = payload[self.active_task]
         value = float(payload)
         if not np.isfinite(value):
@@ -315,9 +289,7 @@ class ContinualBenchStreamEnv:
         )
         output = self.env.step(numpy_action)
         if not isinstance(output, tuple):
-            raise RuntimeError(
-                "ContinualBench step output must be a tuple"
-            )
+            raise RuntimeError("ContinualBench step output must be a tuple")
         if len(output) == 4:
             observation, reward_payload, truncated, info = output
             terminated = False
@@ -330,9 +302,7 @@ class ContinualBenchStreamEnv:
                 info,
             ) = output
         else:
-            raise RuntimeError(
-                f"unexpected ContinualBench step signature length: {len(output)}"
-            )
+            raise RuntimeError(f"unexpected ContinualBench step signature length: {len(output)}")
 
         reward = self._reward(reward_payload)
         success = self._success(info)
@@ -392,9 +362,7 @@ def make_continual_bench_stream(
     )
     env_class = getattr(envs, "ContinualBenchEnv", None)
     if env_class is None:
-        raise ContinualBenchImportError(
-            "installed package does not expose ContinualBenchEnv"
-        )
+        raise ContinualBenchImportError("installed package does not expose ContinualBenchEnv")
     env = env_class(
         seed=seed,
         render_mode=render_mode,

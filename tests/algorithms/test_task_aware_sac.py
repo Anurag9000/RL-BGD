@@ -21,15 +21,9 @@ def test_task_aware_actor_selects_occurrence_head() -> None:
     with torch.no_grad():
         for parameter in actor.parameters():
             parameter.zero_()
-        actor.mean_head.bias.copy_(
-            torch.tensor([0.0, 1.0])
-        )
-    first = actor.deterministic(
-        torch.tensor([[0.5, 1.0, 0.0]])
-    )
-    second = actor.deterministic(
-        torch.tensor([[0.5, 0.0, 1.0]])
-    )
+        actor.mean_head.bias.copy_(torch.tensor([0.0, 1.0]))
+    first = actor.deterministic(torch.tensor([[0.5, 1.0, 0.0]]))
+    second = actor.deterministic(torch.tensor([[0.5, 0.0, 1.0]]))
     assert first.item() == 0.0
     assert second.item() > 0.7
 
@@ -77,10 +71,7 @@ def test_task_aware_sac_update_is_finite_and_checkpointable() -> None:
         generator=torch.Generator().manual_seed(4),
     )
     metrics = agent.update(batch)
-    assert all(
-        math.isfinite(value)
-        for value in metrics.values()
-    )
+    assert all(math.isfinite(value) for value in metrics.values())
 
     agent.reset_optimizers()
     state = agent.state_dict()
@@ -93,9 +84,7 @@ def test_task_aware_sac_update_is_finite_and_checkpointable() -> None:
         hidden_dims=(16, 16),
     )
     restored.load_state_dict(state)
-    observation = torch.tensor(
-        [0.25, 1.0, 0.0]
-    )
+    observation = torch.tensor([0.25, 1.0, 0.0])
     torch.testing.assert_close(
         restored.act(
             observation,

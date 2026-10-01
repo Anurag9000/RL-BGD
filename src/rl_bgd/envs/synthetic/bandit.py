@@ -44,9 +44,7 @@ class ScheduledGaussianBandit:
         self.schedule = schedule
         self.reward_std = float(reward_std)
         self.device = torch.device(device)
-        self._arm_keys = self._validate_arm_keys(
-            tuple(schedule.config.anchors[0])
-        )
+        self._arm_keys = self._validate_arm_keys(tuple(schedule.config.anchors[0]))
         self.num_arms = len(self._arm_keys)
         self._generator = torch.Generator(device=self.device)
         self.environment_step = 0
@@ -55,14 +53,9 @@ class ScheduledGaussianBandit:
 
     @staticmethod
     def _validate_arm_keys(keys: tuple[str, ...]) -> tuple[str, ...]:
-        expected = tuple(
-            f"arm_{index}"
-            for index in range(len(keys))
-        )
+        expected = tuple(f"arm_{index}" for index in range(len(keys)))
         if len(keys) < 2 or set(keys) != set(expected):
-            raise ValueError(
-                "bandit contexts require contiguous arm_0...arm_K-1 keys"
-            )
+            raise ValueError("bandit contexts require contiguous arm_0...arm_K-1 keys")
         return expected
 
     def reset(
@@ -98,9 +91,7 @@ class ScheduledGaussianBandit:
         else:
             index = int(action)
         if not 0 <= index < self.num_arms:
-            raise ValueError(
-                f"bandit action {index} is outside [0, {self.num_arms})"
-            )
+            raise ValueError(f"bandit action {index} is outside [0, {self.num_arms})")
         return index
 
     def pull(
