@@ -1,0 +1,31 @@
+name: continual-bench-smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/rl_bgd/envs/continual_bench/**"
+      - "tests/envs/test_continual_bench_*"
+      - "pyproject.toml"
+      - ".github/workflows/continual-bench.yml"
+  pull_request:
+    paths:
+      - "src/rl_bgd/envs/continual_bench/**"
+      - "tests/envs/test_continual_bench_*"
+      - "pyproject.toml"
+      - ".github/workflows/continual-bench.yml"
+
+jobs:
+  continual-bench-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: pip install -e ".[continual-bench]"
+      - name: Run live ContinualBench adapter smoke
+        run: pytest tests/envs/test_continual_bench_live.py -m benchmark -q
