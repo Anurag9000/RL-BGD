@@ -30,3 +30,16 @@ def test_recurrent_bgd_sac_recurring_stream_is_finite() -> None:
             ]
         )
     )
+
+
+def test_recurrent_adaptive_bgd_sac_recurring_stream_emits_retention() -> None:
+    result = run_recurrent_sac_recurring_lqr(
+        steps=96,
+        seed=89,
+        device="cpu",
+        optimizer="adaptive_bgd",
+    )
+    metrics = result["training"]["last_update_metrics"]
+    assert 0.6 <= metrics["retention_lambda"] <= 1.0
+    assert torch.isfinite(torch.tensor(metrics["surprise_raw"]))
+    assert result["information_access"]["receives_task_boundary"] is False

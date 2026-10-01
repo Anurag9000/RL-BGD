@@ -5,49 +5,32 @@ from __future__ import annotations
 import json
 from typing import Literal
 
-from rl_bgd.agents.sac.agent import (
-    SACConfig,
-)
-from rl_bgd.agents.sac.bgd_agent import (
-    BGDSACConfig,
-)
+from rl_bgd.agents.sac.agent import SACConfig
+from rl_bgd.agents.sac.bgd_agent import BGDSACConfig
 from rl_bgd.agents.sac.recurrent_agent import (
     RecurrentSACAgent,
     RecurrentSACConfig,
 )
-from rl_bgd.agents.sac.recurrent_bgd_agent import (
-    BGDRecurrentSACAgent,
-)
+from rl_bgd.agents.sac.recurrent_bgd_agent import BGDRecurrentSACAgent
 from rl_bgd.agents.sac.recurrent_train import (
     RecurrentSACTrainConfig,
     train_recurrent_sac,
 )
-from rl_bgd.bayes.bgd import (
-    BGDConfig,
-)
-from rl_bgd.continual.schedules import (
-    ContextSchedule,
-    ContextScheduleConfig,
-)
-from rl_bgd.envs.synthetic.lqr import (
-    LinearQuadraticControlEnv,
-)
-from rl_bgd.envs.synthetic.nonstationary_lqr import (
-    ScheduledLQREnv,
-)
-from rl_bgd.replay.evidence_accounting import (
-    ReplayEvidenceConfig,
-)
-from rl_bgd.utils.device import (
-    resolve_device,
-)
-from rl_bgd.utils.randomness import (
-    seed_everything,
-)
+from rl_bgd.bayes.bgd import BGDConfig
+from rl_bgd.continual.schedules import ContextSchedule, ContextScheduleConfig
+from rl_bgd.envs.recurrent_context import PreviousTransitionContextEnv
+from rl_bgd.envs.synthetic.lqr import LinearQuadraticControlEnv
+from rl_bgd.envs.synthetic.nonstationary_lqr import ScheduledLQREnv
+from rl_bgd.replay.evidence_accounting import ReplayEvidenceConfig
+from rl_bgd.surprise.base import RetentionMappingConfig
+from rl_bgd.surprise.td import AdaptiveTDRetentionConfig
+from rl_bgd.utils.device import resolve_device
+from rl_bgd.utils.randomness import seed_everything
 
 OptimizerFamily = Literal[
     "adam",
     "bgd",
+    "adaptive_bgd",
 ]
 
 
@@ -58,15 +41,10 @@ def run_recurrent_sac_recurring_lqr(
     device: str = "auto",
     optimizer: OptimizerFamily = "adam",
 ) -> dict[str, object]:
-    """Run recurrent SAC without task IDs, context values, or switch callbacks."""
+    """Run recurrent SAC without task IDs, true context, or switch callbacks."""
 
-    seed_everything(
-        seed,
-        deterministic=True,
-    )
-    resolved = resolve_device(
-        device
-    )
+    seed_everything(seed, deterministic=True)
+    resolved = resolve_device(device)
     schedule = ContextSchedule(
         ContextScheduleConfig(
             mode="recurring",
@@ -88,41 +66,41 @@ def run_recurrent_sac_recurring_lqr(
             seed=seed,
         )
     )
-    env = ScheduledLQREnv(
+    base_env = ScheduledLQREnv(
         LinearQuadraticControlEnv(
             horizon=24,
             device=resolved,
         ),
         schedule,
     )
+    env = PreviousTransitionContextEnv(base_env)
+    observation_dim = int(env.observation_space.low.numel())
+    action_dim = int(env.action_space.low.numel())
+
     sac_config = SACConfig(
         actor_lr=1e-3,
         critic_lr=1e-3,
         alpha_lr=1e-3,
     )
-    recurrent_config = (
-        RecurrentSACConfig(
-            recurrent_hidden_dim=16,
-            encoder_hidden_dims=(16,),
-            q_hidden_dims=(16,),
-        )
+    recurrent_config = RecurrentSACConfig(
+        recurrent_hidden_dim=16,
+        encoder_hidden_dims=(16,),
+        q_hidden_dims=(16,),
     )
     if optimizer == "adam":
-        agent: RecurrentSACAgent = (
-            RecurrentSACAgent(
-                1,
-                1,
-                action_low=env.action_space.low,
-                action_high=env.action_space.high,
-                sac_config=sac_config,
-                recurrent_config=recurrent_config,
-                device=resolved,
-            )
+        agent: RecurrentSACAgent = RecurrentSACAgent(
+            observation_dim,
+            action_dim,
+            action_low=env.action_space.low,
+            action_high=env.action_space.high,
+            sac_config=sac_config,
+            recurrent_config=recurrent_config,
+            device=resolved,
         )
-    elif optimizer == "bgd":
+    elif optimizer in {"bgd", "adaptive_bgd"}:
         agent = BGDRecurrentSACAgent(
-            1,
-            1,
+            observation_dim,
+            action_dim,
             action_low=env.action_space.low,
             action_high=env.action_space.high,
             sac_config=sac_config,
@@ -132,6 +110,16 @@ def run_recurrent_sac_recurring_lqr(
                 posterior_std=0.1,
                 replay_evidence=ReplayEvidenceConfig(
                     mode="inverse_reuse_weight"
+                ),
+                adaptive_td_retention=(
+                    AdaptiveTDRetentionConfig(
+                        mapping=RetentionMappingConfig(
+                            lambda_min=0.6,
+                            kappa=1.0,
+                        )
+                    )
+                    if optimizer == "adaptive_bgd"
+                    else None
                 ),
                 actor_bgd=BGDConfig(
                     eta=0.1,
@@ -151,45 +139,45 @@ def run_recurrent_sac_recurring_lqr(
             f"unsupported optimizer family: {optimizer}"
         )
 
-    summary = train_recurrent_sac(
-        env,
-        agent,
-        config=RecurrentSACTrainConfig(
-            total_steps=steps,
-            random_steps=48,
-            sequence_batch_size=4,
-            burn_in=4,
-            unroll=8,
-            replay_capacity=max(
-                512,
-                steps,
+    try:
+        summary = train_recurrent_sac(
+            env,
+            agent,
+            config=RecurrentSACTrainConfig(
+                total_steps=steps,
+                random_steps=48,
+                sequence_batch_size=4,
+                burn_in=4,
+                unroll=8,
+                replay_capacity=max(512, steps),
+                seed=seed,
             ),
-            seed=seed,
-        ),
-    )
-    return {
-        "optimizer": optimizer,
-        "steps": steps,
-        "environment_steps": env.environment_step,
-        "final_evaluation_context": (
-            env.evaluation_context
-        ),
-        "training": summary,
-        "information_access": {
-            "receives_task_id": False,
-            "receives_task_boundary": False,
-            "receives_context": False,
-            "hidden_state_resets_only_on_episode_end": (
-                summary[
-                    "recurrent_reset_count"
-                ]
-                == summary[
-                    "episodes"
-                ]
-                + 1
-            ),
-        },
-    }
+        )
+        return {
+            "optimizer": optimizer,
+            "steps": steps,
+            "environment_steps": env.environment_step,
+            "final_evaluation_context": env.evaluation_context,
+            "training": summary,
+            "information_access": {
+                "receives_task_id": False,
+                "receives_task_boundary": False,
+                "receives_context": False,
+                "receives_environment_context": False,
+                "recurrent_input_fields": [
+                    "observation",
+                    "previous_action",
+                    "previous_reward",
+                    "previous_done",
+                ],
+                "hidden_state_resets_only_on_episode_end": (
+                    summary["recurrent_reset_count"]
+                    == summary["episodes"] + 1
+                ),
+            },
+        }
+    finally:
+        env.close()
 
 
 def main() -> None:

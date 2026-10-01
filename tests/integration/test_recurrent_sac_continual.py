@@ -31,6 +31,12 @@ def test_recurrent_sac_hidden_state_ignores_context_switches() -> None:
         ]
         is False
     )
+    assert access["recurrent_input_fields"] == [
+        "observation",
+        "previous_action",
+        "previous_reward",
+        "previous_done",
+    ]
     assert (
         access[
             "hidden_state_resets_only_on_episode_end"
