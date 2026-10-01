@@ -1005,6 +1005,12 @@ def _write_strict_suite_artifacts(
                     "runtime_class"
                 ]
             ),
+            "config_path": job[
+                "config_path"
+            ],
+            "optional_extra": job[
+                "optional_extra"
+            ],
         },
     )
     write_run_artifacts(
