@@ -1,8 +1,12 @@
 import json
 from pathlib import Path
 
+from rl_bgd.artifacts import load_run_directory
 from rl_bgd.experiments.suites import (
     SUITES,
+    ExperimentJob,
+    ExperimentSuite,
+    execute_suite,
     materialize_suite,
     validate_suite_registry,
 )
@@ -47,3 +51,182 @@ def test_suite_manifest_contains_complete_job_metadata(
         assert job["primary_metric"]
         assert job["command"]
         assert job["run_dir"]
+
+
+def test_comparison_and_ablation_jobs_are_atomic() -> None:
+    hidden_jobs = [
+        job
+        for job in SUITES["dev"].jobs
+        if job.job_id.startswith(
+            "dev_hidden_"
+        )
+    ]
+    assert len(hidden_jobs) == 5
+    assert all(
+        job.target.endswith(
+            ":run_hidden_context_sac_variant"
+        )
+        for job in hidden_jobs
+    )
+    assert len(
+        {
+            job.kwargs["variant"]
+            for job in hidden_jobs
+        }
+    ) == 5
+
+    ablations = SUITES[
+        "ablation_core"
+    ].jobs
+    replay_jobs = [
+        job
+        for job in ablations
+        if job.hypothesis_id == "F"
+    ]
+    assert {
+        job.kwargs[
+            "replay_evidence_mode"
+        ]
+        for job in replay_jobs
+    } == {
+        "all_replay",
+        "fresh_only_uncertainty",
+        "inverse_reuse_weight",
+        "normalized_batch_evidence",
+    }
+    assert {
+        job.hypothesis_id
+        for job in ablations
+    } >= {
+        "D",
+        "F",
+        "G",
+        "GB-T",
+    }
+
+
+def _tiny_suite(
+    primary_metric: str,
+) -> ExperimentSuite:
+    return ExperimentSuite(
+        name="tiny_strict",
+        description=(
+            "strict-artifact execution test"
+        ),
+        jobs=(
+            ExperimentJob(
+                job_id="tiny_smoke",
+                hypothesis_id="TEST",
+                target=(
+                    "rl_bgd.runners.smoke:"
+                    "run_smoke"
+                ),
+                kwargs={
+                    "steps": 4,
+                    "device": "cpu",
+                },
+                seeds=(0,),
+                algorithm="BGD-smoke",
+                environment="quadratic",
+                protocol="stationary",
+                config_path=None,
+                primary_metric=primary_metric,
+                secondary_metrics=(
+                    "initial_abs_mean",
+                ),
+                runtime_class="smoke",
+            ),
+        ),
+    )
+
+
+def test_execute_suite_writes_strict_artifacts(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    suite = _tiny_suite(
+        "final_abs_mean"
+    )
+    monkeypatch.setitem(
+        SUITES,
+        suite.name,
+        suite,
+    )
+    result = execute_suite(
+        suite.name,
+        tmp_path,
+    )
+    assert result[
+        "status"
+    ] == "success"
+    run_dir = (
+        tmp_path
+        / suite.name
+        / "tiny_smoke__seed_0"
+    )
+    loaded = load_run_directory(
+        run_dir
+    )
+    assert loaded.manifest.method == (
+        "BGD-smoke"
+    )
+    assert loaded.summary.metrics[
+        "final_abs_mean"
+    ] >= 0.0
+    metadata = json.loads(
+        (
+            run_dir
+            / "run_metadata.json"
+        ).read_text(
+            encoding="utf-8"
+        )
+    )
+    assert metadata[
+        "strict_artifacts"
+    ] is True
+    assert metadata[
+        "job_id"
+    ] == "tiny_smoke"
+
+
+def test_execute_suite_fails_closed_on_missing_primary_metric(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    suite = _tiny_suite(
+        "does_not_exist"
+    )
+    monkeypatch.setitem(
+        SUITES,
+        suite.name,
+        suite,
+    )
+    result = execute_suite(
+        suite.name,
+        tmp_path,
+    )
+    assert result[
+        "status"
+    ] == "failed"
+    run_dir = (
+        tmp_path
+        / suite.name
+        / "tiny_smoke__seed_0"
+    )
+    metadata = json.loads(
+        (
+            run_dir
+            / "run_metadata.json"
+        ).read_text(
+            encoding="utf-8"
+        )
+    )
+    assert metadata[
+        "strict_artifacts"
+    ] is False
+    assert (
+        "declared primary metric"
+        in metadata[
+            "artifact_error"
+        ]
+    )
