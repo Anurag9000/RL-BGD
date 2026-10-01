@@ -58,9 +58,13 @@ through evaluation_context.
 
 ## CORA
 
-CORA is retained as a protocol and metric compatibility target. Its current
+CORA is retained as a protocol and metric compatibility target. RL-BGD now
+implements dependency-free representations of the canonical Atari and Procgen
+sequential schedules plus CORA-style isolated forgetting and isolated zero-shot
+forward-transfer calculations directly from numeric evaluation traces.
+
+The legacy CORA environment runtime itself remains intentionally isolated. Its
 develop branch is a 2022 stack pinned to gym<=0.25.2, atari-py==0.2.5 and
 setuptools==59.5.0, which is incompatible with the repository's modern
-Python/Gymnasium base. A future isolated bridge may reproduce CORA experiment
-sequences and isolated-forgetting/zero-shot-forward-transfer metrics without
-silently downgrading the primary runtime.
+Python/Gymnasium base. RL-BGD does not silently downgrade the primary runtime
+to claim environment compatibility.
