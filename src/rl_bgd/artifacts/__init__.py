@@ -5,7 +5,10 @@ from rl_bgd.artifacts.run import (
     RunManifest,
     RunSummary,
     discover_run_directories,
+    flatten_numeric_metrics,
     load_run_directory,
+    metrics_rows_from_result,
+    summarize_runner_result,
     write_run_artifacts,
 )
 
@@ -14,6 +17,9 @@ __all__ = [
     "RunManifest",
     "RunSummary",
     "discover_run_directories",
+    "flatten_numeric_metrics",
     "load_run_directory",
+    "metrics_rows_from_result",
+    "summarize_runner_result",
     "write_run_artifacts",
 ]
