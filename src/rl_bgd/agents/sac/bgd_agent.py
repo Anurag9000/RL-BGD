@@ -23,6 +23,10 @@ from rl_bgd.replay.evidence_accounting import (
     weighted_evidence_mean,
 )
 from rl_bgd.surprise.base import SurpriseObservation, surprise_to_retention
+from rl_bgd.surprise.ensemble import (
+    AdaptiveEnsembleRetentionConfig,
+    EnsembleDisagreementSurprise,
+)
 from rl_bgd.surprise.td import AdaptiveTDRetentionConfig, TDSurprise
 
 BayesianizationMode = Literal[
@@ -40,6 +44,7 @@ class BGDSACConfig:
     sigma_max: float = 10.0
     replay_evidence: ReplayEvidenceConfig = field(default_factory=ReplayEvidenceConfig)
     adaptive_td_retention: AdaptiveTDRetentionConfig | None = None
+    adaptive_ensemble_retention: AdaptiveEnsembleRetentionConfig | None = None
     actor_bgd: BGDConfig = field(
         default_factory=lambda: BGDConfig(
             eta=0.1,
@@ -69,8 +74,17 @@ class BGDSACConfig:
             self.sigma_max,
         ).validate()
         self.replay_evidence.validate()
+        if (
+            self.adaptive_td_retention is not None
+            and self.adaptive_ensemble_retention is not None
+        ):
+            raise ValueError(
+                "configure at most one adaptive retention surprise source"
+            )
         if self.adaptive_td_retention is not None:
             self.adaptive_td_retention.validate()
+        if self.adaptive_ensemble_retention is not None:
+            self.adaptive_ensemble_retention.validate()
         self.actor_bgd.validate()
         self.critic_bgd.validate()
 
@@ -113,9 +127,16 @@ class BGDSACAgent(SACAgent):
         self.critic1_bgd: BGDUpdater | None = None
         self.critic2_bgd: BGDUpdater | None = None
         self.td_surprise: TDSurprise | None = None
+        self.ensemble_surprise: EnsembleDisagreementSurprise | None = None
 
         if self.bgd_config.adaptive_td_retention is not None:
-            self.td_surprise = TDSurprise(self.bgd_config.adaptive_td_retention.surprise)
+            self.td_surprise = TDSurprise(
+                self.bgd_config.adaptive_td_retention.surprise
+            )
+        if self.bgd_config.adaptive_ensemble_retention is not None:
+            self.ensemble_surprise = EnsembleDisagreementSurprise(
+                self.bgd_config.adaptive_ensemble_retention.normalizer
+            )
 
         if mode in {"actor_only", "actor_and_critic"}:
             self.actor_posterior = DiagonalGaussianPosterior.from_module(
@@ -156,19 +177,46 @@ class BGDSACAgent(SACAgent):
         batch: ReplayBatch,
         target: Tensor,
     ) -> tuple[float | None, SurpriseObservation | None]:
-        config = self.bgd_config.adaptive_td_retention
-        if config is None or self.td_surprise is None:
-            return None, None
-        with torch.no_grad():
-            q1 = self.critic1(batch.observations, batch.actions)
-            q2 = self.critic2(batch.observations, batch.actions)
-            td_errors = torch.cat((target - q1, target - q2), dim=0)
-        observation = self.td_surprise.observe(td_errors)
-        retention = surprise_to_retention(
-            observation.smoothed,
-            config.mapping,
-        )
-        return retention, observation
+        td_config = self.bgd_config.adaptive_td_retention
+        if td_config is not None and self.td_surprise is not None:
+            with torch.no_grad():
+                q1 = self.critic1(batch.observations, batch.actions)
+                q2 = self.critic2(batch.observations, batch.actions)
+                td_errors = torch.cat((target - q1, target - q2), dim=0)
+            observation = self.td_surprise.observe(td_errors)
+            retention = surprise_to_retention(
+                observation.smoothed,
+                td_config.mapping,
+            )
+            return retention, observation
+
+        ensemble_config = self.bgd_config.adaptive_ensemble_retention
+        if (
+            ensemble_config is not None
+            and self.ensemble_surprise is not None
+        ):
+            with torch.no_grad():
+                predictions = torch.stack(
+                    (
+                        self.critic1(
+                            batch.observations,
+                            batch.actions,
+                        ),
+                        self.critic2(
+                            batch.observations,
+                            batch.actions,
+                        ),
+                    ),
+                    dim=0,
+                )
+            observation = self.ensemble_surprise.observe(predictions)
+            retention = surprise_to_retention(
+                observation.smoothed,
+                ensemble_config.mapping,
+            )
+            return retention, observation
+
+        return None, None
 
     def _update_critics_bgd(
         self,
@@ -412,9 +460,16 @@ class BGDSACAgent(SACAgent):
         state["bgd_sac_version"] = 1
         state["bayesianization"] = self.bgd_config.bayesianization
         state["replay_evidence_mode"] = self.bgd_config.replay_evidence.mode
-        state["adaptive_td_retention"] = self.bgd_config.adaptive_td_retention is not None
+        state["adaptive_td_retention"] = (
+            self.bgd_config.adaptive_td_retention is not None
+        )
+        state["adaptive_ensemble_retention"] = (
+            self.bgd_config.adaptive_ensemble_retention is not None
+        )
         if self.td_surprise is not None:
             state["td_surprise"] = self.td_surprise.state_dict()
+        if self.ensemble_surprise is not None:
+            state["ensemble_surprise"] = self.ensemble_surprise.state_dict()
         if self.actor_bgd is not None:
             state["actor_bgd"] = self.actor_bgd.state_dict()
         if self.critic1_bgd is not None and self.critic2_bgd is not None:
@@ -432,15 +487,39 @@ class BGDSACAgent(SACAgent):
             raise ValueError("BGD-SAC checkpoint Bayesianization mode mismatch")
         if state.get("replay_evidence_mode", "all_replay") != self.bgd_config.replay_evidence.mode:
             raise ValueError("BGD-SAC checkpoint replay evidence mode mismatch")
-        expected_adaptive = self.bgd_config.adaptive_td_retention is not None
-        if bool(state.get("adaptive_td_retention", False)) != expected_adaptive:
-            raise ValueError("BGD-SAC checkpoint adaptive-retention configuration mismatch")
+        expected_td_adaptive = (
+            self.bgd_config.adaptive_td_retention is not None
+        )
+        if (
+            bool(state.get("adaptive_td_retention", False))
+            != expected_td_adaptive
+        ):
+            raise ValueError(
+                "BGD-SAC checkpoint TD adaptive-retention configuration mismatch"
+            )
+        expected_ensemble_adaptive = (
+            self.bgd_config.adaptive_ensemble_retention is not None
+        )
+        if (
+            bool(state.get("adaptive_ensemble_retention", False))
+            != expected_ensemble_adaptive
+        ):
+            raise ValueError(
+                "BGD-SAC checkpoint ensemble adaptive-retention configuration mismatch"
+            )
         super().load_state_dict(state)  # type: ignore[arg-type]
         if self.td_surprise is not None:
             payload = state["td_surprise"]
             if not isinstance(payload, dict):
                 raise TypeError("TD-surprise checkpoint state must be a dictionary")
             self.td_surprise.load_state_dict(payload)
+        if self.ensemble_surprise is not None:
+            payload = state["ensemble_surprise"]
+            if not isinstance(payload, dict):
+                raise TypeError(
+                    "ensemble-surprise checkpoint state must be a dictionary"
+                )
+            self.ensemble_surprise.load_state_dict(payload)
         if self.actor_bgd is not None:
             self.actor_bgd.load_state_dict(
                 state["actor_bgd"]  # type: ignore[arg-type]

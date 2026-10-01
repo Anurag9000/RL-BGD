@@ -52,7 +52,7 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Fixed controlled forgetting | COMPLETE | exact Gaussian tempering + BGD fixed retention |
 | TD surprise estimator | COMPLETE | online normalized TD surprise + tests |
 | TD adaptive retention in BGD-SAC | COMPLETE | no-boundary SAC wiring + checkpoint state + metrics |
-| Ensemble-disagreement surprise primitive | COMPLETE | estimator + state API; adaptive-agent wiring pending |
+| Ensemble-disagreement surprise primitive | COMPLETE | twin-critic BGD-SAC adaptive-retention wiring + state/checkpoint tests |
 | Predictive-NLL surprise primitive | COMPLETE | estimator + state API; world-model wiring pending |
 | Final average / forgetting / BWT / generic FWT metrics | COMPLETE | metrics/continual.py + tests |
 | Lifetime AUC / plasticity retention | COMPLETE | metrics/continual.py + tests |

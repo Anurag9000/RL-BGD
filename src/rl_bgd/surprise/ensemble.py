@@ -2,14 +2,33 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+
 import torch
 from torch import Tensor
 
 from rl_bgd.surprise.base import (
     EMANormalizerConfig,
     EMASurpriseNormalizer,
+    RetentionMappingConfig,
     SurpriseObservation,
 )
+
+
+@dataclass(frozen=True)
+class AdaptiveEnsembleRetentionConfig:
+    """Configuration for critic-disagreement-driven posterior tempering."""
+
+    normalizer: EMANormalizerConfig = field(
+        default_factory=EMANormalizerConfig
+    )
+    mapping: RetentionMappingConfig = field(
+        default_factory=RetentionMappingConfig
+    )
+
+    def validate(self) -> None:
+        self.normalizer.validate()
+        self.mapping.validate()
 
 
 class EnsembleDisagreementSurprise:

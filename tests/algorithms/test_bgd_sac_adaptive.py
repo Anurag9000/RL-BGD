@@ -1,3 +1,4 @@
+import pytest
 import torch
 
 from rl_bgd.agents.sac.agent import SACConfig
@@ -5,6 +6,7 @@ from rl_bgd.agents.sac.bgd_agent import BGDSACAgent, BGDSACConfig
 from rl_bgd.bayes.bgd import BGDConfig
 from rl_bgd.replay.buffer import ReplayBatch
 from rl_bgd.surprise.base import EMANormalizerConfig, RetentionMappingConfig
+from rl_bgd.surprise.ensemble import AdaptiveEnsembleRetentionConfig
 from rl_bgd.surprise.td import AdaptiveTDRetentionConfig, TDSurpriseConfig
 
 
@@ -77,3 +79,71 @@ def test_adaptive_td_surprise_checkpoint_round_trip() -> None:
     assert restored.td_surprise is not None
     assert agent.td_surprise is not None
     assert restored.td_surprise.normalizer.count == agent.td_surprise.normalizer.count
+
+
+
+def make_ensemble_agent() -> BGDSACAgent:
+    adaptive = AdaptiveEnsembleRetentionConfig(
+        normalizer=EMANormalizerConfig(
+            decay=0.9,
+            smoothing_decay=0.5,
+            initial_variance=0.1,
+        ),
+        mapping=RetentionMappingConfig(
+            lambda_min=0.45,
+            kappa=1.2,
+        ),
+    )
+    return BGDSACAgent(
+        2,
+        1,
+        action_low=torch.tensor([-1.0]),
+        action_high=torch.tensor([1.0]),
+        hidden_dims=(16, 16),
+        sac_config=SACConfig(),
+        bgd_config=BGDSACConfig(
+            bayesianization="critic_only",
+            posterior_std=0.1,
+            adaptive_ensemble_retention=adaptive,
+            critic_bgd=BGDConfig(
+                eta=0.1,
+                mc_samples=2,
+                antithetic=True,
+            ),
+        ),
+    )
+
+
+def test_adaptive_ensemble_retention_uses_twin_critic_disagreement() -> None:
+    agent = make_ensemble_agent()
+    first = agent.update(make_batch())
+    second = agent.update(make_batch())
+    assert 0.45 <= first["retention_lambda"] <= 1.0
+    assert 0.45 <= second["retention_lambda"] <= 1.0
+    assert first["surprise_raw"] >= 0.0
+    assert agent.ensemble_surprise is not None
+    assert agent.ensemble_surprise.normalizer.count == 2
+
+
+def test_adaptive_ensemble_surprise_checkpoint_round_trip() -> None:
+    agent = make_ensemble_agent()
+    agent.update(make_batch())
+    state = agent.state_dict()
+    restored = make_ensemble_agent()
+    restored.load_state_dict(state)
+    assert restored.ensemble_surprise is not None
+    assert agent.ensemble_surprise is not None
+    assert (
+        restored.ensemble_surprise.normalizer.count
+        == agent.ensemble_surprise.normalizer.count
+    )
+
+
+def test_adaptive_retention_rejects_two_surprise_sources() -> None:
+    td = AdaptiveTDRetentionConfig()
+    ensemble = AdaptiveEnsembleRetentionConfig()
+    with pytest.raises(ValueError):
+        BGDSACConfig(
+            adaptive_td_retention=td,
+            adaptive_ensemble_retention=ensemble,
+        ).validate()
