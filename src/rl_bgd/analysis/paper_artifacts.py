@@ -173,6 +173,41 @@ def load_paper_runs(
         )
         for path in directories
     )
+    for run in runs:
+        primary_metric = (
+            run.manifest.metadata.get(
+                "primary_metric"
+            )
+        )
+        if (
+            primary_metric is not None
+            and (
+                not isinstance(
+                    primary_metric,
+                    str,
+                )
+                or not primary_metric
+            )
+        ):
+            raise ValueError(
+                "primary_metric metadata must be a non-empty string"
+            )
+        if (
+            isinstance(
+                primary_metric,
+                str,
+            )
+            and primary_metric
+            not in run.summary.metrics
+            and primary_metric
+            not in run.summary.resources
+        ):
+            raise ValueError(
+                "completed run "
+                f"{run.manifest.run_id!r} does not expose declared "
+                f"primary metric {primary_metric!r}"
+            )
+
     run_ids = [
         run.manifest.run_id
         for run in runs
