@@ -8,7 +8,7 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
 import pandas as pd
 import yaml
@@ -25,14 +25,10 @@ def _finite_mapping(
     result: dict[str, float] = {}
     for key, value in values.items():
         if not isinstance(key, str) or not key:
-            raise ValueError(
-                f"{name} keys must be non-empty strings"
-            )
+            raise ValueError(f"{name} keys must be non-empty strings")
         converted = float(value)
         if not math.isfinite(converted):
-            raise ValueError(
-                f"{name} contains nonfinite value for {key}"
-            )
+            raise ValueError(f"{name} contains nonfinite value for {key}")
         result[key] = converted
     return result
 
@@ -49,22 +45,16 @@ class RunManifest:
     git_commit: str
     status: RunStatus = "completed"
     task_order: tuple[str, ...] = ()
-    information_access: dict[str, bool] = field(
-        default_factory=dict
-    )
+    information_access: dict[str, bool] = field(default_factory=dict)
     config_file: str = "config.yaml"
     metrics_file: str = "metrics.csv"
     summary_file: str = "summary.json"
     schema_version: int = RUN_SCHEMA_VERSION
-    metadata: dict[str, object] = field(
-        default_factory=dict
-    )
+    metadata: dict[str, object] = field(default_factory=dict)
 
     def validate(self) -> None:
         if self.schema_version != RUN_SCHEMA_VERSION:
-            raise ValueError(
-                "unsupported run-manifest schema version"
-            )
+            raise ValueError("unsupported run-manifest schema version")
         for name, value in (
             ("run_id", self.run_id),
             ("method", self.method),
@@ -73,66 +63,42 @@ class RunManifest:
             ("git_commit", self.git_commit),
         ):
             if not isinstance(value, str) or not value.strip():
-                raise ValueError(
-                    f"run manifest {name} must be non-empty"
-                )
+                raise ValueError(f"run manifest {name} must be non-empty")
         if self.seed < 0:
-            raise ValueError(
-                "run manifest seed must be non-negative"
-            )
+            raise ValueError("run manifest seed must be non-negative")
         if self.status not in {
             "completed",
             "failed",
             "partial",
         }:
-            raise ValueError(
-                f"unsupported run status: {self.status}"
-            )
+            raise ValueError(f"unsupported run status: {self.status}")
+        if any(not isinstance(task, str) or not task.strip() for task in self.task_order):
+            raise ValueError("task_order entries must be non-empty strings")
         if any(
-            not isinstance(task, str)
-            or not task.strip()
-            for task in self.task_order
-        ):
-            raise ValueError(
-                "task_order entries must be non-empty strings"
-            )
-        if any(
-            not isinstance(key, str)
-            or not key
-            or not isinstance(value, bool)
+            not isinstance(key, str) or not key or not isinstance(value, bool)
             for key, value in self.information_access.items()
         ):
-            raise ValueError(
-                "information_access must map string keys to booleans"
-            )
+            raise ValueError("information_access must map string keys to booleans")
         for filename in (
             self.config_file,
             self.metrics_file,
             self.summary_file,
         ):
             relative = Path(filename)
-            if (
-                relative.is_absolute()
-                or ".." in relative.parts
-                or filename.strip() == ""
-            ):
-                raise ValueError(
-                    "run artifact filenames must stay inside the run directory"
-                )
+            if relative.is_absolute() or ".." in relative.parts or filename.strip() == "":
+                raise ValueError("run artifact filenames must stay inside the run directory")
 
     def to_dict(self) -> dict[str, object]:
         self.validate()
         payload = asdict(self)
-        payload["task_order"] = list(
-            self.task_order
-        )
+        payload["task_order"] = list(self.task_order)
         return payload
 
     @classmethod
     def from_dict(
         cls,
         payload: Mapping[str, object],
-    ) -> "RunManifest":
+    ) -> RunManifest:
         try:
             information = payload.get(
                 "information_access",
@@ -146,25 +112,19 @@ class RunManifest:
                 information,
                 Mapping,
             ):
-                raise TypeError(
-                    "information_access must be a mapping"
-                )
+                raise TypeError("information_access must be a mapping")
             if not isinstance(
                 metadata,
                 Mapping,
             ):
-                raise TypeError(
-                    "metadata must be a mapping"
-                )
+                raise TypeError("metadata must be a mapping")
             manifest = cls(
                 run_id=str(payload["run_id"]),
                 method=str(payload["method"]),
                 setting=str(payload["setting"]),
                 benchmark=str(payload["benchmark"]),
                 seed=int(payload["seed"]),
-                git_commit=str(
-                    payload["git_commit"]
-                ),
+                git_commit=str(payload["git_commit"]),
                 status=str(
                     payload.get(
                         "status",
@@ -179,9 +139,7 @@ class RunManifest:
                     )  # type: ignore[arg-type]
                 ),
                 information_access={
-                    str(key): value
-                    for key, value in information.items()
-                    if isinstance(value, bool)
+                    str(key): value for key, value in information.items() if isinstance(value, bool)
                 },
                 config_file=str(
                     payload.get(
@@ -214,16 +172,10 @@ class RunManifest:
             TypeError,
             ValueError,
         ) as exc:
-            raise ValueError(
-                "invalid run manifest payload"
-            ) from exc
+            raise ValueError("invalid run manifest payload") from exc
         manifest.validate()
-        if len(
-            manifest.information_access
-        ) != len(information):
-            raise ValueError(
-                "information_access values must all be booleans"
-            )
+        if len(manifest.information_access) != len(information):
+            raise ValueError("information_access values must all be booleans")
         return manifest
 
 
@@ -232,32 +184,20 @@ class RunSummary:
     """Paper-facing scalar, task-level, and resource metrics for one seed."""
 
     run_id: str
-    metrics: dict[str, float] = field(
-        default_factory=dict
-    )
+    metrics: dict[str, float] = field(default_factory=dict)
     task_metrics: dict[
         str,
         dict[str, float],
-    ] = field(
-        default_factory=dict
-    )
-    resources: dict[str, float] = field(
-        default_factory=dict
-    )
-    metadata: dict[str, object] = field(
-        default_factory=dict
-    )
+    ] = field(default_factory=dict)
+    resources: dict[str, float] = field(default_factory=dict)
+    metadata: dict[str, object] = field(default_factory=dict)
     schema_version: int = RUN_SCHEMA_VERSION
 
     def validate(self) -> None:
         if self.schema_version != RUN_SCHEMA_VERSION:
-            raise ValueError(
-                "unsupported run-summary schema version"
-            )
+            raise ValueError("unsupported run-summary schema version")
         if not self.run_id.strip():
-            raise ValueError(
-                "run summary run_id must be non-empty"
-            )
+            raise ValueError("run summary run_id must be non-empty")
         _finite_mapping(
             self.metrics,
             name="summary metrics",
@@ -268,9 +208,7 @@ class RunSummary:
         )
         for task, values in self.task_metrics.items():
             if not isinstance(task, str) or not task:
-                raise ValueError(
-                    "task metric names must be non-empty"
-                )
+                raise ValueError("task metric names must be non-empty")
             _finite_mapping(
                 values,
                 name=f"task metrics for {task}",
@@ -284,7 +222,7 @@ class RunSummary:
     def from_dict(
         cls,
         payload: Mapping[str, object],
-    ) -> "RunSummary":
+    ) -> RunSummary:
         try:
             raw_metrics = payload.get(
                 "metrics",
@@ -302,22 +240,25 @@ class RunSummary:
                 "metadata",
                 {},
             )
-            if not isinstance(
-                raw_metrics,
-                Mapping,
-            ) or not isinstance(
-                raw_resources,
-                Mapping,
-            ) or not isinstance(
-                raw_task_metrics,
-                Mapping,
-            ) or not isinstance(
-                raw_metadata,
-                Mapping,
-            ):
-                raise TypeError(
-                    "summary mappings have invalid types"
+            if (
+                not isinstance(
+                    raw_metrics,
+                    Mapping,
                 )
+                or not isinstance(
+                    raw_resources,
+                    Mapping,
+                )
+                or not isinstance(
+                    raw_task_metrics,
+                    Mapping,
+                )
+                or not isinstance(
+                    raw_metadata,
+                    Mapping,
+                )
+            ):
+                raise TypeError("summary mappings have invalid types")
 
             task_metrics: dict[
                 str,
@@ -328,41 +269,24 @@ class RunSummary:
                     values,
                     Mapping,
                 ):
-                    raise TypeError(
-                        "per-task metrics must be mappings"
-                    )
-                task_metrics[
-                    str(task)
-                ] = _finite_mapping(
-                    {
-                        str(key): float(value)
-                        for key, value in values.items()
-                    },
+                    raise TypeError("per-task metrics must be mappings")
+                task_metrics[str(task)] = _finite_mapping(
+                    {str(key): float(value) for key, value in values.items()},
                     name=f"task metrics for {task}",
                 )
 
             summary = cls(
-                run_id=str(
-                    payload["run_id"]
-                ),
+                run_id=str(payload["run_id"]),
                 metrics=_finite_mapping(
-                    {
-                        str(key): float(value)
-                        for key, value in raw_metrics.items()
-                    },
+                    {str(key): float(value) for key, value in raw_metrics.items()},
                     name="summary metrics",
                 ),
                 task_metrics=task_metrics,
                 resources=_finite_mapping(
-                    {
-                        str(key): float(value)
-                        for key, value in raw_resources.items()
-                    },
+                    {str(key): float(value) for key, value in raw_resources.items()},
                     name="summary resources",
                 ),
-                metadata=dict(
-                    raw_metadata
-                ),
+                metadata=dict(raw_metadata),
                 schema_version=int(
                     payload.get(
                         "schema_version",
@@ -375,9 +299,7 @@ class RunSummary:
             TypeError,
             ValueError,
         ) as exc:
-            raise ValueError(
-                "invalid run summary payload"
-            ) from exc
+            raise ValueError("invalid run summary payload") from exc
         summary.validate()
         return summary
 
@@ -406,25 +328,17 @@ def _load_json_mapping(
     path: Path,
 ) -> Mapping[str, object]:
     try:
-        payload = json.loads(
-            path.read_text(
-                encoding="utf-8"
-            )
-        )
+        payload = json.loads(path.read_text(encoding="utf-8"))
     except (
         OSError,
         json.JSONDecodeError,
     ) as exc:
-        raise ValueError(
-            f"cannot read JSON artifact: {path}"
-        ) from exc
+        raise ValueError(f"cannot read JSON artifact: {path}") from exc
     if not isinstance(
         payload,
         Mapping,
     ):
-        raise ValueError(
-            f"JSON artifact must contain an object: {path}"
-        )
+        raise ValueError(f"JSON artifact must contain an object: {path}")
     return payload
 
 
@@ -438,102 +352,54 @@ def load_run_directory(
     root = Path(path)
     manifest_path = root / "manifest.json"
     if not manifest_path.is_file():
-        raise FileNotFoundError(
-            f"missing run manifest: {manifest_path}"
-        )
-    manifest = RunManifest.from_dict(
-        _load_json_mapping(
-            manifest_path
-        )
-    )
-    if (
-        require_completed
-        and manifest.status != "completed"
-    ):
+        raise FileNotFoundError(f"missing run manifest: {manifest_path}")
+    manifest = RunManifest.from_dict(_load_json_mapping(manifest_path))
+    if require_completed and manifest.status != "completed":
         raise ValueError(
             "paper aggregation refuses incomplete run "
             f"{manifest.run_id!r} with status {manifest.status!r}"
         )
 
-    config_path = (
-        root / manifest.config_file
-    )
-    metrics_path = (
-        root / manifest.metrics_file
-    )
-    summary_path = (
-        root / manifest.summary_file
-    )
+    config_path = root / manifest.config_file
+    metrics_path = root / manifest.metrics_file
+    summary_path = root / manifest.summary_file
     for artifact in (
         config_path,
         metrics_path,
         summary_path,
     ):
         if not artifact.is_file():
-            raise FileNotFoundError(
-                f"missing run artifact: {artifact}"
-            )
+            raise FileNotFoundError(f"missing run artifact: {artifact}")
 
     try:
-        config_payload = yaml.safe_load(
-            config_path.read_text(
-                encoding="utf-8"
-            )
-        )
+        config_payload = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     except (
         OSError,
         yaml.YAMLError,
     ) as exc:
-        raise ValueError(
-            f"cannot read resolved config: {config_path}"
-        ) from exc
+        raise ValueError(f"cannot read resolved config: {config_path}") from exc
     if not isinstance(
         config_payload,
         Mapping,
     ):
-        raise ValueError(
-            "resolved config must contain a mapping"
-        )
+        raise ValueError("resolved config must contain a mapping")
 
-    summary = RunSummary.from_dict(
-        _load_json_mapping(
-            summary_path
-        )
-    )
-    if (
-        summary.run_id
-        != manifest.run_id
-    ):
-        raise ValueError(
-            "manifest and summary run_id mismatch"
-        )
+    summary = RunSummary.from_dict(_load_json_mapping(summary_path))
+    if summary.run_id != manifest.run_id:
+        raise ValueError("manifest and summary run_id mismatch")
 
     try:
-        metrics = pd.read_csv(
-            metrics_path
-        )
+        metrics = pd.read_csv(metrics_path)
     except Exception as exc:
-        raise ValueError(
-            f"cannot read metrics CSV: {metrics_path}"
-        ) from exc
+        raise ValueError(f"cannot read metrics CSV: {metrics_path}") from exc
     if metrics.columns.empty:
-        raise ValueError(
-            "metrics CSV must contain at least one column"
-        )
+        raise ValueError("metrics CSV must contain at least one column")
 
     hashes = {
-        "manifest.json": _sha256(
-            manifest_path
-        ),
-        manifest.config_file: _sha256(
-            config_path
-        ),
-        manifest.metrics_file: _sha256(
-            metrics_path
-        ),
-        manifest.summary_file: _sha256(
-            summary_path
-        ),
+        "manifest.json": _sha256(manifest_path),
+        manifest.config_file: _sha256(config_path),
+        manifest.metrics_file: _sha256(metrics_path),
+        manifest.summary_file: _sha256(summary_path),
     }
     return LoadedRun(
         path=root.resolve(),
@@ -549,17 +415,8 @@ def discover_run_directories(
 ) -> tuple[Path, ...]:
     root = Path(results_root)
     if not root.exists():
-        raise FileNotFoundError(
-            f"results root does not exist: {root}"
-        )
-    return tuple(
-        sorted(
-            path.parent
-            for path in root.rglob(
-                "manifest.json"
-            )
-        )
-    )
+        raise FileNotFoundError(f"results root does not exist: {root}")
+    return tuple(sorted(path.parent for path in root.rglob("manifest.json")))
 
 
 def write_run_artifacts(
@@ -571,28 +428,19 @@ def write_run_artifacts(
         str,
         object,
     ],
-    metrics_rows: Sequence[
-        Mapping[str, object]
-    ],
+    metrics_rows: Sequence[Mapping[str, object]],
 ) -> None:
     """Write the minimum self-contained raw run artifacts atomically enough for local use."""
 
     manifest.validate()
     summary.validate()
-    if (
-        manifest.run_id
-        != summary.run_id
-    ):
-        raise ValueError(
-            "manifest and summary run_id must match"
-        )
+    if manifest.run_id != summary.run_id:
+        raise ValueError("manifest and summary run_id must match")
     if not isinstance(
         resolved_config,
         Mapping,
     ):
-        raise TypeError(
-            "resolved_config must be a mapping"
-        )
+        raise TypeError("resolved_config must be a mapping")
 
     root = Path(run_dir)
     root.mkdir(
@@ -600,18 +448,10 @@ def write_run_artifacts(
         exist_ok=True,
     )
 
-    manifest_path = (
-        root / "manifest.json"
-    )
-    config_path = (
-        root / manifest.config_file
-    )
-    summary_path = (
-        root / manifest.summary_file
-    )
-    metrics_path = (
-        root / manifest.metrics_file
-    )
+    manifest_path = root / "manifest.json"
+    config_path = root / manifest.config_file
+    summary_path = root / manifest.summary_file
+    metrics_path = root / manifest.metrics_file
     for artifact in (
         config_path,
         summary_path,
@@ -647,13 +487,9 @@ def write_run_artifacts(
         + "\n",
         encoding="utf-8",
     )
-    metrics = pd.DataFrame(
-        list(metrics_rows)
-    )
+    metrics = pd.DataFrame(list(metrics_rows))
     if metrics.columns.empty:
-        raise ValueError(
-            "metrics_rows must produce at least one column"
-        )
+        raise ValueError("metrics_rows must produce at least one column")
     metrics.to_csv(
         metrics_path,
         index=False,

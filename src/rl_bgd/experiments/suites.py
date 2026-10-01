@@ -402,16 +402,8 @@ TASK_AGNOSTIC_FINAL = ExperimentSuite(
             runtime_class="medium",
         ),
         *CARL_CORE.jobs,
-        *tuple(
-            job
-            for job in CW10_CORE.jobs
-            if "canonical" not in job.job_id
-        ),
-        *tuple(
-            job
-            for job in CW20_FINAL.jobs
-            if "canonical" not in job.job_id
-        ),
+        *tuple(job for job in CW10_CORE.jobs if "canonical" not in job.job_id),
+        *tuple(job for job in CW20_FINAL.jobs if "canonical" not in job.job_id),
     ),
 )
 
@@ -632,9 +624,7 @@ def validate_suite_registry() -> None:
             if not job.seeds:
                 raise RuntimeError(f"job {job.job_id} has no seeds")
             if not job.primary_metric:
-                raise RuntimeError(
-                    f"job {job.job_id} lacks a primary metric"
-                )
+                raise RuntimeError(f"job {job.job_id} lacks a primary metric")
             function = resolve_target(job.target)
             signature = inspect.signature(function)
             kwargs = dict(job.kwargs)
@@ -750,11 +740,7 @@ def execute_suite(
         "failures": failures,
         "status": "success" if not failures else "failed",
     }
-    summary_path = (
-        Path(output_root)
-        / suite_name
-        / "suite_execution_summary.json"
-    )
+    summary_path = Path(output_root) / suite_name / "suite_execution_summary.json"
     summary_path.write_text(
         json.dumps(summary, indent=2, sort_keys=True),
         encoding="utf-8",

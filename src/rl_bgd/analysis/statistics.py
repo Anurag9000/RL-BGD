@@ -35,13 +35,9 @@ def _values(
         dtype=np.float64,
     )
     if array.ndim != 1 or array.size == 0:
-        raise ValueError(
-            f"{name} must contain at least one scalar"
-        )
+        raise ValueError(f"{name} must contain at least one scalar")
     if not np.isfinite(array).all():
-        raise ValueError(
-            f"{name} contains nonfinite values"
-        )
+        raise ValueError(f"{name} contains nonfinite values")
     return array
 
 
@@ -51,13 +47,9 @@ def _validate_bootstrap(
     resamples: int,
 ) -> None:
     if not 0.0 < confidence < 1.0:
-        raise ValueError(
-            "confidence must lie strictly between 0 and 1"
-        )
+        raise ValueError("confidence must lie strictly between 0 and 1")
     if resamples < 1:
-        raise ValueError(
-            "bootstrap resamples must be positive"
-        )
+        raise ValueError("bootstrap resamples must be positive")
 
 
 def _percentile_interval(
@@ -102,24 +94,12 @@ def bootstrap_mean_ci(
             array.size,
         ),
     )
-    sampled_means = array[
-        indices
-    ].mean(axis=1)
-    ci_low, ci_high = (
-        _percentile_interval(
-            sampled_means,
-            confidence=confidence,
-        )
+    sampled_means = array[indices].mean(axis=1)
+    ci_low, ci_high = _percentile_interval(
+        sampled_means,
+        confidence=confidence,
     )
-    std = (
-        float(
-            array.std(
-                ddof=1
-            )
-        )
-        if array.size > 1
-        else 0.0
-    )
+    std = float(array.std(ddof=1)) if array.size > 1 else 0.0
     return BootstrapEstimate(
         mean=float(array.mean()),
         std=std,
@@ -150,12 +130,8 @@ def paired_bootstrap_difference(
         name="right paired values",
     )
     if left_values.shape != right_values.shape:
-        raise ValueError(
-            "paired bootstrap inputs must have identical lengths"
-        )
-    differences = (
-        left_values - right_values
-    )
+        raise ValueError("paired bootstrap inputs must have identical lengths")
+    differences = left_values - right_values
     return bootstrap_mean_ci(
         differences.tolist(),
         confidence=confidence,
@@ -187,23 +163,16 @@ def hierarchical_bootstrap_mean(
         resamples=resamples,
     )
     if not seed_task_values:
-        raise ValueError(
-            "hierarchical bootstrap requires at least one seed"
-        )
+        raise ValueError("hierarchical bootstrap requires at least one seed")
 
     normalized: dict[
         int,
         np.ndarray,
     ] = {}
     for seed_id, values in seed_task_values.items():
-        normalized[
-            int(seed_id)
-        ] = _values(
+        normalized[int(seed_id)] = _values(
             values,
-            name=(
-                "hierarchical values "
-                f"for seed {seed_id}"
-            ),
+            name=(f"hierarchical values for seed {seed_id}"),
         )
 
     seed_ids = np.asarray(
@@ -211,12 +180,7 @@ def hierarchical_bootstrap_mean(
         dtype=np.int64,
     )
     seed_means = np.asarray(
-        [
-            normalized[
-                int(seed_id)
-            ].mean()
-            for seed_id in seed_ids
-        ],
+        [normalized[int(seed_id)].mean() for seed_id in seed_ids],
         dtype=np.float64,
     )
     rng = np.random.default_rng(seed)
@@ -225,66 +189,30 @@ def hierarchical_bootstrap_mean(
         dtype=np.float64,
     )
 
-    for replicate in range(
-        resamples
-    ):
-        sampled_seed_positions = (
-            rng.integers(
-                0,
-                seed_ids.size,
-                size=seed_ids.size,
-            )
+    for replicate in range(resamples):
+        sampled_seed_positions = rng.integers(
+            0,
+            seed_ids.size,
+            size=seed_ids.size,
         )
-        resampled_seed_means: list[
-            float
-        ] = []
+        resampled_seed_means: list[float] = []
         for position in sampled_seed_positions:
-            seed_id = int(
-                seed_ids[position]
+            seed_id = int(seed_ids[position])
+            task_values = normalized[seed_id]
+            task_positions = rng.integers(
+                0,
+                task_values.size,
+                size=task_values.size,
             )
-            task_values = normalized[
-                seed_id
-            ]
-            task_positions = (
-                rng.integers(
-                    0,
-                    task_values.size,
-                    size=task_values.size,
-                )
-            )
-            resampled_seed_means.append(
-                float(
-                    task_values[
-                        task_positions
-                    ].mean()
-                )
-            )
-        bootstrap_means[
-            replicate
-        ] = float(
-            np.mean(
-                resampled_seed_means
-            )
-        )
+            resampled_seed_means.append(float(task_values[task_positions].mean()))
+        bootstrap_means[replicate] = float(np.mean(resampled_seed_means))
 
-    ci_low, ci_high = (
-        _percentile_interval(
-            bootstrap_means,
-            confidence=confidence,
-        )
+    ci_low, ci_high = _percentile_interval(
+        bootstrap_means,
+        confidence=confidence,
     )
-    std = (
-        float(
-            seed_means.std(
-                ddof=1
-            )
-        )
-        if seed_means.size > 1
-        else 0.0
-    )
-    mean = float(
-        seed_means.mean()
-    )
+    std = float(seed_means.std(ddof=1)) if seed_means.size > 1 else 0.0
+    mean = float(seed_means.mean())
     if not all(
         math.isfinite(value)
         for value in (
@@ -294,17 +222,13 @@ def hierarchical_bootstrap_mean(
             ci_high,
         )
     ):
-        raise FloatingPointError(
-            "hierarchical bootstrap produced nonfinite statistics"
-        )
+        raise FloatingPointError("hierarchical bootstrap produced nonfinite statistics")
     return BootstrapEstimate(
         mean=mean,
         std=std,
         ci_low=ci_low,
         ci_high=ci_high,
-        n=int(
-            seed_means.size
-        ),
+        n=int(seed_means.size),
         confidence=confidence,
         resamples=resamples,
     )

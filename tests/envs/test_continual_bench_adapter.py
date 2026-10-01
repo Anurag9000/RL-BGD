@@ -239,25 +239,14 @@ def test_asset_repair_collapses_duplicated_legacy_root(
     destination_root = continual_package / "assets"
     source_root = metaworld_package / "assets"
 
-    dependency_xml = (
-        destination_root
-        / "objects"
-        / "assets"
-        / "assembly_peg_dependencies.xml"
-    )
+    dependency_xml = destination_root / "objects" / "assets" / "assembly_peg_dependencies.xml"
     dependency_xml.parent.mkdir(parents=True)
     dependency_xml.write_text(
         '<mujoco><asset><mesh file="../objects/meshes/assembly_peg/handle.stl"/></asset></mujoco>',
         encoding="utf-8",
     )
 
-    canonical = (
-        source_root
-        / "objects"
-        / "meshes"
-        / "assembly_peg"
-        / "handle.stl"
-    )
+    canonical = source_root / "objects" / "meshes" / "assembly_peg" / "handle.stl"
     canonical.parent.mkdir(parents=True)
     canonical.write_bytes(b"canonical-mesh")
 
@@ -266,15 +255,6 @@ def test_asset_repair_collapses_duplicated_legacy_root(
         SimpleNamespace(__file__=str(metaworld_package / "__init__.py")),
     )
 
-    restored = (
-        destination_root
-        / "objects"
-        / "objects"
-        / "meshes"
-        / "assembly_peg"
-        / "handle.stl"
-    )
-    assert repaired == (
-        "objects/objects/meshes/assembly_peg/handle.stl",
-    )
+    restored = destination_root / "objects" / "objects" / "meshes" / "assembly_peg" / "handle.stl"
+    assert repaired == ("objects/objects/meshes/assembly_peg/handle.stl",)
     assert restored.read_bytes() == b"canonical-mesh"
