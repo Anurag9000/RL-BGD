@@ -23,22 +23,13 @@ def run_evidence_temperature_sweep(
 ) -> dict[str, object]:
     """Run matched BGD-SAC controls that vary only evidence temperature."""
 
-    values = tuple(
-        float(value)
-        for value in temperatures
-    )
+    values = tuple(float(value) for value in temperatures)
     if not values:
-        raise ValueError(
-            "temperature sweep requires at least one value"
-        )
+        raise ValueError("temperature sweep requires at least one value")
     if any(value <= 0 for value in values):
-        raise ValueError(
-            "all evidence temperatures must be strictly positive"
-        )
+        raise ValueError("all evidence temperatures must be strictly positive")
     if steps < 1:
-        raise ValueError(
-            "steps must be positive"
-        )
+        raise ValueError("steps must be positive")
 
     runs: list[dict[str, object]] = []
     for temperature in values:
@@ -54,34 +45,20 @@ def run_evidence_temperature_sweep(
             training,
             dict,
         ):
-            raise TypeError(
-                "BGD-SAC runner returned invalid training summary"
-            )
+            raise TypeError("BGD-SAC runner returned invalid training summary")
         runs.append(
             {
                 "evidence_temperature": temperature,
-                "pre_return": result[
-                    "pre_return"
-                ],
-                "post_return": result[
-                    "post_return"
-                ],
-                "improvement": result[
-                    "improvement"
-                ],
-                "final_10_mean_return": training[
-                    "final_10_mean_return"
-                ],
-                "last_update_metrics": training[
-                    "last_update_metrics"
-                ],
+                "pre_return": result["pre_return"],
+                "post_return": result["post_return"],
+                "improvement": result["improvement"],
+                "final_10_mean_return": training["final_10_mean_return"],
+                "last_update_metrics": training["last_update_metrics"],
             }
         )
 
     return {
-        "study": (
-            "generalized_bayes_evidence_temperature"
-        ),
+        "study": ("generalized_bayes_evidence_temperature"),
         "temperatures": list(values),
         "steps_per_run": steps,
         "seed": seed,
