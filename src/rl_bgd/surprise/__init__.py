@@ -8,7 +8,11 @@ from rl_bgd.surprise.base import (
     surprise_to_retention,
 )
 from rl_bgd.surprise.ensemble import EnsembleDisagreementSurprise
-from rl_bgd.surprise.predictive import PredictiveSurprise
+from rl_bgd.surprise.predictive import (
+    AdaptivePredictiveRetentionConfig,
+    GaussianTransitionModel,
+    PredictiveSurprise,
+)
 from rl_bgd.surprise.td import (
     AdaptiveTDRetentionConfig,
     TDSurprise,
@@ -16,10 +20,12 @@ from rl_bgd.surprise.td import (
 )
 
 __all__ = [
+    "AdaptivePredictiveRetentionConfig",
     "AdaptiveTDRetentionConfig",
     "EMANormalizerConfig",
     "EMASurpriseNormalizer",
     "EnsembleDisagreementSurprise",
+    "GaussianTransitionModel",
     "PredictiveSurprise",
     "RetentionMappingConfig",
     "SurpriseObservation",
