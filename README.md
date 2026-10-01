@@ -6,9 +6,11 @@ The central question is whether posterior uncertainty can provide a task-boundar
 
 ## Status
 
-The repository is being built in verified phases. The current foundation contains the first mathematically tested diagonal-Gaussian posterior, exact Gaussian tempering, Monte Carlo BGD update engine, diagnostics, device/seeding utilities, capability ledger, and research documentation. RL agents and benchmark adapters remain explicitly tracked as incomplete until wired and tested.
+The repository now contains tested SAC/PPO and BGD variants, recurrent hidden-context agents, replay-evidence controls, fixed/adaptive posterior tempering, CARL and Continual World integrations, external continual-learning baselines, mechanistic analysis, curated paper suites, and an automatic raw-run-to-paper artifact pipeline.
 
-No experimental claims or benchmark numbers are fabricated. A capability is marked complete only when source, wiring, tests, and a runnable path exist.
+Large CW10/CW20 confirmation runs and any other expensive studies remain explicitly **unexecuted** until raw artifacts exist. Optional legacy benchmark runtimes are isolated when their dependency stacks conflict with the modern base environment.
+
+No experimental claims or benchmark numbers are fabricated. A capability is marked complete only when source, wiring, tests, and a runnable path exist; execution and scientific support are tracked separately.
 
 ## Core BGD update
 
@@ -27,6 +29,8 @@ Posterior states are maintained in FP32 and clamped to configured uncertainty bo
 python -m pip install -e ".[dev]"
 pytest
 python scripts/smoke_test.py
+python scripts/run_paper_suite.py smoke --output-root artifacts/suites
+python scripts/build_paper_artifacts.py --run-root artifacts/suites --output-dir artifacts/paper
 ```
 
 The smoke test runs a small quadratic BGD optimization and prints posterior diagnostics; it does not require MuJoCo or external benchmark downloads.
