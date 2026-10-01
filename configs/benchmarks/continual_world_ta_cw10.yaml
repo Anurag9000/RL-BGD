@@ -1,0 +1,12 @@
+benchmark: continual_world
+sequence: CW10
+protocol: task_agnostic
+steps_per_task: 1000000
+episode_horizon: 200
+evaluation_episodes: 5
+evaluation_metric: success
+randomization: random_init_all
+task_identity_observation: false
+task_boundary_signal: false
+task_specific_head: false
+task_routed_replay: false
