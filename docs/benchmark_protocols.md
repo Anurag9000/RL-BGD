@@ -39,3 +39,28 @@ Python/NumPy/PyTorch RNG state across evaluator-only rollouts.
 
 Recurrent Adam and recurrent BGD must share architecture so recurrence/context
 inference gains are not misattributed to BGD.
+
+
+## ContinualBench
+
+RL-BGD pins sail-sg/ContinualBench to a specific Git revision because the
+repository is the authoritative implementation and its current package
+metadata does not fully enumerate runtime dependencies. The source contract is
+used instead of the README alone: current SawyerXYZEnv code returns a legacy
+four-value step tuple with a reward dictionary, while the README documents a
+five-value Gymnasium-style tuple. The adapter accepts both.
+
+The active reward/task is selected inside the environment wrapper. In strict
+mode, task name, task index, task success, and reward-dictionary identity are
+not exposed to the agent. Hidden switches may be success-triggered,
+fixed-budget, or success-or-budget. The evaluator can inspect the active task
+through evaluation_context.
+
+## CORA
+
+CORA is retained as a protocol and metric compatibility target. Its current
+develop branch is a 2022 stack pinned to gym<=0.25.2, atari-py==0.2.5 and
+setuptools==59.5.0, which is incompatible with the repository's modern
+Python/Gymnasium base. A future isolated bridge may reproduce CORA experiment
+sequences and isolated-forgetting/zero-shot-forward-transfer metrics without
+silently downgrading the primary runtime.
