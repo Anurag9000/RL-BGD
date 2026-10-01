@@ -17,10 +17,7 @@ from rl_bgd.agents.sac.recurrent_train import (
     train_recurrent_sac,
 )
 from rl_bgd.bayes.bgd import BGDConfig
-from rl_bgd.continual.schedules import ContextSchedule, ContextScheduleConfig
-from rl_bgd.envs.recurrent_context import PreviousTransitionContextEnv
-from rl_bgd.envs.synthetic.lqr import LinearQuadraticControlEnv
-from rl_bgd.envs.synthetic.nonstationary_lqr import ScheduledLQREnv
+from rl_bgd.envs.hidden_context_lqr import make_hidden_context_lqr_env
 from rl_bgd.replay.evidence_accounting import ReplayEvidenceConfig
 from rl_bgd.surprise.base import RetentionMappingConfig
 from rl_bgd.surprise.td import AdaptiveTDRetentionConfig
@@ -45,38 +42,12 @@ def run_recurrent_sac_recurring_lqr(
 
     seed_everything(seed, deterministic=True)
     resolved = resolve_device(device)
-    schedule = ContextSchedule(
-        ContextScheduleConfig(
-            mode="recurring",
-            anchors=(
-                {
-                    "dynamics": 0.65,
-                    "control_gain": 0.3,
-                },
-                {
-                    "dynamics": 0.98,
-                    "control_gain": 0.72,
-                },
-                {
-                    "dynamics": 0.82,
-                    "control_gain": 0.48,
-                },
-            ),
-            phase_steps=40,
-            seed=seed,
-        )
+    env = make_hidden_context_lqr_env(
+        seed=seed,
+        device=resolved,
     )
-    base_env = ScheduledLQREnv(
-        LinearQuadraticControlEnv(
-            horizon=24,
-            device=resolved,
-        ),
-        schedule,
-    )
-    env = PreviousTransitionContextEnv(base_env)
     observation_dim = int(env.observation_space.low.numel())
     action_dim = int(env.action_space.low.numel())
-
     sac_config = SACConfig(
         actor_lr=1e-3,
         critic_lr=1e-3,
@@ -87,6 +58,7 @@ def run_recurrent_sac_recurring_lqr(
         encoder_hidden_dims=(16,),
         q_hidden_dims=(16,),
     )
+
     if optimizer == "adam":
         agent: RecurrentSACAgent = RecurrentSACAgent(
             observation_dim,
@@ -145,7 +117,7 @@ def run_recurrent_sac_recurring_lqr(
             agent,
             config=RecurrentSACTrainConfig(
                 total_steps=steps,
-                random_steps=48,
+                random_steps=min(48, max(0, steps - 1)),
                 sequence_batch_size=4,
                 burn_in=4,
                 unroll=8,
