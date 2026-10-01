@@ -81,5 +81,12 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | CORA metric/protocol compatibility | COMPLETE | canonical Atari/Procgen sequence metadata + isolated-forgetting/zero-shot-forward-transfer formulas + tests |
 | CORA legacy environment runtime | BLOCKED | upstream develop stack pins gym<=0.25.2/atari-py/setuptools versions incompatible with the modern base; keep isolated rather than downgrade primary runtime |
 | EWC/Online-EWC/SI/MAS | COMPLETE | actor/critic SAC wiring + fixed-update task-agnostic consolidation + oracle-boundary protocol + checkpoint/tests |
+| UCL-PPO oracle-boundary baseline | COMPLETE | independent Bayesian hidden-layer PPO + UCL saved-posterior regularizer + explicit boundary snapshots + checkpoint/unit/integration tests; original task-ID dependence is not mislabelled task-agnostic |
+| FOO-VB diagonal baseline mapping | COMPLETE | exact eta=1 untempered diagonal BGD equivalence + regression test; generalized-Bayes RL scope explicitly distinguished from original likelihood objective |
+| External baseline phase | COMPLETE | EWC/Online-EWC/SI/MAS/UCL plus FOO-VB diagonal reference are implemented, documented, and information-access-labelled; structured matrix-variate FOO-VB remains an optional extension rather than a required duplicate |
+| 3RL-style recurrent Continual World | PARTIAL | strict hidden-ID recurrent Adam/BGD/adaptive-BGD CW10/CW20 runners + source-verified protocol/deviation docs; full long benchmark runs pending |
+| CARL SAC/BGD training path | PARTIAL | strict hidden-context Adam/BGD/adaptive-BGD runner + isolated live benchmark test; latest training-path CI execution pending |
 | Mechanistic experiments | PARTIAL | Phase-13 curvature/movement/perturbation/freezing/uncertainty-quality artifact engine + replay/surprise mechanisms implemented; full external comparative runs pending |
-| Paper tables/figures | PARTIAL | automatic raw-run aggregation, provenance hashes, bootstrap tables/CI figures, and tests implemented; final artifacts await full benchmark runs |
+| Curated paper suites | PARTIAL | smoke/dev/CARL/CW10/CW20/task-agnostic/ablation/uncertainty/mechanism/compute manifests + strict canonical run conversion; end-to-end smoke CI pending |
+| Canonical raw-run artifact schema | COMPLETE | manifest/config/metrics/summary schema + strict loader/provenance hashes + failed-run status + converter tests |
+| Paper tables/figures | PARTIAL | canonical raw-run aggregation, scalar/task bootstrap statistics, matched-seed differences, provenance/information-access tables, multi-format figures/tables; final artifacts await full benchmark runs |
