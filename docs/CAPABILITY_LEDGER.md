@@ -20,7 +20,7 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Gaussian tempering | COMPLETE | bayes/tempering.py + exact tests |
 | Posterior diagnostics | COMPLETE | sigma/precision/entropy/effective LR |
 | Posterior/updater checkpoint | COMPLETE | versioned round-trip test |
-| Generalized-Bayes RL | PARTIAL | formulation + SAC mapping; evidence temperature study pending |
+| Generalized-Bayes RL | PARTIAL | formulation + SAC/PPO mapping; evidence-temperature study pending |
 | InformationAccessConfig | COMPLETE | central contract + leakage tests |
 | Device auto/CUDA/CPU | COMPLETE | utils/device.py + tests |
 | Deterministic seeding | COMPLETE | Python/NumPy/PyTorch CPU/CUDA |
@@ -63,13 +63,18 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | CARL 1.1.1 strict hidden-context adapter | PARTIAL | adapter/config/unit tests; real CARL smoke pending |
 | CARL abrupt/smooth/recurring configs | PARTIAL | schedule semantics complete; real CARL smoke pending |
 | PPO Adam baseline | COMPLETE | clipped surrogate + GAE + minibatch epochs + value clipping + checkpoint + stationary LQR learning smoke |
-| BGD-PPO actor/value/both | COMPLETE | agents/ppo/bgd_agent.py + test_bgd_ppo.py + test_bgd_ppo_learning.py + scripts/run_bgd_ppo_lqr.py |
-| BGD-PPO repeated-rollout evidence accounting | COMPLETE | first-epoch-only default plus all-epochs/normalized experimental modes + tests |
-| PPO task-agnostic recurring synthetic stream | COMPLETE | Adam/BGD recurring LQR runner + integration test without task ID/boundary input |
-| PPO rollout checkpointing | COMPLETE | partial/update-ready behavior-policy statistics + GAE state round-trip test |
-| PPO + Adam/BGD overall | COMPLETE | stationary Adam/BGD validation + recurring task-agnostic LQR benchmark path + CI-tested learning acceptance |
-| Recurrent agents/sequence replay | NOT STARTED | phase 11 |
-| Continual World CW10/CW20 | NOT STARTED | phase 10 |
+| BGD-PPO actor/value/both | COMPLETE | feed-forward BGD-PPO + stationary learning acceptance |
+| BGD-PPO repeated-rollout evidence accounting | COMPLETE | first-epoch-only default plus all-epochs/normalized modes + tests |
+| PPO task-agnostic recurring synthetic stream | COMPLETE | Adam/BGD recurring LQR runner without task ID/boundary input |
+| PPO rollout checkpointing | COMPLETE | partial/update-ready behavior statistics + GAE round trip |
+| PPO + Adam/BGD overall | COMPLETE | stationary and recurring task-agnostic validation |
+| Recurrent PPO Adam | COMPLETE | GRU actor/value + sequence rollout + checkpoint + smoke test |
+| Recurrent BGD-PPO | PARTIAL | matched GRU architecture + posterior/update/checkpoint tests; learning acceptance pending |
+| Recurrent sequence rollout semantics | COMPLETE | behavior hidden snapshots + episode masks + truncated-BPTT chunks |
+| Recurrent hidden-state task-leakage guard | COMPLETE | recurring LQR runner verifies resets only on episode end |
+| Recurrent SAC / sequence replay | NOT STARTED | next recurrent off-policy phase |
+| Continual World canonical task-aware protocol | PARTIAL | modern Meta-World stream + task-ID path + evaluation matrices; full long benchmark runs pending |
+| Continual World strict task-agnostic CW10/CW20 | PARTIAL | hidden-ID stream + protocol bundles + SAC matrix runner; full long benchmark runs pending |
 | ContinualBench/CORA adapter | NOT STARTED | optional external benchmark |
 | EWC/Online-EWC/SI/MAS | NOT STARTED | baseline phase |
 | Mechanistic experiments | PARTIAL | curvature + movement + long-horizon + replay evidence + surprise timeline |
