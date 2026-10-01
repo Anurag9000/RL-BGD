@@ -11,7 +11,8 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Initial literature audit | PARTIAL | docs/literature_review.md has explicit backlog |
 | Diagonal Gaussian posterior | COMPLETE | bayes/diagonal_gaussian.py + tests |
 | FP32 Bayesian state | COMPLETE | posterior state tensors enforce FP32 |
-| BGD Monte Carlo update | COMPLETE | bayes/bgd.py + quadratic/integration tests |\n| FOO-VB diagonal equivalence reference | COMPLETE | exact diagonal update equivalence baseline + regression tests |
+| BGD Monte Carlo update | COMPLETE | bayes/bgd.py + quadratic/integration tests |
+| FOO-VB diagonal equivalence reference | COMPLETE | exact diagonal update equivalence baseline + regression tests |
 | Separate mean/evidence gradient channels | COMPLETE | BGDLoss + replay-evidence mechanism tests |
 | Dynamic per-update retention override | COMPLETE | BGDUpdater retention override + tempering test |
 | K=1/2/4/8 support | COMPLETE | generic mc_samples; antithetic requires even K |
@@ -20,7 +21,7 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Gaussian tempering | COMPLETE | bayes/tempering.py + exact tests |
 | Posterior diagnostics | COMPLETE | sigma/precision/entropy/effective LR |
 | Posterior/updater checkpoint | COMPLETE | versioned round-trip test |
-| Generalized-Bayes RL | PARTIAL | formulation + SAC/PPO mapping; evidence-temperature study pending |
+| Generalized-Bayes RL | PARTIAL | evidence temperature is a real BGD power with matched SAC sweep + math tests; latest CI validation pending |
 | InformationAccessConfig | COMPLETE | central contract + leakage tests |
 | Device auto/CUDA/CPU | COMPLETE | utils/device.py + tests |
 | Deterministic seeding | COMPLETE | Python/NumPy/PyTorch CPU/CUDA |
@@ -53,7 +54,7 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | TD surprise estimator | COMPLETE | online normalized TD surprise + tests |
 | TD adaptive retention in BGD-SAC | COMPLETE | no-boundary SAC wiring + checkpoint state + metrics |
 | Ensemble-disagreement surprise primitive | COMPLETE | twin-critic BGD-SAC adaptive-retention wiring + state/checkpoint tests |
-| Predictive-NLL surprise primitive | COMPLETE | estimator + state API; world-model wiring pending |
+| Predictive-NLL adaptive retention | COMPLETE | online Gaussian transition/reward model + pre-update NLL surprise + BGD-SAC retention wiring + checkpoint/tests |
 | Final average / forgetting / BWT / generic FWT metrics | COMPLETE | metrics/continual.py + tests |
 | Lifetime AUC / plasticity retention | COMPLETE | metrics/continual.py + tests |
 | T80/T90 primitive / post-change AUC / recurrence metrics | COMPLETE | metrics/adaptation.py + tests |
@@ -76,7 +77,8 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Recurrent BGD-SAC | COMPLETE | actor/critic/all posterior modes + evidence accounting + checkpoint + recurring LQR integration + stationary learning acceptance |
 | Continual World canonical task-aware protocol | PARTIAL | modern Meta-World stream + task-ID multihead SAC + published replay/optimizer lifecycle + matrix runner/configs; full long benchmark runs pending |
 | Continual World strict task-agnostic CW10/CW20 | PARTIAL | hidden-ID stream + protocol bundles + SAC matrix runner; full long benchmark runs pending |
-| ContinualBench adapter | PARTIAL | strict reward/task stream + 4/5-step compatibility + unit tests; pinned live smoke pending after packaging fix |\n| CORA compatibility | PARTIAL | source/API/dependency audit complete; protocol/metrics bridge pending, legacy runtime intentionally isolated |
+| ContinualBench adapter | PARTIAL | strict reward/task stream + 4/5-step compatibility + unit tests; pinned live smoke pending after packaging fix |
+| CORA compatibility | PARTIAL | source/API/dependency audit complete; protocol/metrics bridge pending, legacy runtime intentionally isolated |
 | EWC/Online-EWC/SI/MAS | COMPLETE | actor/critic SAC wiring + fixed-update task-agnostic consolidation + oracle-boundary protocol + checkpoint/tests |
 | Mechanistic experiments | PARTIAL | curvature + movement + long-horizon + replay evidence + surprise timeline |
 | Paper tables/figures | NOT STARTED | phase 15 |
