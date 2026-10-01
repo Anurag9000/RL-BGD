@@ -18,7 +18,7 @@ from rl_bgd.envs.continual_world.metaworld import (
 )
 from rl_bgd.envs.continual_world.stream import ContinualWorldBenchmark
 from rl_bgd.utils.device import resolve_device
-from rl_bgd.utils.randomness import seed_everything
+from rl_bgd.utils.randomness import preserved_random_state, seed_everything
 
 OptimizerFamily = Literal["adam", "bgd"]
 
@@ -108,13 +108,14 @@ def run_ta_continual_world_sac(
             if completed_steps % steps_per_task != 0:
                 return
             stage_index = completed_steps // steps_per_task - 1
-            evaluations = evaluate_tasks(
-                current_agent,
-                bundle.evaluation_envs,
-                episodes=evaluation_episodes,
-                seed=50_000 + stage_index * 100_000,
-                max_episode_steps=episode_horizon,
-            )
+            with preserved_random_state():
+                evaluations = evaluate_tasks(
+                    current_agent,
+                    bundle.evaluation_envs,
+                    episodes=evaluation_episodes,
+                    seed=50_000 + stage_index * 100_000,
+                    max_episode_steps=episode_horizon,
+                )
             stage_label = f"after_{stage_index + 1:02d}_{bundle.task_names[stage_index]}"
             return_matrix.append(
                 stage_label,
