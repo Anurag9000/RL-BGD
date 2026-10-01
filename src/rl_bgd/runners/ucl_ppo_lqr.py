@@ -98,8 +98,21 @@ def run_ucl_ppo_recurring_lqr(
     final_phase_return = float(
         phase_summaries[-1]["final_10_mean_return"]
     )
+    final_phase = phase_summaries[-1]
+    final_phase_return = final_phase.get(
+        "final_10_mean_return"
+    )
+    if not isinstance(
+        final_phase_return,
+        (int, float),
+    ):
+        raise TypeError(
+            "UCL final phase did not expose final_10_mean_return"
+        )
+
     return {
         "algorithm": "ucl_ppo",
+        "final_phase_return": float(final_phase_return),
         "final_phase_return": final_phase_return,
         "protocol": "oracle_boundary",
         "steps": phase_steps * phases,
