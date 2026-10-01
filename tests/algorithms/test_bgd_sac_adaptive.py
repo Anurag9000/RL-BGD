@@ -7,6 +7,7 @@ from rl_bgd.bayes.bgd import BGDConfig
 from rl_bgd.replay.buffer import ReplayBatch
 from rl_bgd.surprise.base import EMANormalizerConfig, RetentionMappingConfig
 from rl_bgd.surprise.ensemble import AdaptiveEnsembleRetentionConfig
+from rl_bgd.surprise.predictive import AdaptivePredictiveRetentionConfig
 from rl_bgd.surprise.td import AdaptiveTDRetentionConfig, TDSurpriseConfig
 
 
@@ -142,4 +143,86 @@ def test_adaptive_retention_rejects_two_surprise_sources() -> None:
         BGDSACConfig(
             adaptive_td_retention=td,
             adaptive_ensemble_retention=ensemble,
+        ).validate()
+
+
+def make_predictive_agent() -> BGDSACAgent:
+    adaptive = AdaptivePredictiveRetentionConfig(
+        normalizer=EMANormalizerConfig(
+            decay=0.9,
+            smoothing_decay=0.5,
+            initial_variance=0.1,
+        ),
+        mapping=RetentionMappingConfig(
+            lambda_min=0.35,
+            kappa=1.1,
+        ),
+        hidden_dims=(16, 16),
+        learning_rate=1e-3,
+        gradient_clip_norm=5.0,
+    )
+    return BGDSACAgent(
+        2,
+        1,
+        action_low=torch.tensor([-1.0]),
+        action_high=torch.tensor([1.0]),
+        hidden_dims=(16, 16),
+        sac_config=SACConfig(),
+        bgd_config=BGDSACConfig(
+            bayesianization="critic_only",
+            posterior_std=0.1,
+            adaptive_predictive_retention=adaptive,
+            critic_bgd=BGDConfig(
+                eta=0.1,
+                mc_samples=2,
+                antithetic=True,
+            ),
+        ),
+    )
+
+
+def test_adaptive_predictive_retention_trains_world_model_after_scoring() -> None:
+    torch.manual_seed(54)
+    agent = make_predictive_agent()
+    first = agent.update(make_batch())
+    shifted = make_batch()
+    shifted.next_observations.add_(5.0)
+    shifted.rewards.add_(3.0)
+    second = agent.update(shifted)
+    assert 0.35 <= first["retention_lambda"] <= 1.0
+    assert 0.35 <= second["retention_lambda"] <= 1.0
+    assert first["predictive_model_loss"] >= 0.0
+    assert second["surprise_normalized"] >= 0.0
+    assert agent.predictive_surprise is not None
+    assert agent.predictive_surprise.normalizer.count == 2
+
+
+def test_adaptive_predictive_checkpoint_round_trip() -> None:
+    torch.manual_seed(55)
+    agent = make_predictive_agent()
+    agent.update(make_batch())
+    state = agent.state_dict()
+    restored = make_predictive_agent()
+    restored.load_state_dict(state)
+    assert restored.predictive_surprise is not None
+    assert agent.predictive_surprise is not None
+    assert (
+        restored.predictive_surprise.normalizer.count
+        == agent.predictive_surprise.normalizer.count
+    )
+    assert restored.predictive_model is not None
+    assert agent.predictive_model is not None
+    for left, right in zip(
+        restored.predictive_model.parameters(),
+        agent.predictive_model.parameters(),
+        strict=True,
+    ):
+        torch.testing.assert_close(left, right)
+
+
+def test_adaptive_retention_rejects_predictive_plus_other_source() -> None:
+    with pytest.raises(ValueError):
+        BGDSACConfig(
+            adaptive_td_retention=AdaptiveTDRetentionConfig(),
+            adaptive_predictive_retention=AdaptivePredictiveRetentionConfig(),
         ).validate()
