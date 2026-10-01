@@ -148,9 +148,13 @@ def train_boundary_regularized_sac(
                 ),
                 generator=consolidation_generator,
             )
-            metrics = agent.consolidate(importance_batch)
-            metrics["environment_step"] = float(completed_steps)
-            consolidation_log.append(metrics)
+            agent.consolidate_from_batch(importance_batch)
+            consolidation_log.append(
+                {
+                    "environment_step": float(completed_steps),
+                    "consolidation_count": float(agent.consolidation_count),
+                }
+            )
             phase_replay = new_replay(config.replay_capacity)
 
     return {

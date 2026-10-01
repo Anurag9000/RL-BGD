@@ -6,9 +6,9 @@ import json
 
 from rl_bgd.agents.sac.agent import SACConfig
 from rl_bgd.agents.sac.regularized_agent import (
+    RegularizationMethod,
     RegularizedSACAgent,
     RegularizedSACConfig,
-    RegularizerName,
 )
 from rl_bgd.agents.sac.regularized_train import (
     BoundaryRegularizedSACTrainConfig,
@@ -21,15 +21,15 @@ from rl_bgd.utils.device import resolve_device
 from rl_bgd.utils.randomness import seed_everything
 
 
-def run_regularized_sac_recurring_lqr(
+def run_boundary_regularized_sac_recurring_lqr(
     *,
-    method: RegularizerName = "ewc",
+    method: RegularizationMethod = "ewc",
     steps: int = 384,
     phase_steps: int = 128,
     seed: int = 81,
     device: str = "auto",
 ) -> dict[str, object]:
-    """Run a boundary-aware consolidation baseline without task-ID routing."""
+    """Run oracle-boundary consolidation without task-ID or head routing."""
 
     if steps < 64 or phase_steps < 1:
         raise ValueError("invalid regularized SAC experiment horizon")
@@ -65,9 +65,11 @@ def run_regularized_sac_recurring_lqr(
             critic_lr=1e-3,
             alpha_lr=1e-3,
         ),
-        regularizer_config=RegularizedSACConfig(
+        regularization_config=RegularizedSACConfig(
             method=method,
+            target="actor_and_critic",
             strength=1.0,
+            consolidation_interval_updates=1_000_000_000,
             importance_samples=16,
         ),
         device=resolved,
@@ -99,8 +101,9 @@ def run_regularized_sac_recurring_lqr(
         "information_access": {
             "receives_task_id": False,
             "receives_task_boundary": True,
-            "context_available": False,
+            "receives_context": False,
             "task_specific_heads": False,
+            "consolidation_trigger": "oracle_phase_boundary",
         },
     }
 
@@ -108,7 +111,7 @@ def run_regularized_sac_recurring_lqr(
 def main() -> None:
     print(
         json.dumps(
-            run_regularized_sac_recurring_lqr(),
+            run_boundary_regularized_sac_recurring_lqr(),
             indent=2,
             sort_keys=True,
         )
