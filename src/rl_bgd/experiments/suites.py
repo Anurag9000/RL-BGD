@@ -1056,6 +1056,110 @@ def _write_strict_suite_artifacts(
     )
 
 
+def _write_failed_suite_manifest(
+    *,
+    suite_name: str,
+    suite_manifest: Mapping[str, object],
+    job: Mapping[str, object],
+    run_dir: Path,
+    reason: str,
+) -> None:
+    git_commit = suite_manifest.get(
+        "git_commit"
+    )
+    if (
+        not isinstance(
+            git_commit,
+            str,
+        )
+        or not git_commit
+    ):
+        raise ValueError(
+            "strict failed-run provenance requires a concrete git commit"
+        )
+    manifest = RunManifest(
+        run_id=str(
+            job[
+                "run_id"
+            ]
+        ),
+        method=str(
+            job[
+                "algorithm"
+            ]
+        ),
+        setting=str(
+            job[
+                "protocol"
+            ]
+        ),
+        benchmark=str(
+            job[
+                "environment"
+            ]
+        ),
+        seed=int(
+            job[
+                "seed"
+            ]
+        ),
+        git_commit=git_commit,
+        status="failed",
+        metadata={
+            "suite": suite_name,
+            "job_id": str(
+                job[
+                    "job_id"
+                ]
+            ),
+            "hypothesis_id": str(
+                job[
+                    "hypothesis_id"
+                ]
+            ),
+            "target": str(
+                job[
+                    "target"
+                ]
+            ),
+            "primary_metric": str(
+                job[
+                    "primary_metric"
+                ]
+            ),
+            "secondary_metrics": list(
+                job[
+                    "secondary_metrics"
+                ]
+            ),
+            "runtime_class": str(
+                job[
+                    "runtime_class"
+                ]
+            ),
+            "config_path": job[
+                "config_path"
+            ],
+            "optional_extra": job[
+                "optional_extra"
+            ],
+            "failure_reason": reason,
+        },
+    )
+    (
+        run_dir
+        / "manifest.json"
+    ).write_text(
+        json.dumps(
+            manifest.to_dict(),
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
 def execute_suite(
     suite_name: str,
     output_root: str | Path,
@@ -1066,6 +1170,19 @@ def execute_suite(
         suite_name,
         output_root,
     )
+    git_commit = manifest.get(
+        "git_commit"
+    )
+    if (
+        not isinstance(
+            git_commit,
+            str,
+        )
+        or not git_commit
+    ):
+        raise RuntimeError(
+            "suite execution requires a concrete git commit for provenance"
+        )
     failures: list[str] = []
     for job in manifest["jobs"]:
         run_dir = Path(
@@ -1162,6 +1279,23 @@ def execute_suite(
                         + artifact_error
                         + "\n"
                     )
+
+        if status != "success":
+            failure_reason = (
+                artifact_error
+                if artifact_error is not None
+                else (
+                    "runner subprocess exited with "
+                    f"code {completed.returncode}"
+                )
+            )
+            _write_failed_suite_manifest(
+                suite_name=suite_name,
+                suite_manifest=manifest,
+                job=job,
+                run_dir=run_dir,
+                reason=failure_reason,
+            )
 
         metadata = {
             "schema_version": 2,
