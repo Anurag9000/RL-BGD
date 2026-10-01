@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from rl_bgd.artifacts import load_run_directory
 from rl_bgd.experiments.suites import (
     SUITES,
@@ -230,3 +232,15 @@ def test_execute_suite_fails_closed_on_missing_primary_metric(
             "artifact_error"
         ]
     )
+    failed = load_run_directory(
+        run_dir,
+        require_completed=False,
+    )
+    assert failed.manifest.status == "failed"
+    with pytest.raises(
+        ValueError,
+        match="refuses incomplete",
+    ):
+        load_run_directory(
+            run_dir
+        )
