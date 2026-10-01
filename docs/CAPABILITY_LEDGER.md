@@ -11,7 +11,7 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Initial literature audit | PARTIAL | docs/literature_review.md has explicit backlog |
 | Diagonal Gaussian posterior | COMPLETE | bayes/diagonal_gaussian.py + tests |
 | FP32 Bayesian state | COMPLETE | posterior state tensors enforce FP32 |
-| BGD Monte Carlo update | COMPLETE | bayes/bgd.py + quadratic/integration tests |
+| BGD Monte Carlo update | COMPLETE | bayes/bgd.py + quadratic/integration tests |\n| FOO-VB diagonal equivalence reference | COMPLETE | exact diagonal update equivalence baseline + regression tests |
 | Separate mean/evidence gradient channels | COMPLETE | BGDLoss + replay-evidence mechanism tests |
 | Dynamic per-update retention override | COMPLETE | BGDUpdater retention override + tempering test |
 | K=1/2/4/8 support | COMPLETE | generic mc_samples; antithetic requires even K |
@@ -60,8 +60,8 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Surprise change-detection event metrics | COMPLETE | delay/FPR/precision/recall/F1/false alarms + tests |
 | Surprise AUROC primitive | COMPLETE | rank-based binary AUROC + tests |
 | Adaptive surprise causal timeline runner | COMPLETE | adaptive BGD-SAC on recurring LQR + slow integration test |
-| CARL 1.1.1 strict hidden-context adapter | PARTIAL | adapter/config/unit tests; real CARL smoke pending |
-| CARL abrupt/smooth/recurring configs | PARTIAL | schedule semantics complete; real CARL smoke pending |
+| CARL 1.1.1 strict hidden-context adapter | COMPLETE | isolated real CARL 1.1.1 reset/step smoke + strict context stripping |
+| CARL abrupt/smooth/recurring configs | COMPLETE | v1.1.1-valid context keys + live Pendulum schedule smoke |
 | PPO Adam baseline | COMPLETE | clipped surrogate + GAE + minibatch epochs + value clipping + checkpoint + stationary LQR learning smoke |
 | BGD-PPO actor/value/both | COMPLETE | feed-forward BGD-PPO + stationary learning acceptance |
 | BGD-PPO repeated-rollout evidence accounting | COMPLETE | first-epoch-only default plus all-epochs/normalized modes + tests |
@@ -73,10 +73,10 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Recurrent sequence rollout semantics | COMPLETE | behavior hidden snapshots + episode masks + truncated-BPTT chunks |
 | Recurrent hidden-state task-leakage guard | COMPLETE | recurring LQR runner verifies resets only on episode end |
 | Recurrent SAC / sequence replay | COMPLETE | recurrent Adam SAC + burn-in/unroll sequence replay + hidden-state lifecycle + recurring LQR integration test |
-| Recurrent BGD-SAC | PARTIAL | actor/critic/all posterior modes + evidence accounting + checkpoint + recurring LQR finite integration; matched learning acceptance pending |
+| Recurrent BGD-SAC | COMPLETE | actor/critic/all posterior modes + evidence accounting + checkpoint + recurring LQR integration + stationary learning acceptance |
 | Continual World canonical task-aware protocol | PARTIAL | modern Meta-World stream + task-ID multihead SAC + published replay/optimizer lifecycle + matrix runner/configs; full long benchmark runs pending |
 | Continual World strict task-agnostic CW10/CW20 | PARTIAL | hidden-ID stream + protocol bundles + SAC matrix runner; full long benchmark runs pending |
-| ContinualBench/CORA adapter | NOT STARTED | optional external benchmark |
-| EWC/Online-EWC/SI/MAS | PARTIAL | tested regularizer/importance/checkpoint mechanisms; actor/critic RL wiring and declared task-agnostic consolidation triggers pending |
+| ContinualBench adapter | PARTIAL | strict reward/task stream + 4/5-step compatibility + unit tests; pinned live smoke pending after packaging fix |\n| CORA compatibility | PARTIAL | source/API/dependency audit complete; protocol/metrics bridge pending, legacy runtime intentionally isolated |
+| EWC/Online-EWC/SI/MAS | COMPLETE | actor/critic SAC wiring + fixed-update task-agnostic consolidation + oracle-boundary protocol + checkpoint/tests |
 | Mechanistic experiments | PARTIAL | curvature + movement + long-horizon + replay evidence + surprise timeline |
 | Paper tables/figures | NOT STARTED | phase 15 |
