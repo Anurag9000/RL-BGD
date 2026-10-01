@@ -38,16 +38,17 @@ class RecurrentRolloutBuffer:
         *,
         device: torch.device | str = "cpu",
     ) -> None:
-        if min(
-            capacity,
-            observation_dim,
-            action_dim,
-            actor_hidden_dim,
-            value_hidden_dim,
-        ) < 1:
-            raise ValueError(
-                "recurrent rollout dimensions/capacity must be positive"
+        if (
+            min(
+                capacity,
+                observation_dim,
+                action_dim,
+                actor_hidden_dim,
+                value_hidden_dim,
             )
+            < 1
+        ):
+            raise ValueError("recurrent rollout dimensions/capacity must be positive")
         self.capacity = capacity
         self.device = torch.device(device)
         self.size = 0
@@ -128,21 +129,15 @@ class RecurrentRolloutBuffer:
         value_hidden: Tensor,
     ) -> None:
         if self.size >= self.capacity:
-            raise RuntimeError(
-                "recurrent rollout buffer is full"
-            )
+            raise RuntimeError("recurrent rollout buffer is full")
         index = self.size
-        self.observations[
-            index
-        ].copy_(
+        self.observations[index].copy_(
             observation.to(
                 self.device,
                 dtype=torch.float32,
             ).reshape(-1)
         )
-        self.actions[
-            index
-        ].copy_(
+        self.actions[index].copy_(
             action.to(
                 self.device,
                 dtype=torch.float32,
@@ -197,9 +192,7 @@ class RecurrentRolloutBuffer:
             index,
             0,
         ] = episode_start
-        self.actor_hiddens[
-            index
-        ].copy_(
+        self.actor_hiddens[index].copy_(
             actor_hidden.detach()
             .to(
                 self.device,
@@ -207,9 +200,7 @@ class RecurrentRolloutBuffer:
             )
             .reshape(-1)
         )
-        self.value_hiddens[
-            index
-        ].copy_(
+        self.value_hiddens[index].copy_(
             value_hidden.detach()
             .to(
                 self.device,
@@ -229,16 +220,9 @@ class RecurrentRolloutBuffer:
         normalize_advantages: bool = True,
     ) -> None:
         if self.size < 1:
-            raise RuntimeError(
-                "cannot compute GAE for empty recurrent rollout"
-            )
-        if (
-            not 0.0 <= gamma <= 1.0
-            or not 0.0 <= gae_lambda <= 1.0
-        ):
-            raise ValueError(
-                "gamma and gae_lambda must lie in [0, 1]"
-            )
+            raise RuntimeError("cannot compute GAE for empty recurrent rollout")
+        if not 0.0 <= gamma <= 1.0 or not 0.0 <= gae_lambda <= 1.0:
+            raise ValueError("gamma and gae_lambda must lie in [0, 1]")
 
         advantages = torch.zeros(
             (self.size, 1),
@@ -253,64 +237,19 @@ class RecurrentRolloutBuffer:
             -1,
             -1,
         ):
-            bootstrap_mask = (
-                ~self.terminated[
-                    index
-                ]
-            ).float()
-            continuation_mask = (
-                ~(
-                    self.terminated[
-                        index
-                    ]
-                    | self.truncated[
-                        index
-                    ]
-                )
-            ).float()
+            bootstrap_mask = (~self.terminated[index]).float()
+            continuation_mask = (~(self.terminated[index] | self.truncated[index])).float()
             delta = (
-                self.rewards[
-                    index
-                ]
-                + gamma
-                * bootstrap_mask
-                * self.next_values[
-                    index
-                ]
-                - self.values[
-                    index
-                ]
+                self.rewards[index]
+                + gamma * bootstrap_mask * self.next_values[index]
+                - self.values[index]
             )
-            gae = (
-                delta
-                + gamma
-                * gae_lambda
-                * continuation_mask
-                * gae
-            )
-            advantages[
-                index
-            ] = gae
+            gae = delta + gamma * gae_lambda * continuation_mask * gae
+            advantages[index] = gae
 
-        returns = (
-            advantages
-            + self.values[
-                : self.size
-            ]
-        )
-        if (
-            normalize_advantages
-            and self.size > 1
-        ):
-            advantages = (
-                advantages
-                - advantages.mean()
-            ) / (
-                advantages.std(
-                    unbiased=False
-                )
-                + 1e-8
-            )
+        returns = advantages + self.values[: self.size]
+        if normalize_advantages and self.size > 1:
+            advantages = (advantages - advantages.mean()) / (advantages.std(unbiased=False) + 1e-8)
         self.advantages = advantages
         self.returns = returns
 
@@ -319,22 +258,13 @@ class RecurrentRolloutBuffer:
         sequence_length: int,
         *,
         generator: torch.Generator | None = None,
-    ) -> Iterator[
-        RecurrentPPORolloutBatch
-    ]:
+    ) -> Iterator[RecurrentPPORolloutBatch]:
         """Yield shuffled contiguous chunks while preserving temporal order."""
 
-        if (
-            self.advantages is None
-            or self.returns is None
-        ):
-            raise RuntimeError(
-                "compute_gae must be called before recurrent minibatching"
-            )
+        if self.advantages is None or self.returns is None:
+            raise RuntimeError("compute_gae must be called before recurrent minibatching")
         if sequence_length < 1:
-            raise ValueError(
-                "sequence_length must be positive"
-            )
+            raise ValueError("sequence_length must be positive")
         starts = torch.arange(
             0,
             self.size,
@@ -347,43 +277,21 @@ class RecurrentRolloutBuffer:
             generator=generator,
         )
         for index in order.tolist():
-            start = int(
-                starts[
-                    index
-                ].item()
-            )
+            start = int(starts[index].item())
             end = min(
                 start + sequence_length,
                 self.size,
             )
             yield RecurrentPPORolloutBatch(
-                observations=self.observations[
-                    start:end
-                ],
-                actions=self.actions[
-                    start:end
-                ],
-                old_log_probs=self.log_probs[
-                    start:end
-                ],
-                advantages=self.advantages[
-                    start:end
-                ],
-                returns=self.returns[
-                    start:end
-                ],
-                old_values=self.values[
-                    start:end
-                ],
-                episode_starts=self.episode_starts[
-                    start:end
-                ],
-                initial_actor_hidden=self.actor_hiddens[
-                    start
-                ].clone(),
-                initial_value_hidden=self.value_hiddens[
-                    start
-                ].clone(),
+                observations=self.observations[start:end],
+                actions=self.actions[start:end],
+                old_log_probs=self.log_probs[start:end],
+                advantages=self.advantages[start:end],
+                returns=self.returns[start:end],
+                old_values=self.values[start:end],
+                episode_starts=self.episode_starts[start:end],
+                initial_actor_hidden=self.actor_hiddens[start].clone(),
+                initial_value_hidden=self.value_hiddens[start].clone(),
             )
 
     def state_dict(
@@ -394,122 +302,44 @@ class RecurrentRolloutBuffer:
             "version": 1,
             "capacity": self.capacity,
             "size": size,
-            "observation_dim": int(
-                self.observations.shape[
-                    1
-                ]
-            ),
-            "action_dim": int(
-                self.actions.shape[
-                    1
-                ]
-            ),
-            "actor_hidden_dim": int(
-                self.actor_hiddens.shape[
-                    1
-                ]
-            ),
-            "value_hidden_dim": int(
-                self.value_hiddens.shape[
-                    1
-                ]
-            ),
-            "observations": self.observations[
-                :size
-            ].clone(),
-            "actions": self.actions[
-                :size
-            ].clone(),
-            "rewards": self.rewards[
-                :size
-            ].clone(),
-            "terminated": self.terminated[
-                :size
-            ].clone(),
-            "truncated": self.truncated[
-                :size
-            ].clone(),
-            "values": self.values[
-                :size
-            ].clone(),
-            "next_values": self.next_values[
-                :size
-            ].clone(),
-            "log_probs": self.log_probs[
-                :size
-            ].clone(),
-            "episode_starts": self.episode_starts[
-                :size
-            ].clone(),
-            "actor_hiddens": self.actor_hiddens[
-                :size
-            ].clone(),
-            "value_hiddens": self.value_hiddens[
-                :size
-            ].clone(),
-            "advantages": (
-                None
-                if self.advantages is None
-                else self.advantages.clone()
-            ),
-            "returns": (
-                None
-                if self.returns is None
-                else self.returns.clone()
-            ),
+            "observation_dim": int(self.observations.shape[1]),
+            "action_dim": int(self.actions.shape[1]),
+            "actor_hidden_dim": int(self.actor_hiddens.shape[1]),
+            "value_hidden_dim": int(self.value_hiddens.shape[1]),
+            "observations": self.observations[:size].clone(),
+            "actions": self.actions[:size].clone(),
+            "rewards": self.rewards[:size].clone(),
+            "terminated": self.terminated[:size].clone(),
+            "truncated": self.truncated[:size].clone(),
+            "values": self.values[:size].clone(),
+            "next_values": self.next_values[:size].clone(),
+            "log_probs": self.log_probs[:size].clone(),
+            "episode_starts": self.episode_starts[:size].clone(),
+            "actor_hiddens": self.actor_hiddens[:size].clone(),
+            "value_hiddens": self.value_hiddens[:size].clone(),
+            "advantages": (None if self.advantages is None else self.advantages.clone()),
+            "returns": (None if self.returns is None else self.returns.clone()),
         }
 
     def load_state_dict(
         self,
         state: dict[str, Any],
     ) -> None:
-        if state.get(
-            "version"
-        ) != 1:
-            raise ValueError(
-                "unsupported recurrent rollout checkpoint version"
-            )
+        if state.get("version") != 1:
+            raise ValueError("unsupported recurrent rollout checkpoint version")
         checks = {
             "capacity": self.capacity,
-            "observation_dim": int(
-                self.observations.shape[
-                    1
-                ]
-            ),
-            "action_dim": int(
-                self.actions.shape[
-                    1
-                ]
-            ),
-            "actor_hidden_dim": int(
-                self.actor_hiddens.shape[
-                    1
-                ]
-            ),
-            "value_hidden_dim": int(
-                self.value_hiddens.shape[
-                    1
-                ]
-            ),
+            "observation_dim": int(self.observations.shape[1]),
+            "action_dim": int(self.actions.shape[1]),
+            "actor_hidden_dim": int(self.actor_hiddens.shape[1]),
+            "value_hidden_dim": int(self.value_hiddens.shape[1]),
         }
         for name, expected in checks.items():
-            if int(
-                state[
-                    name
-                ]
-            ) != expected:
-                raise ValueError(
-                    f"recurrent rollout {name} mismatch"
-                )
-        size = int(
-            state[
-                "size"
-            ]
-        )
+            if int(state[name]) != expected:
+                raise ValueError(f"recurrent rollout {name} mismatch")
+        size = int(state["size"])
         if not 0 <= size <= self.capacity:
-            raise ValueError(
-                "invalid recurrent rollout size"
-            )
+            raise ValueError("invalid recurrent rollout size")
         fields = {
             "observations": self.observations,
             "actions": self.actions,
@@ -524,45 +354,24 @@ class RecurrentRolloutBuffer:
             "value_hiddens": self.value_hiddens,
         }
         for name, target in fields.items():
-            source = state[
-                name
-            ]
+            source = state[name]
             if not isinstance(
                 source,
                 Tensor,
             ):
-                raise TypeError(
-                    f"recurrent rollout field {name} must be a tensor"
-                )
-            if (
-                source.shape
-                != target[
-                    :size
-                ].shape
-            ):
-                raise ValueError(
-                    f"recurrent rollout shape mismatch for {name}"
-                )
-            target[
-                :size
-            ].copy_(
+                raise TypeError(f"recurrent rollout field {name} must be a tensor")
+            if source.shape != target[:size].shape:
+                raise ValueError(f"recurrent rollout shape mismatch for {name}")
+            target[:size].copy_(
                 source.to(
                     self.device,
                     dtype=target.dtype,
                 )
             )
 
-        advantages = state.get(
-            "advantages"
-        )
-        returns = state.get(
-            "returns"
-        )
-        if (
-            advantages is None
-        ) != (
-            returns is None
-        ):
+        advantages = state.get("advantages")
+        returns = state.get("returns")
+        if (advantages is None) != (returns is None):
             raise ValueError(
                 "recurrent rollout must contain both advantages and returns or neither"
             )
@@ -570,32 +379,20 @@ class RecurrentRolloutBuffer:
             self.advantages = None
             self.returns = None
         else:
-            if (
-                not isinstance(
-                    advantages,
-                    Tensor,
-                )
-                or not isinstance(
-                    returns,
-                    Tensor,
-                )
+            if not isinstance(
+                advantages,
+                Tensor,
+            ) or not isinstance(
+                returns,
+                Tensor,
             ):
-                raise TypeError(
-                    "recurrent rollout advantages/returns must be tensors"
-                )
+                raise TypeError("recurrent rollout advantages/returns must be tensors")
             expected_shape = (
                 size,
                 1,
             )
-            if (
-                advantages.shape
-                != expected_shape
-                or returns.shape
-                != expected_shape
-            ):
-                raise ValueError(
-                    "recurrent rollout advantage/return shape mismatch"
-                )
+            if advantages.shape != expected_shape or returns.shape != expected_shape:
+                raise ValueError("recurrent rollout advantage/return shape mismatch")
             self.advantages = advantages.to(
                 self.device,
                 dtype=torch.float32,

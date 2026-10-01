@@ -137,15 +137,11 @@ class PerformanceMatrixRecorder:
         matrix = self.matrix
         tasks = len(self.task_names)
         if matrix.shape[0] < tasks:
-            raise RuntimeError(
-                "a complete stage-by-task matrix is required for CL summary"
-            )
+            raise RuntimeError("a complete stage-by-task matrix is required for CL summary")
         square = matrix[:tasks, :]
         forgetting_values, mean_forgetting = forgetting(square.tolist())
         return {
-            "final_average": final_average_performance(
-                square[-1].tolist()
-            ),
+            "final_average": final_average_performance(square[-1].tolist()),
             "mean_forgetting": mean_forgetting,
             "backward_transfer": backward_transfer(square.tolist()),
             "forgetting_by_task": forgetting_values.tolist(),

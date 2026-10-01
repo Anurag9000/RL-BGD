@@ -92,9 +92,7 @@ def test_canonical_stream_exposes_identity_and_forces_stage_boundary() -> None:
     env = CanonicalContinualWorldStreamEnv(
         envs,
         ["first-v3", "second-v3"],
-        config=CanonicalContinualWorldConfig(
-            steps_per_task=1
-        ),
+        config=CanonicalContinualWorldConfig(steps_per_task=1),
     )
     observation, info = env.reset(seed=2)
     torch.testing.assert_close(
@@ -103,9 +101,7 @@ def test_canonical_stream_exposes_identity_and_forces_stage_boundary() -> None:
     )
     assert info["seq_idx"] == 0
 
-    _, _, _, truncated, info = env.step(
-        torch.zeros(1)
-    )
+    _, _, _, truncated, info = env.step(torch.zeros(1))
     assert truncated
     assert info["seq_idx"] == 0
     assert info["TimeLimit.truncated"] is True
@@ -129,9 +125,7 @@ def test_evaluation_and_matrix_summary() -> None:
     assert result.mean_return == pytest.approx(3.0)
     assert result.success_rate == pytest.approx(1.0)
 
-    recorder = PerformanceMatrixRecorder(
-        ["task-a", "task-b"]
-    )
+    recorder = PerformanceMatrixRecorder(["task-a", "task-b"])
     recorder.append("after-a", [1.0, 0.1])
     recorder.append("after-b", [0.8, 1.0])
     np.testing.assert_allclose(

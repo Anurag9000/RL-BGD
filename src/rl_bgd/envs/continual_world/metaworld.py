@@ -100,10 +100,14 @@ class MetaWorldTaskAdapter:
     ) -> tuple[Tensor, float, bool, bool, dict[str, object]]:
         # MuJoCo/Meta-World is CPU-hosted, so this transfer is an explicit
         # simulator boundary rather than an accidental training fallback.
-        cpu_action = action.detach().to(
-            device="cpu",
-            dtype=torch.float32,
-        ).numpy()
+        cpu_action = (
+            action.detach()
+            .to(
+                device="cpu",
+                dtype=torch.float32,
+            )
+            .numpy()
+        )
         step_output = self.env.step(cpu_action)
         if len(step_output) == 5:
             observation, reward, terminated, truncated, info = step_output
@@ -141,8 +145,7 @@ def _build_metaworld_task_adapters(
         import metaworld
     except ImportError as exc:
         raise RuntimeError(
-            "Meta-World is required for Continual World; "
-            "install the 'continual-world' extra"
+            "Meta-World is required for Continual World; install the 'continual-world' extra"
         ) from exc
 
     task_names = list(continual_world_task_sequence(benchmark))
@@ -154,12 +157,9 @@ def _build_metaworld_task_adapters(
     for task_name in task_names:
         if task_name not in train_classes:
             raise RuntimeError(
-                "current Meta-World does not provide required "
-                f"Continual World task {task_name}"
+                f"current Meta-World does not provide required Continual World task {task_name}"
             )
-        matching_tasks = [
-            task for task in train_tasks if task.env_name == task_name
-        ]
+        matching_tasks = [task for task in train_tasks if task.env_name == task_name]
         if not matching_tasks:
             raise RuntimeError(f"Meta-World task bank is missing {task_name}")
         env = train_classes[task_name]()

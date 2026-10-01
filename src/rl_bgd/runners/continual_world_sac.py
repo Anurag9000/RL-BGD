@@ -114,10 +114,7 @@ def run_ta_continual_world_sac(
             seed=50_000 + stage_index * 100_000,
             max_episode_steps=episode_horizon,
         )
-        stage_label = (
-            f"after_{stage_index + 1:02d}_"
-            f"{bundle.task_names[stage_index]}"
-        )
+        stage_label = f"after_{stage_index + 1:02d}_{bundle.task_names[stage_index]}"
         return_matrix.append(
             stage_label,
             [result.mean_return for result in evaluations],
@@ -125,9 +122,7 @@ def run_ta_continual_world_sac(
         success_scores: list[float] = []
         for result in evaluations:
             if result.success_rate is None:
-                raise RuntimeError(
-                    "Continual World evaluation did not expose success"
-                )
+                raise RuntimeError("Continual World evaluation did not expose success")
             success_scores.append(result.success_rate)
         success_matrix.append(stage_label, success_scores)
 

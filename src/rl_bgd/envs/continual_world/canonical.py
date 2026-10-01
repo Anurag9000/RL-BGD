@@ -161,9 +161,7 @@ class CanonicalContinualWorldStreamEnv:
             raise RuntimeError("Continual World stream is exhausted")
 
         current_index = self.cur_seq_idx
-        observation, reward, terminated, truncated, raw_info = self.envs[
-            current_index
-        ].step(action)
+        observation, reward, terminated, truncated, raw_info = self.envs[current_index].step(action)
         self.environment_step += 1
         self.task_step += 1
 

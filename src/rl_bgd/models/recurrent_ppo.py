@@ -106,27 +106,15 @@ class RecurrentPPOSquashedGaussianActor(nn.Module):
         pre_tanh: Tensor,
     ) -> tuple[Tensor, Tensor]:
         squashed = torch.tanh(pre_tanh)
-        action = (
-            squashed * self.action_scale
-            + self.action_bias
-        )
+        action = squashed * self.action_scale + self.action_bias
         correction = 2.0 * (
-            math.log(2.0)
-            - pre_tanh
-            - torch.nn.functional.softplus(
-                -2.0 * pre_tanh
-            )
+            math.log(2.0) - pre_tanh - torch.nn.functional.softplus(-2.0 * pre_tanh)
         )
-        log_prob = (
-            normal.log_prob(pre_tanh)
-            - correction
-        ).sum(
+        log_prob = (normal.log_prob(pre_tanh) - correction).sum(
             dim=-1,
             keepdim=True,
         )
-        log_prob -= torch.log(
-            self.action_scale
-        ).sum()
+        log_prob -= torch.log(self.action_scale).sum()
         return action, log_prob
 
     def sample_step(
@@ -140,19 +128,13 @@ class RecurrentPPOSquashedGaussianActor(nn.Module):
             observation,
             hidden,
         )
-        normal = self._distribution_from_hidden(
-            next_hidden
-        )
+        normal = self._distribution_from_hidden(next_hidden)
         pre_tanh = normal.rsample()
         action, log_prob = self._from_pre_tanh(
             normal,
             pre_tanh,
         )
-        deterministic = (
-            torch.tanh(normal.mean)
-            * self.action_scale
-            + self.action_bias
-        )
+        deterministic = torch.tanh(normal.mean) * self.action_scale + self.action_bias
         return (
             action,
             log_prob,
@@ -169,14 +151,8 @@ class RecurrentPPOSquashedGaussianActor(nn.Module):
             observation,
             hidden,
         )
-        normal = self._distribution_from_hidden(
-            next_hidden
-        )
-        action = (
-            torch.tanh(normal.mean)
-            * self.action_scale
-            + self.action_bias
-        )
+        normal = self._distribution_from_hidden(next_hidden)
+        action = torch.tanh(normal.mean) * self.action_scale + self.action_bias
         return action, next_hidden
 
     def _sequence_hidden(
@@ -186,37 +162,27 @@ class RecurrentPPOSquashedGaussianActor(nn.Module):
         episode_starts: Tensor,
     ) -> tuple[Tensor, Tensor]:
         if observations.ndim != 2:
-            raise ValueError(
-                "recurrent PPO observations must have shape [time, features]"
-            )
+            raise ValueError("recurrent PPO observations must have shape [time, features]")
         if episode_starts.shape != (
             observations.shape[0],
             1,
         ):
-            raise ValueError(
-                "episode_starts must have shape [time, 1]"
-            )
+            raise ValueError("episode_starts must have shape [time, 1]")
         hidden = initial_hidden.reshape(
             1,
             self.recurrent_hidden_dim,
         )
         outputs: list[Tensor] = []
-        for index in range(
-            observations.shape[0]
-        ):
+        for index in range(observations.shape[0]):
             if bool(
                 episode_starts[
                     index,
                     0,
                 ].item()
             ):
-                hidden = torch.zeros_like(
-                    hidden
-                )
+                hidden = torch.zeros_like(hidden)
             hidden = self._features_step(
-                observations[
-                    index
-                ].unsqueeze(0),
+                observations[index].unsqueeze(0),
                 hidden,
             )
             outputs.append(hidden)
@@ -235,27 +201,18 @@ class RecurrentPPOSquashedGaussianActor(nn.Module):
         initial_hidden: Tensor,
         episode_starts: Tensor,
     ) -> tuple[Tensor, Tensor, Tensor]:
-        hidden_sequence, final_hidden = (
-            self._sequence_hidden(
-                observations,
-                initial_hidden,
-                episode_starts,
-            )
+        hidden_sequence, final_hidden = self._sequence_hidden(
+            observations,
+            initial_hidden,
+            episode_starts,
         )
-        normal = self._distribution_from_hidden(
-            hidden_sequence
-        )
-        normalized = (
-            actions - self.action_bias
-        ) / self.action_scale
+        normal = self._distribution_from_hidden(hidden_sequence)
+        normalized = (actions - self.action_bias) / self.action_scale
         normalized = normalized.clamp(
             -1.0 + 1e-6,
             1.0 - 1e-6,
         )
-        pre_tanh = 0.5 * (
-            torch.log1p(normalized)
-            - torch.log1p(-normalized)
-        )
+        pre_tanh = 0.5 * (torch.log1p(normalized) - torch.log1p(-normalized))
         _, log_prob = self._from_pre_tanh(
             normal,
             pre_tanh,
@@ -298,16 +255,15 @@ class RecurrentValueNetwork(nn.Module):
         encoder_hidden_dims: Sequence[int] = (64,),
     ) -> None:
         super().__init__()
-        if min(
-            observation_dim,
-            recurrent_hidden_dim,
-        ) < 1:
-            raise ValueError(
-                "recurrent value dimensions must be positive"
+        if (
+            min(
+                observation_dim,
+                recurrent_hidden_dim,
             )
-        self.recurrent_hidden_dim = (
-            recurrent_hidden_dim
-        )
+            < 1
+        ):
+            raise ValueError("recurrent value dimensions must be positive")
+        self.recurrent_hidden_dim = recurrent_hidden_dim
         self.encoder = MLP(
             observation_dim,
             recurrent_hidden_dim,
@@ -327,12 +283,8 @@ class RecurrentValueNetwork(nn.Module):
         batch_size: int = 1,
     ) -> Tensor:
         if batch_size < 1:
-            raise ValueError(
-                "batch_size must be positive"
-            )
-        parameter = next(
-            self.parameters()
-        )
+            raise ValueError("batch_size must be positive")
+        parameter = next(self.parameters())
         return torch.zeros(
             batch_size,
             self.recurrent_hidden_dim,
@@ -351,9 +303,7 @@ class RecurrentValueNetwork(nn.Module):
             hidden,
         )
         return (
-            self.value_head(
-                next_hidden
-            ),
+            self.value_head(next_hidden),
             next_hidden,
         )
 
@@ -364,37 +314,27 @@ class RecurrentValueNetwork(nn.Module):
         episode_starts: Tensor,
     ) -> tuple[Tensor, Tensor]:
         if observations.ndim != 2:
-            raise ValueError(
-                "recurrent value observations must have shape [time, features]"
-            )
+            raise ValueError("recurrent value observations must have shape [time, features]")
         if episode_starts.shape != (
             observations.shape[0],
             1,
         ):
-            raise ValueError(
-                "episode_starts must have shape [time, 1]"
-            )
+            raise ValueError("episode_starts must have shape [time, 1]")
         hidden = initial_hidden.reshape(
             1,
             self.recurrent_hidden_dim,
         )
         values: list[Tensor] = []
-        for index in range(
-            observations.shape[0]
-        ):
+        for index in range(observations.shape[0]):
             if bool(
                 episode_starts[
                     index,
                     0,
                 ].item()
             ):
-                hidden = torch.zeros_like(
-                    hidden
-                )
+                hidden = torch.zeros_like(hidden)
             value, hidden = self.step(
-                observations[
-                    index
-                ].unsqueeze(0),
+                observations[index].unsqueeze(0),
                 hidden,
             )
             values.append(value)

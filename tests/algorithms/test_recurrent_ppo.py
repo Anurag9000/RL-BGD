@@ -29,12 +29,8 @@ def test_recurrent_value_reset_breaks_pre_reset_history() -> None:
         [[True], [False], [True], [False]],
         dtype=torch.bool,
     )
-    left = torch.tensor(
-        [[1.0], [2.0], [3.0], [4.0]]
-    )
-    right = torch.tensor(
-        [[-10.0], [20.0], [3.0], [4.0]]
-    )
+    left = torch.tensor([[1.0], [2.0], [3.0], [4.0]])
+    right = torch.tensor([[-10.0], [20.0], [3.0], [4.0]])
     left_values, _ = model(
         left,
         initial,
@@ -53,9 +49,7 @@ def test_recurrent_value_reset_breaks_pre_reset_history() -> None:
 
 def test_recurrent_ppo_stationary_smoke_is_finite() -> None:
     torch.manual_seed(61)
-    env = LinearQuadraticControlEnv(
-        horizon=16
-    )
+    env = LinearQuadraticControlEnv(horizon=16)
     agent = RecurrentPPOAgent(
         1,
         1,
@@ -82,19 +76,7 @@ def test_recurrent_ppo_stationary_smoke_is_finite() -> None:
             seed=61,
         ),
     )
-    metrics = summary[
-        "last_update_metrics"
-    ]
-    assert torch.isfinite(
-        torch.tensor(
-            metrics[
-                "policy_loss"
-            ]
-        )
-    )
-    assert metrics[
-        "sequence_chunks"
-    ] > 0
-    assert summary[
-        "recurrent_reset_count"
-    ] >= 1
+    metrics = summary["last_update_metrics"]
+    assert torch.isfinite(torch.tensor(metrics["policy_loss"]))
+    assert metrics["sequence_chunks"] > 0
+    assert summary["recurrent_reset_count"] >= 1
