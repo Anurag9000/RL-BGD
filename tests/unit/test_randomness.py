@@ -32,10 +32,9 @@ def test_preserved_random_state_restores_all_cpu_rng_streams() -> None:
 
 def test_preserved_random_state_restores_after_exception() -> None:
     seed_everything(456)
-    with pytest.raises(RuntimeError):
-        with preserved_random_state():
-            _draw()
-            raise RuntimeError("evaluation failed")
+    with pytest.raises(RuntimeError), preserved_random_state():
+        _draw()
+        raise RuntimeError("evaluation failed")
     actual = _draw()
 
     seed_everything(456)

@@ -1,4 +1,5 @@
 import pytest
+import torch
 
 from rl_bgd.runners.continual_world_sac import run_ta_continual_world_sac
 
