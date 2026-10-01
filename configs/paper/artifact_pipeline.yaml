@@ -1,0 +1,17 @@
+results_root: results
+output_dir: artifacts/paper
+bootstrap:
+  confidence: 0.95
+  resamples: 10000
+  seed: 0
+figures:
+  formats:
+    - png
+    - pdf
+    - svg
+integrity:
+  require_completed_runs: true
+  reject_duplicate_run_ids: true
+  reject_duplicate_group_seeds: true
+  record_source_hashes: true
+  allow_manual_result_transcription: false
