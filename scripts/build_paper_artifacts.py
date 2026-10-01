@@ -1,12 +1,12 @@
-"""Build paper tables/figures directly from suite raw outputs."""
+"""Build publication artifacts strictly from completed raw result directories."""
 
 from __future__ import annotations
 
 import argparse
 import json
 
-from rl_bgd.analysis.artifacts import (
-    BootstrapConfig,
+from rl_bgd.analysis.paper_artifacts import (
+    PaperArtifactConfig,
     build_paper_artifacts,
 )
 
@@ -14,17 +14,17 @@ from rl_bgd.analysis.artifacts import (
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--run-root",
-        default="artifacts/suites",
+        "--results-root",
+        default="results",
     )
     parser.add_argument(
         "--output-dir",
         default="artifacts/paper",
     )
     parser.add_argument(
-        "--bootstrap-samples",
+        "--bootstrap-resamples",
         type=int,
-        default=5_000,
+        default=10_000,
     )
     parser.add_argument(
         "--confidence",
@@ -32,21 +32,41 @@ def main() -> None:
         default=0.95,
     )
     parser.add_argument(
-        "--bootstrap-seed",
+        "--seed",
         type=int,
-        default=2026,
+        default=0,
+    )
+    parser.add_argument(
+        "--figure-formats",
+        nargs="+",
+        default=[
+            "png",
+            "pdf",
+            "svg",
+        ],
     )
     args = parser.parse_args()
     result = build_paper_artifacts(
-        args.run_root,
+        args.results_root,
         args.output_dir,
-        bootstrap=BootstrapConfig(
-            samples=args.bootstrap_samples,
+        config=PaperArtifactConfig(
             confidence=args.confidence,
-            seed=args.bootstrap_seed,
+            bootstrap_resamples=(
+                args.bootstrap_resamples
+            ),
+            seed=args.seed,
+            figure_formats=tuple(
+                args.figure_formats
+            ),
         ),
     )
-    print(json.dumps(result, indent=2, sort_keys=True))
+    print(
+        json.dumps(
+            result,
+            indent=2,
+            sort_keys=True,
+        )
+    )
 
 
 if __name__ == "__main__":
