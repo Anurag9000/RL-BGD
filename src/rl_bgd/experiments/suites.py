@@ -13,6 +13,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from rl_bgd.artifacts.suite import (
+    parse_runner_stdout,
+    record_completed_suite_run,
+    record_failed_suite_run,
+)
 from rl_bgd.experiments.invoke import resolve_target
 
 
@@ -699,6 +704,55 @@ def execute_suite(
             encoding="utf-8",
         )
         status = "success" if completed.returncode == 0 else "failed"
+        artifact_error: str | None = None
+        git_commit = str(
+            manifest.get(
+                "git_commit"
+            )
+            or ""
+        )
+        if completed.returncode == 0:
+            try:
+                result = parse_runner_stdout(
+                    completed.stdout
+                )
+                record_completed_suite_run(
+                    run_dir,
+                    suite_name=suite_name,
+                    git_commit=git_commit,
+                    job=job,
+                    result=result,
+                    duration_seconds=duration,
+                )
+            except (
+                OSError,
+                TypeError,
+                ValueError,
+            ) as exc:
+                artifact_error = str(exc)
+                status = "failed"
+                record_failed_suite_run(
+                    run_dir,
+                    suite_name=suite_name,
+                    git_commit=git_commit,
+                    job=job,
+                    failure_reason=(
+                        "artifact conversion failed: "
+                        f"{artifact_error}"
+                    ),
+                )
+        else:
+            record_failed_suite_run(
+                run_dir,
+                suite_name=suite_name,
+                git_commit=git_commit,
+                job=job,
+                failure_reason=(
+                    "runner exited with return code "
+                    f"{completed.returncode}"
+                ),
+            )
+
         metadata = {
             "schema_version": 1,
             "run_id": job["run_id"],
@@ -721,6 +775,7 @@ def execute_suite(
             "duration_seconds": duration,
             "returncode": completed.returncode,
             "status": status,
+            "artifact_error": artifact_error,
             "stdout_path": str(stdout_path),
             "stderr_path": str(stderr_path),
         }
@@ -728,7 +783,7 @@ def execute_suite(
             json.dumps(metadata, indent=2, sort_keys=True),
             encoding="utf-8",
         )
-        if completed.returncode != 0:
+        if status != "success":
             failures.append(job["run_id"])
             if not continue_on_error:
                 break
