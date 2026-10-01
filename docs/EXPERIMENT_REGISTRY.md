@@ -7,12 +7,13 @@ No expensive experiment is marked executed until raw run artifacts exist.
 | SYN-Q1 | Positive curvature contracts posterior sigma | IMPLEMENTED / TESTED |
 | SYN-Q2 | E[g epsilon] approaches H sigma in small-sigma diagonal quadratic | IMPLEMENTED / TESTED |
 | A | Vanilla BGD can learn stationary RL tasks | IMPLEMENTED / TESTED on synthetic continuous control; large benchmark runs pending |
-| B | BGD can reduce short-stream forgetting | MECHANISMS IMPLEMENTED; matched comparative study pending |
+| B | BGD can reduce short-stream forgetting | matched dev-suite comparators IMPLEMENTED; multi-seed execution pending |
 | C | Vanilla BGD loses late-life plasticity under repeated evidence | CONTROLLED mechanism tests implemented; long comparative study pending |
-| D | Fixed tempering prevents trivial sigma collapse | IMPLEMENTED / TESTED mechanism; benchmark ablation pending |
-| E | Surprise-driven tempering adapts without boundary callbacks | IMPLEMENTED / TESTED on recurring LQR; external benchmark study pending |
-| F | Replay reuse accelerates posterior overconfidence without correction | IMPLEMENTED / TESTED replay-evidence mechanisms and synthetic precision comparison; benchmark study pending |
-| G | Actor/critic Bayesianization have different tradeoffs | actor-only, critic-only, and actor+critic modes IMPLEMENTED / TESTED; comparative study pending |
+| D | Fixed tempering prevents trivial sigma collapse | IMPLEMENTED / TESTED mechanism + explicit fixed-retention ablation jobs; multi-seed execution pending |
+| E | Surprise-driven tempering adapts without boundary callbacks | IMPLEMENTED / TESTED on recurring LQR + CARL/uncertainty suites defined; external multi-seed execution pending |
+| F | Replay reuse accelerates posterior overconfidence without correction | four replay-evidence modes IMPLEMENTED / TESTED + matched ablation jobs defined; multi-seed execution pending |
+| G | Actor/critic Bayesianization have different tradeoffs | actor-only, critic-only, and actor+critic modes IMPLEMENTED / TESTED + matched ablation jobs defined; multi-seed execution pending |
+| GB-T | Generalized-Bayes evidence temperature changes evidence strength independently of eta/retention | IMPLEMENTED / TESTED math + matched per-temperature SAC jobs defined; multi-seed execution pending |
 | H | Recurrence and Bayesian consolidation address complementary failures | five-way matched hidden-context SAC suite IMPLEMENTED / TESTED; multi-seed comparative study pending |
 | CW-CAN10 | Canonical task-aware SAC reproduces the CW10 information/lifecycle protocol | IMPLEMENTED / NOT YET FULLY EXECUTED |
 | CW-CAN20 | Canonical task-aware SAC reproduces the CW20 occurrence-aware protocol | IMPLEMENTED / NOT YET FULLY EXECUTED |
