@@ -175,46 +175,58 @@ def test_missing_visual_assets_are_repaired_from_metaworld(
 ) -> None:
     continual_package = tmp_path / "continual_bench" / "envs"
     metaworld_package = tmp_path / "metaworld"
-    scene_destination = continual_package / "assets" / "textures"
-    object_destination = continual_package / "assets" / "objects" / "textures"
-    source = metaworld_package / "assets" / "textures"
-    scene_destination.mkdir(parents=True)
-    source.mkdir(parents=True)
-    for filename in (
-        "wood2.png",
-        "floor2.png",
-        "metal.png",
-        "metal1.png",
-        "metal2.png",
-        "wood1.png",
-    ):
-        (source / filename).write_bytes(filename.encode("utf-8"))
-    (scene_destination / "wood2.png").write_bytes(b"existing")
+    destination_root = continual_package / "assets"
+    source_root = metaworld_package / "assets"
+
+    dependency_xml = destination_root / "objects" / "assets" / "buttonbox_dependencies.xml"
+    dependency_xml.parent.mkdir(parents=True)
+    dependency_xml.write_text(
+        '<mujocoinclude><asset><texture file="../textures/metal1.png"/>'
+        '</asset></mujocoinclude>',
+        encoding="utf-8",
+    )
+
+    canonical_texture = source_root / "objects" / "textures" / "metal1.png"
+    canonical_texture.parent.mkdir(parents=True)
+    canonical_texture.write_bytes(b"canonical-metal")
 
     repaired = _repair_missing_metaworld_assets(
         SimpleNamespace(__file__=str(continual_package / "__init__.py")),
         SimpleNamespace(__file__=str(metaworld_package / "__init__.py")),
     )
 
-    assert "assets/textures/wood2.png" not in repaired
-    for filename in (
-        "floor2.png",
-        "metal.png",
-        "metal1.png",
-        "metal2.png",
-        "wood1.png",
-    ):
-        assert f"assets/textures/{filename}" in repaired
-    for filename in (
-        "wood2.png",
-        "floor2.png",
-        "metal.png",
-        "metal1.png",
-        "metal2.png",
-        "wood1.png",
-    ):
-        assert f"assets/objects/textures/{filename}" in repaired
+    restored = destination_root / "objects" / "textures" / "metal1.png"
+    assert repaired == ("objects/textures/metal1.png",)
+    assert restored.read_bytes() == b"canonical-metal"
 
-    assert (scene_destination / "wood2.png").read_bytes() == b"existing"
-    assert (object_destination / "metal1.png").read_bytes() == b"metal1.png"
-    assert (object_destination / "wood1.png").read_bytes() == b"wood1.png"
+
+def test_asset_repair_never_overwrites_existing_benchmark_file(
+    tmp_path: Path,
+) -> None:
+    continual_package = tmp_path / "continual_bench" / "envs"
+    metaworld_package = tmp_path / "metaworld"
+    destination_root = continual_package / "assets"
+    source_root = metaworld_package / "assets"
+
+    root_xml = destination_root / "root.xml"
+    root_xml.parent.mkdir(parents=True)
+    root_xml.write_text(
+        '<mujoco><asset><texture file="objects/textures/metal1.png"/></asset></mujoco>',
+        encoding="utf-8",
+    )
+
+    existing = destination_root / "objects" / "textures" / "metal1.png"
+    existing.parent.mkdir(parents=True)
+    existing.write_bytes(b"benchmark-version")
+
+    canonical = source_root / "objects" / "textures" / "metal1.png"
+    canonical.parent.mkdir(parents=True)
+    canonical.write_bytes(b"metaworld-version")
+
+    repaired = _repair_missing_metaworld_assets(
+        SimpleNamespace(__file__=str(continual_package / "__init__.py")),
+        SimpleNamespace(__file__=str(metaworld_package / "__init__.py")),
+    )
+
+    assert repaired == ()
+    assert existing.read_bytes() == b"benchmark-version"

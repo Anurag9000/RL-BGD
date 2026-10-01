@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from importlib import import_module
@@ -34,58 +35,81 @@ class ContinualBenchImportError(ImportError):
     """Raised when the optional ContinualBench dependency is unavailable."""
 
 
+_ASSET_FILE_PATTERN = re.compile(r"""\bfile\s*=\s*["']([^"']+)["']""")
+
+
 def _repair_missing_metaworld_assets(
     continual_bench_envs: Any,
     metaworld_module: Any,
 ) -> tuple[str, ...]:
-    """Restore source-missing visual assets from canonical Meta-World.
+    """Restore missing XML-referenced assets from canonical Meta-World.
 
-    The pinned ContinualBench source references three Meta-World textures but
-    does not contain them. Copy only absent files with the same canonical
-    filenames from the installed Farama Meta-World package. This changes no
-    XML, dynamics, rewards, task state, or observation semantics.
+    Existing ContinualBench assets are never overwritten. Each missing file is
+    copied from the identical relative path under Meta-World's assets tree.
+    Copied XML files are scanned too, so nested includes are repaired without
+    copying unrelated benchmark assets.
     """
 
-    continual_file = getattr(
-        continual_bench_envs,
-        "__file__",
-        None,
-    )
-    metaworld_file = getattr(
-        metaworld_module,
-        "__file__",
-        None,
-    )
+    continual_file = getattr(continual_bench_envs, "__file__", None)
+    metaworld_file = getattr(metaworld_module, "__file__", None)
     if continual_file is None or metaworld_file is None:
         raise ContinualBenchImportError(
             "cannot locate installed benchmark packages for asset repair"
         )
-    package_root = Path(continual_file).resolve().parent
-    source = Path(metaworld_file).resolve().parent / "assets" / "textures"
-    if not source.is_dir():
-        raise ContinualBenchImportError("canonical Meta-World texture directory is unavailable")
 
-    destinations = (
-        package_root / "assets" / "textures",
-        package_root / "assets" / "objects" / "textures",
-    )
-    repaired: list[str] = []
-    for destination in destinations:
-        destination.mkdir(
-            parents=True,
-            exist_ok=True,
+    destination_root = Path(continual_file).resolve().parent / "assets"
+    source_root = Path(metaworld_file).resolve().parent / "assets"
+    if not destination_root.is_dir():
+        raise ContinualBenchImportError(
+            "installed ContinualBench package does not contain an assets directory"
         )
-        for canonical in sorted(source.iterdir()):
-            if not canonical.is_file():
+    if not source_root.is_dir():
+        raise ContinualBenchImportError(
+            "installed Meta-World package does not contain an assets directory"
+        )
+
+    destination_resolved = destination_root.resolve()
+    queue = sorted(destination_root.rglob("*.xml"))
+    visited: set[Path] = set()
+    repaired: list[str] = []
+
+    while queue:
+        xml_path = queue.pop(0).resolve()
+        if xml_path in visited:
+            continue
+        visited.add(xml_path)
+        try:
+            contents = xml_path.read_text(encoding="utf-8", errors="ignore")
+        except OSError as exc:
+            raise ContinualBenchImportError(
+                f"cannot read ContinualBench asset XML: {xml_path}"
+            ) from exc
+
+        for raw_reference in _ASSET_FILE_PATTERN.findall(contents):
+            target = (xml_path.parent / raw_reference).resolve()
+            try:
+                relative = target.relative_to(destination_resolved)
+            except ValueError:
                 continue
-            target = destination / canonical.name
+
             if target.exists():
+                if target.suffix.lower() == ".xml":
+                    queue.append(target)
                 continue
-            copy2(
-                canonical,
-                target,
-            )
-            repaired.append(str(target.relative_to(package_root)))
+
+            canonical = source_root / relative
+            if not canonical.is_file():
+                raise ContinualBenchImportError(
+                    "ContinualBench references a missing asset and the same "
+                    f"canonical Meta-World path is unavailable: {relative.as_posix()}"
+                )
+
+            target.parent.mkdir(parents=True, exist_ok=True)
+            copy2(canonical, target)
+            repaired.append(relative.as_posix())
+            if target.suffix.lower() == ".xml":
+                queue.append(target)
+
     return tuple(repaired)
 
 
