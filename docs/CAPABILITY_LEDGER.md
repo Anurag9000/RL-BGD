@@ -78,7 +78,8 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Continual World canonical task-aware protocol | PARTIAL | modern Meta-World stream + task-ID multihead SAC + published replay/optimizer lifecycle + matrix runner/configs; full long benchmark runs pending |
 | Continual World strict task-agnostic CW10/CW20 | PARTIAL | hidden-ID stream + protocol bundles + SAC matrix runner; full long benchmark runs pending |
 | ContinualBench adapter | PARTIAL | strict reward/task stream + 4/5-step compatibility + unit tests; pinned live smoke pending after packaging fix |
-| CORA compatibility | PARTIAL | source/API/dependency audit complete; protocol/metrics bridge pending, legacy runtime intentionally isolated |
+| CORA metric/protocol compatibility | COMPLETE | canonical Atari/Procgen sequence metadata + isolated-forgetting/zero-shot-forward-transfer formulas + tests |
+| CORA legacy environment runtime | BLOCKED | upstream develop stack pins gym<=0.25.2/atari-py/setuptools versions incompatible with the modern base; keep isolated rather than downgrade primary runtime |
 | EWC/Online-EWC/SI/MAS | COMPLETE | actor/critic SAC wiring + fixed-update task-agnostic consolidation + oracle-boundary protocol + checkpoint/tests |
 | Mechanistic experiments | PARTIAL | curvature + movement + long-horizon + replay evidence + surprise timeline |
 | Paper tables/figures | NOT STARTED | phase 15 |
