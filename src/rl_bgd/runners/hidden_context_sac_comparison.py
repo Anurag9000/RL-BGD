@@ -18,6 +18,13 @@ from rl_bgd.utils.device import resolve_device
 from rl_bgd.utils.randomness import seed_everything
 
 FeedforwardOptimizer = Literal["adam", "bgd"]
+HiddenContextVariant = Literal[
+    "feedforward_adam",
+    "feedforward_bgd",
+    "recurrent_adam",
+    "recurrent_bgd",
+    "recurrent_adaptive_bgd",
+]
 
 
 def _run_feedforward(
@@ -110,6 +117,62 @@ def _run_feedforward(
         env.close()
 
 
+def run_hidden_context_sac_variant(
+    *,
+    variant: HiddenContextVariant,
+    steps: int = 256,
+    seed: int = 90,
+    device: str = "auto",
+) -> dict[str, object]:
+    """Run one arm of the matched hidden-context SAC comparison."""
+
+    if steps < 16:
+        raise ValueError("comparison requires at least 16 environment steps")
+    if variant == "feedforward_adam":
+        result = _run_feedforward(
+            optimizer="adam",
+            steps=steps,
+            seed=seed,
+            device=device,
+        )
+    elif variant == "feedforward_bgd":
+        result = _run_feedforward(
+            optimizer="bgd",
+            steps=steps,
+            seed=seed,
+            device=device,
+        )
+    elif variant == "recurrent_adam":
+        result = run_recurrent_sac_recurring_lqr(
+            steps=steps,
+            seed=seed,
+            device=device,
+            optimizer="adam",
+        )
+    elif variant == "recurrent_bgd":
+        result = run_recurrent_sac_recurring_lqr(
+            steps=steps,
+            seed=seed,
+            device=device,
+            optimizer="bgd",
+        )
+    elif variant == "recurrent_adaptive_bgd":
+        result = run_recurrent_sac_recurring_lqr(
+            steps=steps,
+            seed=seed,
+            device=device,
+            optimizer="adaptive_bgd",
+        )
+    else:
+        raise ValueError(f"unsupported hidden-context variant: {variant}")
+
+    return {
+        "benchmark": "hidden_recurring_lqr",
+        "variant": variant,
+        **result,
+    }
+
+
 def run_hidden_context_sac_comparison(
     *,
     steps: int = 256,
@@ -125,36 +188,19 @@ def run_hidden_context_sac_comparison(
         "steps_per_variant": steps,
         "seed": seed,
         "variants": {
-            "feedforward_adam": _run_feedforward(
-                optimizer="adam",
+            variant: run_hidden_context_sac_variant(
+                variant=variant,
                 steps=steps,
                 seed=seed,
                 device=device,
-            ),
-            "feedforward_bgd": _run_feedforward(
-                optimizer="bgd",
-                steps=steps,
-                seed=seed,
-                device=device,
-            ),
-            "recurrent_adam": run_recurrent_sac_recurring_lqr(
-                steps=steps,
-                seed=seed,
-                device=device,
-                optimizer="adam",
-            ),
-            "recurrent_bgd": run_recurrent_sac_recurring_lqr(
-                steps=steps,
-                seed=seed,
-                device=device,
-                optimizer="bgd",
-            ),
-            "recurrent_adaptive_bgd": run_recurrent_sac_recurring_lqr(
-                steps=steps,
-                seed=seed,
-                device=device,
-                optimizer="adaptive_bgd",
-            ),
+            )
+            for variant in (
+                "feedforward_adam",
+                "feedforward_bgd",
+                "recurrent_adam",
+                "recurrent_bgd",
+                "recurrent_adaptive_bgd",
+            )
         },
         "comparison_contract": {
             "same_stream": True,
