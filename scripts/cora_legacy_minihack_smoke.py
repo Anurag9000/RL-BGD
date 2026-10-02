@@ -15,6 +15,33 @@ from continual_rl.experiments.tasks.make_minihack_task import (
 from continual_rl.utils.utils import Utils
 
 
+def _repair_cora_minihack_wrapper_shape(env: Any) -> None:
+    """Restore the wrapper depth assumed by pinned CORA."""
+
+    current = env
+    seen: set[int] = set()
+    while id(current) not in seen:
+        seen.add(id(current))
+        if current.__class__.__name__ == "MiniHackMakeVecSafeWrapper":
+            child = getattr(current, "env", None)
+            if child is None:
+                raise RuntimeError("CORA MiniHack safety wrapper has no child env")
+            if not hasattr(child, "env") and hasattr(child, "_vardir"):
+                child.env = child
+            nested = getattr(child, "env", None)
+            if not hasattr(nested, "_vardir"):
+                raise RuntimeError(
+                    "CORA MiniHack compatibility could not locate _vardir"
+                )
+            return
+
+        next_env = getattr(current, "env", None)
+        if next_env is None or next_env is current:
+            break
+        current = next_env
+
+    raise RuntimeError("CORA MiniHack safety wrapper was not found")
+
 def _reset(env: Any) -> Any:
     output = env.reset()
     if isinstance(output, tuple):
@@ -57,6 +84,7 @@ def main() -> None:
         task_spec.env_spec,
         seed_to_set=31,
     )
+    _repair_cora_minihack_wrapper_shape(env)
     try:
         observation = _reset(env)
         if observation is None:
