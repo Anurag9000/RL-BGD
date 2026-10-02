@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+import torch
+
 from rl_bgd.agents.ppo.agent import PPOConfig
 from rl_bgd.agents.ppo.bgd_agent import BGDPPOConfig
 from rl_bgd.agents.ppo.recurrent_agent import RecurrentPPOAgent, RecurrentPPOConfig
@@ -31,7 +33,7 @@ from rl_bgd.utils.randomness import seed_everything
 
 def _recurrent_ppo_acceptance_env(
     *,
-    device: object,
+    device: torch.device | str,
 ) -> LinearQuadraticControlEnv:
     return LinearQuadraticControlEnv(
         horizon=40,
