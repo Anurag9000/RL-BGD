@@ -894,7 +894,6 @@ CW10_CORE = ExperimentSuite(
                 protocol="strict_task_agnostic",
                 config_path="configs/benchmarks/continual_world_ta_cw10.yaml",
                 primary_metric="final_average",
-                comparison_group="cw10_task_agnostic_feedforward",
                 secondary_metrics=(
                     "forgetting",
                     "bwt",
