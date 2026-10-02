@@ -288,6 +288,7 @@ def _metric_map(
             run
         )
     )
+    declared_resource_names: set[str] = set()
     if declared is None:
         values = dict(
             run.summary.metrics
@@ -308,6 +309,11 @@ def _metric_map(
                 values[
                     name
                 ] = value
+                if (
+                    name in run.summary.resources
+                    and name not in run.summary.metrics
+                ):
+                    declared_resource_names.add(name)
 
         primary = declared[
             0
@@ -318,9 +324,9 @@ def _metric_map(
                 "is not a scalar paper metric"
             )
 
-    for key, value in (
-        run.summary.resources.items()
-    ):
+    for key, value in run.summary.resources.items():
+        if key in declared_resource_names:
+            continue
         metric = (
             key
             if key not in values
