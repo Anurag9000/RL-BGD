@@ -122,6 +122,37 @@ def _group_runs(
         seeds = [run.manifest.seed for run in values]
         if len(seeds) != len(set(seeds)):
             raise ValueError(f"duplicate seed detected within paper group {group.label}")
+
+        reference = values[0]
+        reference_suite = reference.manifest.metadata.get("suite")
+        reference_contract = {
+            "git_commit": reference.manifest.git_commit,
+            "information_access": reference.manifest.information_access,
+            "hypothesis_id": reference.manifest.metadata.get("hypothesis_id"),
+            "target": reference.manifest.metadata.get("target"),
+            "source_config_path": reference.manifest.metadata.get("source_config_path"),
+            "declared_metrics": _declared_metric_names(reference),
+        }
+        for run in values[1:]:
+            contract = {
+                "git_commit": run.manifest.git_commit,
+                "information_access": run.manifest.information_access,
+                "hypothesis_id": run.manifest.metadata.get("hypothesis_id"),
+                "target": run.manifest.metadata.get("target"),
+                "source_config_path": run.manifest.metadata.get("source_config_path"),
+                "declared_metrics": _declared_metric_names(run),
+            }
+            for field, expected in reference_contract.items():
+                if field == "git_commit" and reference_suite is None:
+                    continue
+                if contract[field] != expected:
+                    raise ValueError(
+                        "matched paper seeds have inconsistent run contracts: "
+                        f"{group.label} / {field} / "
+                        f"{reference.manifest.run_id}={expected!r} / "
+                        f"{run.manifest.run_id}={contract[field]!r}"
+                    )
+
         values.sort(
             key=lambda run: (
                 run.manifest.seed,
