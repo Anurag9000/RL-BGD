@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
+from typing import cast
 
 import torch
 from torch import Tensor, nn
@@ -138,7 +139,10 @@ class UCLPPOActor(nn.Module):
 
     @property
     def bayesian_layers(self) -> Sequence[UCLBayesianLinear]:
-        return tuple(self.backbone.hidden_layers)
+        return tuple(
+            cast(UCLBayesianLinear, layer)
+            for layer in self.backbone.hidden_layers
+        )
 
     def distribution(
         self,
@@ -234,7 +238,10 @@ class UCLValueNetwork(nn.Module):
 
     @property
     def bayesian_layers(self) -> Sequence[UCLBayesianLinear]:
-        return tuple(self.net.hidden_layers)
+        return tuple(
+            cast(UCLBayesianLinear, layer)
+            for layer in self.net.hidden_layers
+        )
 
     def forward(
         self,
