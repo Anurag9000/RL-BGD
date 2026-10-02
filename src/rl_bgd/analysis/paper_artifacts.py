@@ -2005,12 +2005,10 @@ def _matrix_figures(
                     "training stage"
                 )
                 axis.set_ylabel(
-                    (
-                        "mean return across tasks"
-                        if series_name
-                        == "return_matrix"
-                        else "mean success across tasks"
-                    )
+                    "mean return across tasks"
+                    if series_name
+                    == "return_matrix"
+                    else "mean success across tasks"
                 )
                 axis.set_title(
                     f"{group.label}\n{series_name} stage-average"
