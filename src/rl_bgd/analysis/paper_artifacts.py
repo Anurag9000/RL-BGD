@@ -324,15 +324,13 @@ def _metric_map(
         )
     )
     declared_resource_names: set[str] = set()
+    values: dict[str, float]
     if declared is None:
         values = dict(
             run.summary.metrics
         )
     else:
-        values: dict[
-            str,
-            float,
-        ] = {}
+        values = {}
         for name in declared:
             value = (
                 _resolve_declared_scalar_metric(
