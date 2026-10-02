@@ -7,6 +7,7 @@ Registered suites:
 
 - smoke
 - dev
+- baseline_core
 - carl_core
 - cw10_core
 - cw20_final
