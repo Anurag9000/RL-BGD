@@ -61,6 +61,8 @@ class RecurrentSACActor(nn.Module):
         )
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
+        self.action_scale: Tensor
+        self.action_bias: Tensor
         self.register_buffer(
             "action_scale",
             ((action_high - action_low) / 2.0).float(),
