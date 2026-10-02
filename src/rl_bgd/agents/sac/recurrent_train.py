@@ -148,7 +148,7 @@ def train_recurrent_sac(
 
 @torch.no_grad()
 def evaluate_recurrent_sac(
-    env: ContinuousEnv,
+    env: ContinuousTensorEnv,
     agent: RecurrentSACAgent,
     *,
     episodes: int = 5,
