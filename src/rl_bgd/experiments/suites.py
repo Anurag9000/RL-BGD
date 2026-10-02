@@ -216,6 +216,66 @@ def _replay_evidence_jobs(
     )
 
 
+def _late_plasticity_jobs(
+    *,
+    seeds: tuple[int, ...],
+    runtime_class: str,
+) -> tuple[ExperimentJob, ...]:
+    specs = (
+        (
+            "vanilla",
+            1.0,
+            "BGD-vanilla-consolidation",
+        ),
+        (
+            "tempered",
+            0.97,
+            "BGD-tempered-consolidation",
+        ),
+    )
+    return tuple(
+        _job(
+            f"late_plasticity_{name}",
+            "C",
+            (
+                "rl_bgd.runners.late_plasticity:"
+                "run_late_plasticity_quadratic"
+            ),
+            kwargs={
+                "consolidation_retention": retention,
+                "dimension": 16,
+                "consolidation_steps": 400,
+                "adaptation_steps": 32,
+                "eta": 0.15,
+                "prior_std": 0.5,
+                "shift": 1.0,
+                "curvature": 1.0,
+                "mc_samples": 16,
+                "device": "auto",
+            },
+            seeds=seeds,
+            algorithm=algorithm,
+            environment="two_phase_quadratic",
+            protocol="controlled_late_shift",
+            config_path=None,
+            primary_metric="post_shift_normalized_auc",
+            secondary_metrics=(
+                "pre_shift_sigma_mean",
+                "pre_shift_effective_lr_mean",
+                "first_step_mean_movement",
+                "post_shift_final_loss",
+                "recovery_fraction",
+            ),
+            runtime_class=runtime_class,
+            notes=(
+                "Tempering is applied only during pre-shift consolidation; "
+                "post-shift retention is fixed to 1.0 in both conditions."
+            ),
+        )
+        for name, retention, algorithm in specs
+    )
+
+
 def _fixed_tempering_jobs(
     *,
     steps: int,
@@ -614,6 +674,10 @@ ABLATION_CORE = ExperimentSuite(
     )
     + _replay_evidence_jobs(
         steps=600,
+        seeds=(0, 1, 2, 3, 4),
+        runtime_class="medium",
+    )
+    + _late_plasticity_jobs(
         seeds=(0, 1, 2, 3, 4),
         runtime_class="medium",
     )
