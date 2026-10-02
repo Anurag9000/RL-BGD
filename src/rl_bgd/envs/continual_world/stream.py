@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
@@ -49,8 +50,11 @@ def continual_world_task_sequence(
 
 
 class ContinuousTaskEnv(Protocol):
-    action_space: TensorBox
-    observation_space: TensorBox
+    @property
+    def action_space(self) -> TensorBox: ...
+
+    @property
+    def observation_space(self) -> TensorBox: ...
 
     def reset(
         self,
@@ -98,8 +102,8 @@ class ContinualWorldStreamEnv:
 
     def __init__(
         self,
-        envs: list[ContinuousTaskEnv],
-        task_names: list[str],
+        envs: Sequence[ContinuousTaskEnv],
+        task_names: Sequence[str],
         *,
         config: ContinualWorldStreamConfig | None = None,
     ) -> None:
