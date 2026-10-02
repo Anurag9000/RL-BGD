@@ -34,11 +34,12 @@ reworked after the first naturally stable LQR criterion proved uninformative;
 the current gate uses a control-requiring stationary LQR with a matched
 recurrent-Adam comparison rather than accepting a trivial stable policy.
 
-ContinualBench now has a strict hidden-task adapter matching its current source
+ContinualBench now has a strict hidden-task adapter matching its pinned source
 contract, including reward dictionaries and both four-/five-value step APIs.
-The pinned live workflow has exposed upstream packaging and asset-layout gaps;
-the adapter contains targeted compatibility repairs and remains PARTIAL until
-the real reset/step smoke passes.
+The pinned live reset/step workflow passes. Compatibility handling is confined
+to the adapter boundary: reachable missing assets are restored from canonical
+Meta-World paths, an upstream debug-only undefined symbol is supplied without
+changing reward computation, and the pinned no-op close stub is tolerated.
 
 CORA now has dependency-free canonical protocol metadata plus isolated
 forgetting and isolated zero-shot forward-transfer metrics with tests. Its
