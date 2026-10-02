@@ -6,6 +6,7 @@ portfolio.
 Registered suites:
 
 - smoke
+- stationary_core
 - dev
 - baseline_core
 - carl_core
