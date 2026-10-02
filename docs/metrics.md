@@ -9,6 +9,18 @@ forgetting, backward transfer, reference-relative forward transfer, lifetime
 AUC, plasticity retention, T80/T90-style time-to-fraction recovery,
 post-change AUC, and revisit/reacquisition metrics.
 
+For strict task-agnostic/recurrent CW20, recurrence is summarized separately
+from the generic trace helper. CW20 is CW10 repeated twice. Evaluator-only task
+names identify the repeated occurrences; they are never returned to the learner.
+For each second occurrence, the evaluator uses that same occurrence's evaluation
+column at three checkpoints: immediately after the corresponding first
+occurrence was learned (reference), immediately before the revisit (zero-shot),
+and immediately after the revisit stage (recovered). The paper records the
+mean reference success, zero-shot success, recovered success, pre-revisit
+change (zero-shot minus reference), and relearning gain (recovered minus
+zero-shot). These scalars are not reported for canonical occurrence-head CW20,
+where a different one-hot/head is intentionally assigned to each occurrence.
+
 Change detection is evaluation-only. Known environment switch times may be
 compared with detected surprise events after training has produced its signals.
 The learning algorithm never receives those switch times. Event metrics include
