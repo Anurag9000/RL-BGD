@@ -50,11 +50,7 @@ def _install_pinned_runtime_compatibility(
         sawyer_bench_module,
         "debug_grasp_reward_pad",
     ):
-        setattr(
-            sawyer_bench_module,
-            "debug_grasp_reward_pad",
-            0.0,
-        )
+        sawyer_bench_module.debug_grasp_reward_pad = 0.0
         repaired.append(
             "debug_grasp_reward_pad"
         )
