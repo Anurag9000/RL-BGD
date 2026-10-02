@@ -6,10 +6,12 @@ on:
     branches: [main]
     paths:
       - "scripts/cora_legacy_smoke.py"
+      - "scripts/cora_legacy_procgen_smoke.py"
       - ".github/workflows/cora-legacy.yml"
   pull_request:
     paths:
       - "scripts/cora_legacy_smoke.py"
+      - "scripts/cora_legacy_procgen_smoke.py"
       - ".github/workflows/cora-legacy.yml"
 
 concurrency:
@@ -48,3 +50,36 @@ jobs:
         env:
           PYTHONPATH: /tmp/continual_rl
         run: python scripts/cora_legacy_smoke.py
+
+
+  cora-procgen:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+
+      - name: Install isolated legacy Procgen runtime
+        run: |
+          python -m pip install --upgrade "pip<25" "setuptools==59.5.0" wheel
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu \
+            "torch==2.2.2" "torchvision==0.17.2"
+          python -m pip install \
+            "numpy==1.23.5" \
+            "gym==0.25.2" \
+            "procgen==0.10.7" \
+            "opencv-python-headless==4.8.1.78"
+
+      - name: Install pinned CORA source without obsolete dependency pins
+        run: |
+          git clone https://github.com/AGI-Labs/continual_rl.git /tmp/continual_rl
+          git -C /tmp/continual_rl checkout f2754bb282757829765beb4703f24b87efa13ff9
+          python -m pip install --no-deps -e /tmp/continual_rl
+
+      - name: Run real CORA Procgen task smoke
+        env:
+          PYTHONPATH: /tmp/continual_rl
+        run: python scripts/cora_legacy_procgen_smoke.py
