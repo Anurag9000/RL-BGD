@@ -164,7 +164,7 @@ def test_execute_suite_writes_strict_artifacts(
     run_dir = (
         tmp_path
         / "smoke"
-        / "tiny_smoke__seed_0"
+        / "smoke__tiny_smoke__seed_0"
     )
     loaded = load_run_directory(
         run_dir
@@ -213,7 +213,7 @@ def test_execute_suite_fails_closed_on_missing_primary_metric(
     run_dir = (
         tmp_path
         / suite.name
-        / "tiny_smoke__seed_0"
+        / "smoke__tiny_smoke__seed_0"
     )
     metadata = json.loads(
         (
