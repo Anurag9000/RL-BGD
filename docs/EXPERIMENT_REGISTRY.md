@@ -14,6 +14,7 @@ No expensive experiment is marked executed until raw run artifacts exist.
 | F | Replay reuse accelerates posterior overconfidence without correction | four replay-evidence modes IMPLEMENTED / TESTED + matched ablation jobs defined; multi-seed execution pending |
 | G | Actor/critic Bayesianization have different tradeoffs | actor-only, critic-only, and actor+critic modes IMPLEMENTED / TESTED + matched ablation jobs defined; multi-seed execution pending |
 | GB-T | Generalized-Bayes evidence temperature changes evidence strength independently of eta/retention | IMPLEMENTED / TESTED math + matched per-temperature SAC jobs defined; multi-seed execution pending |
+| MC-K | BGD Monte Carlo sample count changes estimator quality and compute cost | matched K=1/2/4/8 critic-only return/uncertainty ablation plus separate K=1/2/4/8 wall-clock compute family IMPLEMENTED; multi-seed execution pending |
 | H | Recurrence and Bayesian consolidation address complementary failures | five-way matched hidden-context SAC suite IMPLEMENTED / TESTED plus matched CW10 and CW20 recurrent Adam/BGD/adaptive-BGD controls; multi-seed comparative study pending |
 | CW-CAN10 | Canonical task-aware SAC reproduces the CW10 information/lifecycle protocol | IMPLEMENTED / NOT YET FULLY EXECUTED |
 | CW-CAN20 | Canonical task-aware SAC reproduces the CW20 occurrence-aware protocol | IMPLEMENTED / NOT YET FULLY EXECUTED |
