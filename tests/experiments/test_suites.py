@@ -835,7 +835,7 @@ def test_mc_sample_ablation_has_matched_k_support() -> None:
     }
 
 
-def test_compute_suite_has_matched_sac_budget_and_resources() -> None:
+def test_compute_suite_has_matched_factorized_controls() -> None:
     jobs = SUITES[
         "compute_analysis"
     ].jobs
@@ -848,6 +848,7 @@ def test_compute_suite_has_matched_sac_budget_and_resources() -> None:
         "compute_bgd_actor_only",
         "compute_bgd_actor_and_critic",
         "compute_bgd_k1",
+        "compute_bgd_k2",
         "compute_bgd_k4",
         "compute_bgd_k8",
     }
@@ -897,6 +898,50 @@ def test_compute_suite_has_matched_sac_budget_and_resources() -> None:
         )
         for job in jobs
     )
+
+    bayesianization_jobs = [
+        job
+        for job in jobs
+        if job.comparison_group
+        == "compute_bayesianization"
+    ]
+    assert {
+        job.job_id
+        for job in bayesianization_jobs
+    } == {
+        "compute_sac_adam",
+        "compute_bgd_critic_only",
+        "compute_bgd_actor_only",
+        "compute_bgd_actor_and_critic",
+    }
+    bgd_modes = {
+        str(
+            job.kwargs[
+                "bayesianization"
+            ]
+        ): job
+        for job in bayesianization_jobs
+        if job.job_id
+        != "compute_sac_adam"
+    }
+    assert set(
+        bgd_modes
+    ) == {
+        "critic_only",
+        "actor_only",
+        "actor_and_critic",
+    }
+    assert {
+        int(
+            job.kwargs[
+                "mc_samples"
+            ]
+        )
+        for job in bgd_modes.values()
+    } == {
+        2
+    }
+
     compute_mc_jobs = {
         int(
             job.kwargs[
@@ -904,13 +949,8 @@ def test_compute_suite_has_matched_sac_budget_and_resources() -> None:
             ]
         ): job
         for job in jobs
-        if (
-            job.job_id
-            == "compute_bgd_critic_only"
-            or job.job_id.startswith(
-                "compute_bgd_k"
-            )
-        )
+        if job.comparison_group
+        == "compute_mc_samples"
     }
     assert set(
         compute_mc_jobs
