@@ -1694,6 +1694,7 @@ def validate_suite_registry() -> None:
                 tuple[int, ...],
                 str,
                 str,
+                str,
             ],
         ] = {}
         for job in suite.jobs:
@@ -1717,6 +1718,7 @@ def validate_suite_registry() -> None:
             contract = (
                 job.seeds,
                 job.primary_metric,
+                job.protocol,
                 job.environment,
             )
             previous = context_contracts.setdefault(
@@ -1726,7 +1728,7 @@ def validate_suite_registry() -> None:
             if previous != contract:
                 raise RuntimeError(
                     "paper-comparison context has inconsistent seed/outcome/"
-                    "benchmark contracts in suite "
+                    "protocol/benchmark contracts in suite "
                     f"{suite.name}: {context!r} / "
                     f"expected {previous!r}, found {contract!r} at {job.job_id}"
                 )
