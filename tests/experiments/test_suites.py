@@ -44,8 +44,10 @@ def test_suite_manifest_contains_complete_job_metadata(
     saved = json.loads(path.read_text(encoding="utf-8"))
     assert saved["schema_version"] == 1
     assert saved["suite"] == "smoke"
+    assert saved["suite_revision"] == SUITES["smoke"].revision
     assert saved["jobs"]
     for job in saved["jobs"]:
+        assert job["suite_revision"] == saved["suite_revision"]
         assert job["run_id"]
         assert job["hypothesis_id"]
         assert job["target"]
