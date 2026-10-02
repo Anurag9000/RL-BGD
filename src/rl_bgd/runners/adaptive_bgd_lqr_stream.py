@@ -13,7 +13,11 @@ from rl_bgd.bayes.bgd import BGDConfig
 from rl_bgd.continual.schedules import ContextSchedule, ContextScheduleConfig
 from rl_bgd.envs.synthetic.lqr import LinearQuadraticControlEnv
 from rl_bgd.envs.synthetic.nonstationary_lqr import ScheduledLQREnv
-from rl_bgd.metrics.change_detection import change_detection_metrics
+from rl_bgd.metrics.change_detection import (
+    binary_auroc,
+    change_detection_metrics,
+    change_event_labels,
+)
 from rl_bgd.surprise.base import EMANormalizerConfig, RetentionMappingConfig
 from rl_bgd.surprise.ensemble import AdaptiveEnsembleRetentionConfig
 from rl_bgd.surprise.predictive import AdaptivePredictiveRetentionConfig
@@ -38,11 +42,18 @@ def run_adaptive_bgd_lqr_stream(
     device: str = "auto",
     detection_threshold: float = 2.0,
     surprise_source: SurpriseSource = "td",
+    fixed_retention: float = 1.0,
 ) -> dict[str, object]:
     """Run A->B->A dynamics without passing phase boundaries to the agent."""
 
     if total_steps < 128 or phase_steps < 1:
         raise ValueError("training horizon is too short")
+    if not 0.0 <= fixed_retention <= 1.0:
+        raise ValueError("fixed_retention must lie in [0, 1]")
+    if surprise_source != "none" and fixed_retention != 1.0:
+        raise ValueError(
+            "fixed retention and adaptive surprise cannot be enabled together"
+        )
     seed_everything(seed, deterministic=True)
     resolved = resolve_device(device)
     schedule = ContextSchedule(
@@ -131,6 +142,7 @@ def run_adaptive_bgd_lqr_stream(
                 eta=0.1,
                 mc_samples=2,
                 antithetic=True,
+                temper_retention=fixed_retention,
             ),
         ),
         device=resolved,
@@ -179,14 +191,45 @@ def run_adaptive_bgd_lqr_stream(
             phase_steps,
         )
     )
+    positive_window = max(
+        phase_steps // 3,
+        1,
+    )
     detection = change_detection_metrics(
         true_changes,
         detected_steps,
-        tolerance_steps=max(phase_steps // 3, 1),
+        tolerance_steps=positive_window,
         total_steps=total_steps,
     )
+    surprise_auroc: float | None = None
+    if surprise_timeline:
+        all_labels = change_event_labels(
+            total_steps,
+            true_changes,
+            positive_window=positive_window,
+        )
+        observed_steps = [
+            int(record["step"])
+            for record in surprise_timeline
+        ]
+        labels = [
+            int(all_labels[step])
+            for step in observed_steps
+        ]
+        if any(labels) and not all(labels):
+            surprise_auroc = binary_auroc(
+                [
+                    record[
+                        "surprise_normalized"
+                    ]
+                    for record in surprise_timeline
+                ],
+                labels,
+            )
     return {
         "surprise_source": surprise_source,
+        "fixed_retention": fixed_retention,
+        "surprise_auroc": surprise_auroc,
         "training": training,
         "true_change_steps": true_changes,
         "detected_steps": detected_steps,
