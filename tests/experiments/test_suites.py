@@ -130,6 +130,31 @@ def test_comparison_and_ablation_jobs_are_atomic() -> None:
     )
 
 
+def test_paper_suites_cover_every_execution_hypothesis() -> None:
+    hypothesis_ids = {
+        job.hypothesis_id
+        for suite in SUITES.values()
+        for job in suite.jobs
+    }
+    assert {
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "GB-T",
+        "H",
+        "CW-CAN10",
+        "CW-CAN20",
+        "CW-TA10",
+        "CW-TA20",
+        "UCL",
+    } <= hypothesis_ids
+    assert "I-J" in hypothesis_ids
+
+
 def test_stationary_and_mechanism_suites_have_replicate_coverage() -> None:
     stationary = SUITES[
         "stationary_core"
