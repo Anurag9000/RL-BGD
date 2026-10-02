@@ -290,6 +290,46 @@ def _late_plasticity_jobs(
     )
 
 
+def _mc_sample_jobs(
+    *,
+    steps: int,
+    seeds: tuple[int, ...],
+    runtime_class: str,
+) -> tuple[ExperimentJob, ...]:
+    return tuple(
+        _job(
+            f"mc_samples_k{mc_samples}",
+            "MC-K",
+            "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
+            kwargs={
+                "steps": steps,
+                "device": "auto",
+                "bayesianization": "critic_only",
+                "mc_samples": mc_samples,
+            },
+            seeds=seeds,
+            algorithm=f"SAC-BGD-K{mc_samples}",
+            environment="synthetic_lqr",
+            protocol="stationary_mc_sample_ablation",
+            config_path="configs/algorithms/sac_bgd.yaml",
+            primary_metric="post_return",
+            secondary_metrics=(
+                "improvement",
+                "training.last_update_metrics.critic1_sigma_mean",
+                "training.last_update_metrics.critic1_effective_lr_mean",
+            ),
+            comparison_group="mc_samples",
+            runtime_class=runtime_class,
+        )
+        for mc_samples in (
+            1,
+            2,
+            4,
+            8,
+        )
+    )
+
+
 def _fixed_tempering_jobs(
     *,
     steps: int,
@@ -1315,6 +1355,11 @@ ABLATION_CORE = ExperimentSuite(
         steps=600,
         seeds=(0, 1, 2, 3, 4),
         runtime_class="medium",
+    )
+    + _mc_sample_jobs(
+        steps=600,
+        seeds=(0, 1, 2, 3, 4),
+        runtime_class="medium",
     ),
 )
 
@@ -1489,6 +1534,7 @@ COMPUTE_ANALYSIS = ExperimentSuite(
                     "steps": 600,
                     "device": "auto",
                     "bayesianization": mode,
+                    "mc_samples": 2,
                 },
                 seeds=(0, 1, 2),
                 algorithm=f"SAC-BGD-{mode}",
@@ -1507,6 +1553,36 @@ COMPUTE_ANALYSIS = ExperimentSuite(
                 "critic_only",
                 "actor_only",
                 "actor_and_critic",
+            )
+        ),
+        *tuple(
+            _job(
+                f"compute_bgd_k{mc_samples}",
+                "MC-K",
+                "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
+                kwargs={
+                    "steps": 600,
+                    "device": "auto",
+                    "bayesianization": "critic_only",
+                    "mc_samples": mc_samples,
+                },
+                seeds=(0, 1, 2),
+                algorithm=f"SAC-BGD-K{mc_samples}",
+                environment="synthetic_lqr",
+                protocol="stationary_compute",
+                config_path="configs/algorithms/sac_bgd.yaml",
+                primary_metric="duration_seconds",
+                secondary_metrics=(
+                    "post_return",
+                    "improvement",
+                ),
+                comparison_group="compute_sac",
+                runtime_class="compute",
+            )
+            for mc_samples in (
+                1,
+                4,
+                8,
             )
         ),
     ),
