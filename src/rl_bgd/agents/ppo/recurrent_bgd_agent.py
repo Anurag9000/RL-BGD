@@ -102,10 +102,7 @@ class BGDRecurrentPPOAgent(RecurrentPPOAgent):
 
     def _sampled_actor_loss(
         self,
-        params: dict[
-            str,
-            Tensor,
-        ],
+        params: Mapping[str, Tensor],
         batch: RecurrentPPORolloutBatch,
     ) -> Tensor:
         (
@@ -115,7 +112,7 @@ class BGDRecurrentPPOAgent(RecurrentPPOAgent):
         ) = functional_call(
             self.actor,
             (
-                params,
+                dict(params),
                 dict(self.actor.named_buffers()),
             ),
             (
@@ -143,10 +140,7 @@ class BGDRecurrentPPOAgent(RecurrentPPOAgent):
 
     def _sampled_value_loss(
         self,
-        params: dict[
-            str,
-            Tensor,
-        ],
+        params: Mapping[str, Tensor],
         batch: RecurrentPPORolloutBatch,
     ) -> Tensor:
         (
@@ -155,7 +149,7 @@ class BGDRecurrentPPOAgent(RecurrentPPOAgent):
         ) = functional_call(
             self.value,
             (
-                params,
+                dict(params),
                 dict(self.value.named_buffers()),
             ),
             (
@@ -255,10 +249,7 @@ class BGDRecurrentPPOAgent(RecurrentPPOAgent):
                     assert self.actor_posterior is not None
 
                     def actor_objective(
-                        params: dict[
-                            str,
-                            Tensor,
-                        ],
+                        params: Mapping[str, Tensor],
                         current_batch: RecurrentPPORolloutBatch = batch,
                         current_evidence_weight: float = evidence_weight,
                     ) -> BGDLoss:
@@ -300,10 +291,7 @@ class BGDRecurrentPPOAgent(RecurrentPPOAgent):
                     assert self.value_posterior is not None
 
                     def value_objective(
-                        params: dict[
-                            str,
-                            Tensor,
-                        ],
+                        params: Mapping[str, Tensor],
                         current_batch: RecurrentPPORolloutBatch = batch,
                         current_evidence_weight: float = evidence_weight,
                     ) -> BGDLoss:
