@@ -43,8 +43,11 @@ changing reward computation, and the pinned no-op close stub is tolerated.
 
 CORA now has dependency-free canonical protocol metadata plus isolated
 forgetting and isolated zero-shot forward-transfer metrics with tests. Its
-legacy environment runtime remains intentionally isolated because its old
-Gym/Atari/setuptools pins are incompatible with the modern base environment.
+legacy Atari environment runtime is also validated in a separate Python 3.10
+workflow against pinned CORA revision `f2754bb282757829765beb4703f24b87efa13ff9`.
+The smoke constructs CORA's own wrapped `PongNoFrameskip-v4` task, resets it,
+and steps it under Gym 0.25.2/ALE while keeping all legacy dependencies outside
+the modern RL-BGD environment.
 
 
 UCL-PPO is implemented as an explicitly oracle-boundary comparator because the

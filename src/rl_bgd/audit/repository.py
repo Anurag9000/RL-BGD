@@ -33,11 +33,13 @@ _REQUIRED_PATHS = (
     "scripts/run_paper_suite.py",
     "scripts/build_paper_artifacts.py",
     "scripts/run_mechanistic_analysis.py",
+    "scripts/cora_legacy_smoke.py",
     ".github/workflows/typecheck.yml",
     ".github/workflows/lint.yml",
     ".github/workflows/tests.yml",
     ".github/workflows/carl.yml",
     ".github/workflows/continual-bench.yml",
+    ".github/workflows/cora-legacy.yml",
     ".github/workflows/recurrent-learning.yml",
     ".github/workflows/paper-pipeline-smoke.yml",
 )
