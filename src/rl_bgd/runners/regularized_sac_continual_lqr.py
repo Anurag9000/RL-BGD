@@ -110,7 +110,7 @@ def run_regularized_sac_recurring_lqr(
         "information_access": {
             "receives_task_id": False,
             "receives_task_boundary": False,
-            "receives_context": False,
+            "receives_environment_context": False,
             "consolidation_trigger": "fixed_optimizer_update_interval",
             "consolidation_interval_updates": consolidation_interval_updates,
         },
