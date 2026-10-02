@@ -99,12 +99,12 @@ jobs:
           metadata_root="/tmp/continual_rl/continual_rl/experiments/tasks/metadata/chores"
           root="$(python scripts/validate_cora_chores_archive.py \
             --search-root /tmp/cora_data \
-            --metadata-root "$metadata_root" \ \
+            --metadata-root "$metadata_root" \
             --root-only)"
           test -n "$root"
           python scripts/validate_cora_chores_archive.py \
             --search-root /tmp/cora_data \
-            --metadata-root "$metadata_root" \
+            --metadata-root "$metadata_root"
           echo "root=$root" >> "$GITHUB_OUTPUT"
 
       - name: Run real CORA CHORES task smoke
