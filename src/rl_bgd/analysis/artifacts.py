@@ -206,13 +206,35 @@ def build_paper_artifacts(
             "suite_manifest.json"
         )
     )
+    generated_tables = manifest.get(
+        "generated_tables"
+    )
+    generated_figures = manifest.get(
+        "generated_figures"
+    )
+    if not isinstance(
+        generated_tables,
+        list,
+    ) or not all(
+        isinstance(value, str)
+        for value in generated_tables
+    ):
+        raise TypeError(
+            "paper manifest generated_tables must be a list of strings"
+        )
+    if not isinstance(
+        generated_figures,
+        list,
+    ) or not all(
+        isinstance(value, str)
+        for value in generated_figures
+    ):
+        raise TypeError(
+            "paper manifest generated_figures must be a list of strings"
+        )
     artifacts = [
-        *manifest[
-            "generated_tables"
-        ],
-        *manifest[
-            "generated_figures"
-        ],
+        *generated_tables,
+        *generated_figures,
         "paper_manifest.json",
     ]
     return {
