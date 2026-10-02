@@ -258,8 +258,11 @@ not merely presentation metadata.
 The five-seed `baseline_core` suite uses matched backbone controls. EWC,
 Online-EWC, SI, and MAS share an identical SAC architecture, optimizer/replay
 budget, `recurring_lqr_matched_v1` stream, horizon, phase cadence, step budget,
-and seeds with an unregularized SAC-Adam control. UCL-PPO is compared against a
-phase-matched PPO-Adam oracle control using the same stream, network widths, PPO
+and seeds with an unregularized SAC-Adam control. The same four regularizers are
+also wired into strict task-agnostic CW10 using fixed optimizer-update
+consolidation, with no task identity or boundary callback, and are scheduled
+against matched Adam/BGD controls. UCL-PPO is compared against a phase-matched
+PPO-Adam oracle control using the same stream, network widths, PPO
 hyperparameters, horizon, phase schedule, and seeds; both receive the same
 evaluator-owned phase boundaries, but only UCL snapshots the previous Bayesian
 posterior and applies UCL regularization. Runnable configurations are not
