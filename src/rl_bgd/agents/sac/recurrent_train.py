@@ -8,6 +8,7 @@ import torch
 from torch import Tensor
 
 from rl_bgd.agents.sac.recurrent_agent import RecurrentSACAgent
+from rl_bgd.envs.protocols import ContinuousEnv
 from rl_bgd.envs.protocols import ContinuousTensorEnv
 from rl_bgd.replay.sequence_buffer import SequenceReplayBuffer
 
