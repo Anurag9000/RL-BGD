@@ -56,3 +56,9 @@ class TaskAwareContinuousEnv(ContinuousEnv, Protocol):
 
     @property
     def cur_seq_idx(self) -> int: ...
+
+
+# Explicit aliases used by trainer signatures. They name the same structural
+# tensor-native contracts rather than introducing duplicate protocols.
+ContinuousTensorEnv = ContinuousEnv
+TaskAwareTensorEnv = TaskAwareContinuousEnv
