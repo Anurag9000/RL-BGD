@@ -1,0 +1,83 @@
+name: cora-chores-smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/cora_legacy_chores_smoke.py"
+      - ".github/workflows/cora-chores.yml"
+  pull_request:
+    paths:
+      - "scripts/cora_legacy_chores_smoke.py"
+      - ".github/workflows/cora-chores.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cora-chores:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+
+      - name: Install system runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            xvfb \
+            unzip \
+            libglib2.0-0 \
+            libgl1 \
+            libnss3 \
+            libx11-6 \
+            libxext6 \
+            libxrender1 \
+            libxtst6
+
+      - name: Install isolated CORA and CHORES runtime
+        run: |
+          python -m pip install --upgrade "pip<25" "setuptools==59.5.0" wheel
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu \
+            "torch==2.2.2" "torchvision==0.17.2"
+          python -m pip install \
+            "numpy==1.23.5" \
+            "gym==0.25.2" \
+            "opencv-python-headless==4.8.1.78"
+
+          git clone https://github.com/etaoxing/crl_alfred.git /tmp/crl_alfred
+          git -C /tmp/crl_alfred checkout 9539acc290f7a8cd70099e04df94cec2a5452e71
+          python -m pip install -r /tmp/crl_alfred/alfred/requirements.txt
+          python -m pip install --no-deps -e /tmp/crl_alfred
+
+          git clone https://github.com/AGI-Labs/continual_rl.git /tmp/continual_rl
+          git -C /tmp/continual_rl checkout f2754bb282757829765beb4703f24b87efa13ff9
+          python -m pip install --no-deps -e /tmp/continual_rl
+
+      - name: Download official CORA CHORES trajectories
+        run: |
+          wget -q --show-progress -O /tmp/cora_trajs.zip \
+            "https://onedrive.live.com/download?cid=601D311D0FC404D4&resid=601D311D0FC404D4%2155915&authkey=APSnA-AKY4Yw_vA"
+          unzip -q /tmp/cora_trajs.zip -d /tmp/cora_data
+          find /tmp/cora_data -maxdepth 3 -type d | head -50
+
+      - name: Locate CHORES data root
+        id: chores-data
+        run: |
+          demo="pick_and_place_simple-ToiletPaper-None-ToiletPaperHanger-402/trial_T20210817_071626_357261"
+          root="$(find /tmp/cora_data -type f -path "*/train/$demo/traj_data.json" -print -quit | sed "s#/train/$demo/traj_data.json##")"
+          test -n "$root"
+          echo "root=$root" >> "$GITHUB_OUTPUT"
+
+      - name: Run real CORA CHORES task smoke
+        env:
+          ALFRED_DATA_DIR: ${{ steps.chores-data.outputs.root }}
+          ALFRED_ROOT: /tmp/crl_alfred
+          PYTHONPATH: /tmp/continual_rl:/tmp/crl_alfred
+        run: xvfb-run -a python scripts/cora_legacy_chores_smoke.py
