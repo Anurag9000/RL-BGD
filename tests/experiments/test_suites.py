@@ -44,7 +44,7 @@ def test_suite_manifest_contains_complete_job_metadata(
     saved = json.loads(path.read_text(encoding="utf-8"))
     assert saved["schema_version"] == 1
     assert saved["suite"] == "smoke"
-    assert saved["suite_revision"] == SUITES["smoke"].revision
+    assert saved["suite_revision"] == SUITES["smoke"].revision == 2
     assert saved["jobs"]
     for job in saved["jobs"]:
         assert job["suite_revision"] == saved["suite_revision"]
@@ -55,8 +55,86 @@ def test_suite_manifest_contains_complete_job_metadata(
         assert job["environment"]
         assert job["protocol"]
         assert job["primary_metric"]
+        assert "comparison_group" in job
         assert job["command"]
         assert job["run_dir"]
+
+
+def test_explicit_comparison_groups_prevent_cross_family_pairing() -> None:
+    stationary = SUITES[
+        "stationary_core"
+    ].jobs
+    by_id = {
+        job.job_id: job
+        for job in stationary
+    }
+    assert by_id[
+        "stationary_sac_adam"
+    ].comparison_group == "stationary_sac"
+    assert by_id[
+        "stationary_sac_bgd"
+    ].comparison_group == "stationary_sac"
+    assert by_id[
+        "stationary_ppo_adam"
+    ].comparison_group == "stationary_ppo"
+    assert by_id[
+        "stationary_ppo_bgd"
+    ].comparison_group == "stationary_ppo"
+
+    carl = SUITES[
+        "carl_core"
+    ].jobs
+    for mode in (
+        "abrupt",
+        "smooth",
+        "recurring",
+    ):
+        jobs = [
+            job
+            for job in carl
+            if job.job_id.startswith(
+                f"carl_{mode}_"
+            )
+        ]
+        assert len(
+            jobs
+        ) == 3
+        assert {
+            job.comparison_group
+            for job in jobs
+        } == {
+            f"carl_{mode}"
+        }
+
+    baseline = SUITES[
+        "baseline_core"
+    ].jobs
+    sac_jobs = [
+        job
+        for job in baseline
+        if job.algorithm.startswith(
+            "SAC"
+        )
+    ]
+    ppo_jobs = [
+        job
+        for job in baseline
+        if job.algorithm.startswith(
+            "PPO"
+        )
+    ]
+    assert {
+        job.comparison_group
+        for job in sac_jobs
+    } == {
+        "baseline_sac_regularization"
+    }
+    assert {
+        job.comparison_group
+        for job in ppo_jobs
+    } == {
+        "baseline_ppo_ucl"
+    }
 
 
 def test_comparison_and_ablation_jobs_are_atomic() -> None:
