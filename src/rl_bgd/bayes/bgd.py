@@ -24,7 +24,7 @@ class BGDLoss:
     uncertainty: Tensor
 
 
-Objective = Callable[[dict[str, Tensor]], Tensor | BGDLoss]
+Objective = Callable[[Mapping[str, Tensor]], Tensor | BGDLoss]
 
 
 @dataclass(frozen=True)
