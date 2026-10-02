@@ -73,8 +73,11 @@ installed NLE no longer exposes that private directory and does not change task,
 reward, observation, or action semantics.
 
 CHORES/ALFRED remains separate. Its pinned runtime, Xvfb path, `crl_alfred`
-integration, exact published-demo validation, and reset/step smoke are
-implemented, but CORA's documented regenerated-trajectory archive is no longer
-available from its historical OneDrive URL. The manual recovery workflow
-therefore requires an authoritative archive URL (and optionally verifies its
-SHA-256) rather than silently substituting generic ALFRED data.
+integration, and reset/step smoke are implemented. The recovery workflow derives
+the required corpus from CORA's four pinned CHORES metadata files and fail-closes
+unless all 27 unique train/valid_seen trajectories, their trajectory JSON, and
+all raw goal images consumed by `crl_alfred` are present. CORA's documented
+regenerated-trajectory archive is no longer available from its historical
+OneDrive URL, so the workflow requires an authoritative replacement URL (and
+optionally verifies its SHA-256) rather than silently substituting generic
+ALFRED data.
