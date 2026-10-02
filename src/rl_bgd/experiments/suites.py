@@ -415,6 +415,99 @@ SMOKE = ExperimentSuite(
     ),
 )
 
+STATIONARY_CORE = ExperimentSuite(
+    name="stationary_core",
+    description=(
+        "Five-seed stationary SAC/PPO Adam-versus-BGD learning confirmation."
+    ),
+    jobs=(
+        _job(
+            "stationary_sac_adam",
+            "A",
+            "rl_bgd.runners.sac_lqr:run_sac_lqr",
+            kwargs={
+                "steps": 800,
+                "device": "auto",
+            },
+            seeds=(0, 1, 2, 3, 4),
+            algorithm="SAC-Adam",
+            environment="synthetic_lqr",
+            protocol="stationary",
+            config_path="configs/algorithms/sac_adam.yaml",
+            primary_metric="post_return",
+            secondary_metrics=(
+                "improvement",
+                "training.mean_episode_return",
+            ),
+            runtime_class="medium",
+        ),
+        _job(
+            "stationary_sac_bgd",
+            "A",
+            "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
+            kwargs={
+                "steps": 800,
+                "device": "auto",
+                "bayesianization": "critic_only",
+            },
+            seeds=(0, 1, 2, 3, 4),
+            algorithm="SAC-BGD",
+            environment="synthetic_lqr",
+            protocol="stationary",
+            config_path="configs/algorithms/sac_bgd.yaml",
+            primary_metric="post_return",
+            secondary_metrics=(
+                "improvement",
+                "training.last_update_metrics.critic1_sigma_mean",
+            ),
+            runtime_class="medium",
+        ),
+        _job(
+            "stationary_ppo_adam",
+            "A",
+            "rl_bgd.runners.ppo_lqr:run_ppo_lqr",
+            kwargs={
+                "steps": 800,
+                "device": "auto",
+            },
+            seeds=(0, 1, 2, 3, 4),
+            algorithm="PPO-Adam",
+            environment="synthetic_lqr",
+            protocol="stationary",
+            config_path="configs/algorithms/ppo_adam.yaml",
+            primary_metric="post_return",
+            secondary_metrics=(
+                "improvement",
+                "training.mean_episode_return",
+            ),
+            runtime_class="medium",
+        ),
+        _job(
+            "stationary_ppo_bgd",
+            "A",
+            "rl_bgd.runners.bgd_ppo_lqr:run_bgd_ppo_lqr",
+            kwargs={
+                "steps": 800,
+                "device": "auto",
+                "bayesianization": "actor_and_value",
+            },
+            seeds=(0, 1, 2, 3, 4),
+            algorithm="PPO-BGD",
+            environment="synthetic_lqr",
+            protocol="stationary",
+            config_path="configs/algorithms/ppo_bgd.yaml",
+            primary_metric="post_return",
+            secondary_metrics=(
+                "improvement",
+                "training.last_update_metrics.actor_sigma_mean",
+                "training.last_update_metrics.value_sigma_mean",
+            ),
+            runtime_class="medium",
+        ),
+    ),
+)
+
+
 DEV = ExperimentSuite(
     name="dev",
     description="Bounded multi-method development comparison before expensive benchmarks.",
@@ -823,9 +916,14 @@ MECHANISM_ANALYSIS = ExperimentSuite(
         _job(
             "mechanistic_quadratic",
             "I-J",
-            "rl_bgd.analysis.mechanistic:run_mechanistic_analysis",
-            kwargs={},
-            seeds=(150,),
+            (
+                "rl_bgd.analysis.mechanistic:"
+                "run_seeded_mechanistic_analysis"
+            ),
+            kwargs={
+                "device": "auto",
+            },
+            seeds=(150, 151, 152, 153, 154),
             algorithm="BGD",
             environment="anisotropic_quadratic",
             protocol="mechanistic",
@@ -837,7 +935,7 @@ MECHANISM_ANALYSIS = ExperimentSuite(
                 "freezing_target_loss",
             ),
             runtime_class="analysis",
-            seed_kwarg=None,
+            seed_kwarg="seed",
             output_kwarg="output_dir",
         ),
     ),
@@ -874,6 +972,7 @@ SUITES: dict[str, ExperimentSuite] = {
     suite.name: suite
     for suite in (
         SMOKE,
+        STATIONARY_CORE,
         DEV,
         BASELINE_CORE,
         CARL_CORE,
@@ -951,6 +1050,7 @@ def _expanded_jobs(
 def validate_suite_registry() -> None:
     required = {
         "smoke",
+        "stationary_core",
         "dev",
         "baseline_core",
         "carl_core",
