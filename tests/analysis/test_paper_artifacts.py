@@ -393,3 +393,96 @@ def test_paper_builder_generates_continual_matrix_and_timeline_figures(
     assert any("adaptation_curve_return_matrix" in name for name in generated)
     assert any("timeline_surprise_timeline" in name for name in generated)
     assert any("timeline_post_shift_loss_timeline" in name for name in generated)
+
+
+
+def test_paper_builder_aggregates_only_declared_suite_metrics(
+    tmp_path: Path,
+) -> None:
+    results = tmp_path / "results"
+    for seed, score in (
+        (0, 0.4),
+        (1, 0.6),
+    ):
+        run_id = f"declared_{seed}"
+        write_run_artifacts(
+            results / run_id,
+            manifest=RunManifest(
+                run_id=run_id,
+                method="DeclaredMethod",
+                setting="matched",
+                benchmark="toy",
+                seed=seed,
+                git_commit="deadbeef",
+                information_access={
+                    "receives_task_id": False,
+                    "receives_task_boundary": False,
+                    "receives_environment_context": False,
+                },
+                metadata={
+                    "suite": "declared_suite",
+                    "job_id": "declared_job",
+                    "primary_metric": "score",
+                    "secondary_metrics": [
+                        "auxiliary",
+                        "phase_summaries",
+                    ],
+                },
+            ),
+            summary=RunSummary(
+                run_id=run_id,
+                metrics={
+                    "score": score,
+                    "auxiliary": score + 0.1,
+                    "steps": 600.0,
+                    "phase_steps": 120.0,
+                    "horizon": 32.0,
+                    "phases": 5.0,
+                },
+                resources={
+                    "duration_seconds": 10.0 + seed,
+                },
+            ),
+            resolved_config={
+                "steps": 600,
+                "phase_steps": 120,
+                "horizon": 32,
+            },
+            metrics_rows=[
+                {
+                    "series": "summary",
+                    "row_index": 0,
+                    "score": score,
+                }
+            ],
+        )
+
+    output = tmp_path / "paper"
+    build_paper_artifacts(
+        results,
+        output,
+        config=PaperArtifactConfig(
+            bootstrap_resamples=50,
+            seed=41,
+            figure_formats=("png",),
+        ),
+    )
+
+    aggregate = pd.read_csv(
+        output
+        / "tables"
+        / "aggregate_statistics.csv"
+    )
+    metrics = set(
+        aggregate["metric"]
+    )
+    assert metrics == {
+        "score",
+        "auxiliary",
+        "duration_seconds",
+    }
+    assert "steps" not in metrics
+    assert "phase_steps" not in metrics
+    assert "horizon" not in metrics
+    assert "phases" not in metrics
+    assert "phase_summaries" not in metrics
