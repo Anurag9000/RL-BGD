@@ -73,6 +73,7 @@ def _install_vardir_compatibility() -> None:
     MiniHackMakeVecSafeWrapper.reset = _compat_reset
     MiniHackMakeVecSafeWrapper.step = _compat_step
     MiniHackMakeVecSafeWrapper.close = _compat_close
+    MiniHackMakeVecSafeWrapper.seed = _compat_seed
 
 
 def _reset(env: Any) -> Any:
