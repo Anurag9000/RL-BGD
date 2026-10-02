@@ -39,7 +39,10 @@ def run_bgd_sac_lqr(
     evidence_temperature: float = 1.0,
     temper_retention: float = 1.0,
     replay_evidence_mode: ReplayEvidenceMode = "all_replay",
+    mc_samples: int = 2,
 ) -> dict[str, object]:
+    if mc_samples < 1:
+        raise ValueError("mc_samples must be positive")
     seed_everything(seed, deterministic=True)
     resolved = resolve_device(device)
     env = LinearQuadraticControlEnv(horizon=30, device=resolved)
@@ -62,15 +65,21 @@ def run_bgd_sac_lqr(
             ),
             actor_bgd=BGDConfig(
                 eta=0.1,
-                mc_samples=2,
-                antithetic=True,
+                mc_samples=mc_samples,
+                antithetic=(
+                    mc_samples > 1
+                    and mc_samples % 2 == 0
+                ),
                 evidence_temperature=evidence_temperature,
                 temper_retention=temper_retention,
             ),
             critic_bgd=BGDConfig(
                 eta=0.1,
-                mc_samples=2,
-                antithetic=True,
+                mc_samples=mc_samples,
+                antithetic=(
+                    mc_samples > 1
+                    and mc_samples % 2 == 0
+                ),
                 evidence_temperature=evidence_temperature,
                 temper_retention=temper_retention,
             ),
@@ -103,6 +112,11 @@ def run_bgd_sac_lqr(
         "evidence_temperature": evidence_temperature,
         "temper_retention": temper_retention,
         "replay_evidence_mode": replay_evidence_mode,
+        "mc_samples": mc_samples,
+        "antithetic": (
+            mc_samples > 1
+            and mc_samples % 2 == 0
+        ),
         "steps": steps,
         "pre_return": pre_return,
         "post_return": post_return,
