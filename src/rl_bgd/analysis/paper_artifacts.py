@@ -2056,6 +2056,7 @@ _TIMELINE_VALUE_CANDIDATES: tuple[
     "episode_return",
     "return",
     "mean_return",
+    "normalized_target_loss",
 )
 
 
