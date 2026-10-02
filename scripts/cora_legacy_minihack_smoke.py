@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any
+from typing import Any, Optional
 
 import gym
 import minihack
@@ -17,8 +17,8 @@ from continual_rl.experiments.tasks.make_minihack_task import (
 from continual_rl.utils.utils import Utils
 
 
-def _find_vardir(wrapper: Any) -> str:
-    """Find NLE's runtime directory without assuming a fixed wrapper depth."""
+def _find_vardir(wrapper: Any) -> Optional[str]:
+    """Find an old NLE runtime directory when that implementation detail exists."""
 
     current = getattr(wrapper, "env", None)
     seen: set[int] = set()
@@ -28,12 +28,15 @@ def _find_vardir(wrapper: Any) -> str:
         if vardir is not None:
             return str(vardir)
         current = getattr(current, "env", None)
-    raise AttributeError("MiniHack environment wrapper chain does not expose _vardir")
+    return None
 
 
 def _compat_reset(self: Any) -> Any:
+    vardir = _find_vardir(self)
+    if vardir is None:
+        return self.env.reset()
     restore_dir = getattr(self, "basedir", os.getcwd())
-    os.chdir(_find_vardir(self))
+    os.chdir(vardir)
     try:
         return self.env.reset()
     finally:
@@ -41,8 +44,11 @@ def _compat_reset(self: Any) -> Any:
 
 
 def _compat_step(self: Any, action: Any) -> Any:
+    vardir = _find_vardir(self)
+    if vardir is None:
+        return self.env.step(action)
     restore_dir = getattr(self, "basedir", os.getcwd())
-    os.chdir(_find_vardir(self))
+    os.chdir(vardir)
     try:
         return self.env.step(action)
     finally:
@@ -50,8 +56,11 @@ def _compat_step(self: Any, action: Any) -> Any:
 
 
 def _compat_close(self: Any) -> Any:
+    vardir = _find_vardir(self)
+    if vardir is None:
+        return self.env.close()
     restore_dir = getattr(self, "basedir", os.getcwd())
-    os.chdir(_find_vardir(self))
+    os.chdir(vardir)
     try:
         return self.env.close()
     finally:
@@ -59,7 +68,7 @@ def _compat_close(self: Any) -> Any:
 
 
 def _install_vardir_compatibility() -> None:
-    """Repair only CORA's stale assumption about MiniHack wrapper depth."""
+    """Preserve CORA's chdir workaround only for NLE versions that expose it."""
 
     MiniHackMakeVecSafeWrapper.reset = _compat_reset
     MiniHackMakeVecSafeWrapper.step = _compat_step
@@ -141,7 +150,7 @@ def main() -> None:
                         "__version__",
                         "unknown",
                     ),
-                    "compatibility_shim": "cora_minihack_vardir_wrapper_depth",
+                    "compatibility_shim": "conditional_cora_minihack_vardir",
                     "action_space": str(env.action_space),
                     "reward": reward,
                     "done": done,
@@ -152,11 +161,7 @@ def main() -> None:
             )
         )
     finally:
-        close = getattr(
-            env,
-            "close",
-            None,
-        )
+        close = getattr(env, "close", None)
         if close is not None:
             close()
 
