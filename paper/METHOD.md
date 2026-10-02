@@ -259,9 +259,12 @@ The five-seed `baseline_core` suite uses matched backbone controls. EWC,
 Online-EWC, SI, and MAS share an identical SAC architecture, optimizer/replay
 budget, `recurring_lqr_matched_v1` stream, horizon, phase cadence, step budget,
 and seeds with an unregularized SAC-Adam control. The same four regularizers are
-also wired into strict task-agnostic CW10 using fixed optimizer-update
-consolidation, with no task identity or boundary callback, and are scheduled
-against matched Adam/BGD controls. UCL-PPO is compared against a phase-matched
+also wired into strict task-agnostic CW10 **and** CW20 using fixed
+optimizer-update consolidation, with no task identity or boundary callback, and
+are scheduled in the same comparison groups as matched Adam/BGD controls.
+CW10 and CW20 also each contain recurrent Adam/BGD/adaptive-BGD controls under
+the same 3RL-style hidden-context protocol. UCL-PPO is compared against a
+phase-matched
 PPO-Adam oracle control using the same stream, network widths, PPO
 hyperparameters, horizon, phase schedule, and seeds; both receive the same
 evaluator-owned phase boundaries, but only UCL snapshots the previous Bayesian
@@ -347,7 +350,10 @@ than being silently discarded.
 
 Across independent seeds, scalar metrics receive percentile bootstrap
 confidence intervals. Paired method differences resample matched-seed
-differences. Task-within-seed values use hierarchical seed-then-task bootstrap.
+differences **only inside explicit suite comparison groups**; suite revision,
+primary outcome, protocol, benchmark, seed set, git revision, evaluator-owned
+information privileges, and task order are checked before pairing.
+Task-within-seed values use hierarchical seed-then-task bootstrap.
 Generated tables preserve contributing run IDs and are exported to CSV,
 Markdown, and LaTeX; figures and their source hashes are recorded in
 `paper_manifest.json`.
