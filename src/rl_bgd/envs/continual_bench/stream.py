@@ -36,6 +36,7 @@ class ContinualBenchImportError(ImportError):
 
 
 _ASSET_FILE_PATTERN = re.compile(r"""\bfile\s*=\s*["']([^"']+)["']""")
+_XML_COMMENT_PATTERN = re.compile(r"<!--.*?-->", re.DOTALL)
 
 
 def _repair_missing_metaworld_assets(
@@ -95,7 +96,11 @@ def _repair_missing_metaworld_assets(
                 f"cannot read ContinualBench asset XML: {xml_path}"
             ) from exc
 
-        for raw_reference in _ASSET_FILE_PATTERN.findall(contents):
+        live_contents = _XML_COMMENT_PATTERN.sub(
+            "",
+            contents,
+        )
+        for raw_reference in _ASSET_FILE_PATTERN.findall(live_contents):
             target = (xml_path.parent / raw_reference).resolve()
             try:
                 relative = target.relative_to(destination_resolved)
