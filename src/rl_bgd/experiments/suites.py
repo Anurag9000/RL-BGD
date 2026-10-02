@@ -1100,8 +1100,8 @@ ABLATION_CORE = ExperimentSuite(
 UNCERTAINTY_ANALYSIS = ExperimentSuite(
     name="uncertainty_analysis",
     description=(
-        "Posterior uncertainty, matched surprise-source ablations, "
-        "and evidence-temperature diagnostics."
+        "Posterior uncertainty, matched fixed/adaptive retention and "
+        "surprise-source ablations, plus evidence-temperature diagnostics."
     ),
     jobs=(
         _job(
@@ -1124,6 +1124,8 @@ UNCERTAINTY_ANALYSIS = ExperimentSuite(
                 "change_detection.precision",
                 "change_detection.recall",
                 "change_detection.false_alarms_per_million_steps",
+                "surprise_auroc",
+                "training.final_10_mean_return",
                 "training.last_update_metrics.retention_lambda",
                 "training.last_update_metrics.critic1_sigma_mean",
             ),
@@ -1155,10 +1157,14 @@ UNCERTAINTY_ANALYSIS = ExperimentSuite(
                         "change_detection.precision",
                         "change_detection.recall",
                         "change_detection.false_alarms_per_million_steps",
+                        "training.final_10_mean_return",
                         "training.last_update_metrics.critic1_sigma_mean",
                     )
                     + (
-                        ("training.last_update_metrics.retention_lambda",)
+                        (
+                            "surprise_auroc",
+                            "training.last_update_metrics.retention_lambda",
+                        )
                         if source != "none"
                         else ()
                     )
@@ -1175,6 +1181,31 @@ UNCERTAINTY_ANALYSIS = ExperimentSuite(
                 "ensemble",
                 "predictive",
             )
+        ),
+        _job(
+            "fixed_retention_recurring_0p97",
+            "D",
+            "rl_bgd.runners.adaptive_bgd_lqr_stream:run_adaptive_bgd_lqr_stream",
+            kwargs={
+                "total_steps": 900,
+                "phase_steps": 300,
+                "device": "auto",
+                "surprise_source": "none",
+                "fixed_retention": 0.97,
+            },
+            seeds=(0, 1, 2, 3, 4),
+            algorithm="SAC-BGD-Fixed-Retention-0.97",
+            environment="recurring_lqr",
+            protocol="strict_task_agnostic_fixed_tempering",
+            config_path="configs/environments/lqr_recurring.yaml",
+            primary_metric="training.final_10_mean_return",
+            secondary_metrics=(
+                "training.mean_episode_return",
+                "training.last_update_metrics.critic1_sigma_mean",
+                "training.last_update_metrics.critic1_effective_lr_mean",
+            ),
+            comparison_group="recurring_retention_policy",
+            runtime_class="medium",
         ),
         *_evidence_temperature_jobs(
             steps=600,
