@@ -560,3 +560,112 @@ def test_paper_builder_accepts_declared_resource_primary_without_duplicate(
         aggregate["metric"] == "duration_seconds"
     ].iloc[0]
     assert duration_row["mean"] == pytest.approx(3.0)
+
+
+def _write_contract_seed(
+    root: Path,
+    *,
+    seed: int,
+    git_commit: str = "deadbeef",
+    receives_task_id: bool = False,
+) -> None:
+    run_id = f"contract_{seed}"
+    write_run_artifacts(
+        root / run_id,
+        manifest=RunManifest(
+            run_id=run_id,
+            method="ContractMethod",
+            setting="strict_task_agnostic",
+            benchmark="toy",
+            seed=seed,
+            git_commit=git_commit,
+            information_access={
+                "receives_task_id": receives_task_id,
+                "receives_task_boundary": False,
+                "receives_environment_context": False,
+            },
+            metadata={
+                "suite": "contract_suite",
+                "job_id": "contract_job",
+                "hypothesis_id": "A",
+                "target": "rl_bgd.runners.example:run",
+                "source_config_path": "configs/example.yaml",
+                "primary_metric": "score",
+                "secondary_metrics": [],
+            },
+        ),
+        summary=RunSummary(
+            run_id=run_id,
+            metrics={
+                "score": 1.0 + seed,
+            },
+        ),
+        resolved_config={
+            "seed": seed,
+        },
+        metrics_rows=[
+            {
+                "series": "summary",
+                "row_index": 0,
+                "score": 1.0 + seed,
+            }
+        ],
+    )
+
+
+def test_paper_builder_rejects_mixed_seed_information_access(
+    tmp_path: Path,
+) -> None:
+    results = tmp_path / "results"
+    _write_contract_seed(
+        results,
+        seed=0,
+        receives_task_id=False,
+    )
+    _write_contract_seed(
+        results,
+        seed=1,
+        receives_task_id=True,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="information_access",
+    ):
+        build_paper_artifacts(
+            results,
+            tmp_path / "paper",
+            config=PaperArtifactConfig(
+                bootstrap_resamples=20,
+                figure_formats=("png",),
+            ),
+        )
+
+
+def test_paper_builder_rejects_mixed_seed_git_commits(
+    tmp_path: Path,
+) -> None:
+    results = tmp_path / "results"
+    _write_contract_seed(
+        results,
+        seed=0,
+        git_commit="deadbeef",
+    )
+    _write_contract_seed(
+        results,
+        seed=1,
+        git_commit="cafebabe",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="git_commit",
+    ):
+        build_paper_artifacts(
+            results,
+            tmp_path / "paper",
+            config=PaperArtifactConfig(
+                bootstrap_resamples=20,
+                figure_formats=("png",),
+            ),
+        )
