@@ -114,6 +114,8 @@ jobs:
           python -m pip install --upgrade "pip<24" "setuptools<60" wheel
           python -m pip install --index-url https://download.pytorch.org/whl/cpu \
             "torch==2.1.2" "torchvision==0.16.2"
+          # NLE 0.9.0 declares gym<=0.23, so 0.23.0 is the newest
+          # compatible release; 0.23.1 is rejected by pip's resolver.
           python -m pip install \
             "numpy==1.23.5" \
             "gym==0.23.0" \
