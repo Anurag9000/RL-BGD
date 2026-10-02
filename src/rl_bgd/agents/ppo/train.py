@@ -9,11 +9,11 @@ import torch
 from torch import Tensor
 
 from rl_bgd.agents.ppo.rollout import RolloutBuffer
+from rl_bgd.envs.protocols import ContinuousTensorEnv
 
 
 class PPOTrainAgent(Protocol):
     device: torch.device
-    config: object
 
     def sample_action(
         self,
@@ -38,28 +38,6 @@ class PPOTrainAgent(Protocol):
     ) -> Tensor: ...
 
 
-class ContinuousEnv(Protocol):
-    action_space: object
-    observation_space: object
-
-    def reset(
-        self,
-        *,
-        seed: int | None = None,
-    ) -> tuple[Tensor, dict[str, object]]: ...
-
-    def step(
-        self,
-        action: Tensor,
-    ) -> tuple[
-        Tensor,
-        float,
-        bool,
-        bool,
-        dict[str, object],
-    ]: ...
-
-
 @dataclass(frozen=True)
 class PPOTrainConfig:
     total_steps: int = 10_000
@@ -68,7 +46,7 @@ class PPOTrainConfig:
 
 
 def train_ppo(
-    env: ContinuousEnv,
+    env: ContinuousTensorEnv,
     agent: PPOTrainAgent,
     *,
     config: PPOTrainConfig,
@@ -155,7 +133,7 @@ def train_ppo(
 
 @torch.no_grad()
 def evaluate_ppo(
-    env: ContinuousEnv,
+    env: ContinuousTensorEnv,
     agent: PPOTrainAgent,
     *,
     episodes: int = 5,
