@@ -193,6 +193,75 @@ def test_external_baseline_suite_has_full_method_coverage() -> None:
     assert {int(job.kwargs["horizon"]) for job in ppo_family} == {32}
 
 
+def test_carl_and_cw_metric_declarations_match_runner_contracts() -> None:
+    carl_jobs = SUITES[
+        "carl_core"
+    ].jobs
+    for job in carl_jobs:
+        optimizer = job.kwargs[
+            "optimizer"
+        ]
+        if optimizer == "adam":
+            assert job.secondary_metrics == ()
+        elif optimizer == "bgd":
+            assert job.secondary_metrics == (
+                "training.last_update_metrics.critic1_sigma_mean",
+            )
+        else:
+            assert optimizer == "adaptive_bgd"
+            assert job.secondary_metrics == (
+                "training.last_update_metrics.critic1_sigma_mean",
+                "training.last_update_metrics.retention_lambda",
+            )
+
+    cw10_jobs = {
+        job.job_id: job
+        for job in SUITES[
+            "cw10_core"
+        ].jobs
+    }
+    assert "recurrence" not in cw10_jobs[
+        "cw10_recurrent_adaptive"
+    ].secondary_metrics
+    assert (
+        "training.last_update_metrics.critic1_sigma_mean"
+        in cw10_jobs[
+            "cw10_ta_bgd"
+        ].secondary_metrics
+    )
+
+    cw20_jobs = {
+        job.job_id: job
+        for job in SUITES[
+            "cw20_final"
+        ].jobs
+    }
+    assert not any(
+        metric.startswith(
+            "recurrence_summary."
+        )
+        for metric in cw20_jobs[
+            "cw20_canonical_adam"
+        ].secondary_metrics
+    )
+    recurrence_metrics = {
+        "recurrence_summary.reference_success",
+        "recurrence_summary.zero_shot_success",
+        "recurrence_summary.recovered_success",
+        "recurrence_summary.pre_revisit_change",
+        "recurrence_summary.relearning_gain",
+    }
+    for job_id in (
+        "cw20_ta_bgd",
+        "cw20_recurrent_adaptive",
+    ):
+        assert recurrence_metrics <= set(
+            cw20_jobs[
+                job_id
+            ].secondary_metrics
+        )
+
+
 def _tiny_suite(
     primary_metric: str,
 ) -> ExperimentSuite:
