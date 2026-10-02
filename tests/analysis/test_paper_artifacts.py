@@ -26,6 +26,8 @@ def _write_run(
     forgetting: float,
     duration: float,
     status: str = "completed",
+    git_commit: str = "deadbeef",
+    receives_task_id: bool = False,
 ) -> None:
     manifest = RunManifest(
         run_id=run_id,
@@ -33,14 +35,14 @@ def _write_run(
         setting="strict_task_agnostic",
         benchmark="toy_cw",
         seed=seed,
-        git_commit="deadbeef",
+        git_commit=git_commit,
         status=status,  # type: ignore[arg-type]
         task_order=(
             "task_a",
             "task_b",
         ),
         information_access={
-            "receives_task_id": False,
+            "receives_task_id": receives_task_id,
             "receives_task_boundary": False,
             "receives_environment_context": False,
         },
@@ -660,6 +662,130 @@ def test_paper_builder_rejects_mixed_seed_git_commits(
     with pytest.raises(
         ValueError,
         match="git_commit",
+    ):
+        build_paper_artifacts(
+            results,
+            tmp_path / "paper",
+            config=PaperArtifactConfig(
+                bootstrap_resamples=20,
+                figure_formats=("png",),
+            ),
+        )
+
+
+def test_paper_builder_rejects_unmatched_paired_seed_sets(
+    tmp_path: Path,
+) -> None:
+    results = tmp_path / "results"
+    _write_run(
+        results,
+        run_id="a0",
+        method="A",
+        seed=0,
+        final_average=1.0,
+        forgetting=0.1,
+        duration=1.0,
+    )
+    _write_run(
+        results,
+        run_id="a1",
+        method="A",
+        seed=1,
+        final_average=1.1,
+        forgetting=0.1,
+        duration=1.0,
+    )
+    _write_run(
+        results,
+        run_id="b0",
+        method="B",
+        seed=0,
+        final_average=0.9,
+        forgetting=0.2,
+        duration=1.0,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="different seed sets",
+    ):
+        build_paper_artifacts(
+            results,
+            tmp_path / "paper",
+            config=PaperArtifactConfig(
+                bootstrap_resamples=20,
+                figure_formats=("png",),
+            ),
+        )
+
+
+def test_paper_builder_rejects_cross_method_git_revision_mismatch(
+    tmp_path: Path,
+) -> None:
+    results = tmp_path / "results"
+    _write_run(
+        results,
+        run_id="a0",
+        method="A",
+        seed=0,
+        final_average=1.0,
+        forgetting=0.1,
+        duration=1.0,
+        git_commit="deadbeef",
+    )
+    _write_run(
+        results,
+        run_id="b0",
+        method="B",
+        seed=0,
+        final_average=0.9,
+        forgetting=0.2,
+        duration=1.0,
+        git_commit="cafebabe",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="different git commits",
+    ):
+        build_paper_artifacts(
+            results,
+            tmp_path / "paper",
+            config=PaperArtifactConfig(
+                bootstrap_resamples=20,
+                figure_formats=("png",),
+            ),
+        )
+
+
+def test_paper_builder_rejects_cross_method_information_access_mismatch(
+    tmp_path: Path,
+) -> None:
+    results = tmp_path / "results"
+    _write_run(
+        results,
+        run_id="a0",
+        method="A",
+        seed=0,
+        final_average=1.0,
+        forgetting=0.1,
+        duration=1.0,
+        receives_task_id=False,
+    )
+    _write_run(
+        results,
+        run_id="b0",
+        method="B",
+        seed=0,
+        final_average=0.9,
+        forgetting=0.2,
+        duration=1.0,
+        receives_task_id=True,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="different information access",
     ):
         build_paper_artifacts(
             results,
