@@ -13,6 +13,7 @@ from rl_bgd.envs.continual_bench import (
     ContinualBenchStreamEnv,
 )
 from rl_bgd.envs.continual_bench.stream import (
+    _apply_upstream_runtime_compatibility,
     _repair_missing_metaworld_assets,
 )
 
@@ -394,3 +395,38 @@ def test_asset_repair_ignores_commented_file_references(
         xyz_base.parent
         / "shared_config.xml"
     ).exists()
+
+
+
+def test_runtime_compatibility_defines_missing_debug_symbol(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sawyer_module = SimpleNamespace()
+
+    monkeypatch.setattr(
+        "rl_bgd.envs.continual_bench.stream.import_module",
+        lambda name: sawyer_module,
+    )
+
+    patched = _apply_upstream_runtime_compatibility()
+
+    assert patched == (
+        "sawyer_bench.debug_grasp_reward_pad",
+    )
+    assert sawyer_module.debug_grasp_reward_pad == 0.0
+    assert _apply_upstream_runtime_compatibility() == ()
+
+
+def test_close_ignores_pinned_upstream_not_implemented() -> None:
+    class UnclosableContinualBench(FakeContinualBench):
+        def close(self) -> None:
+            raise NotImplementedError
+
+    env = ContinualBenchStreamEnv(
+        UnclosableContinualBench(),
+        config=ContinualBenchStreamConfig(
+            task_sequence=("button",),
+        ),
+    )
+
+    env.close()
