@@ -569,3 +569,20 @@ def run_mechanistic_analysis(
         encoding="utf-8",
     )
     return summary
+
+def run_seeded_mechanistic_analysis(
+    output_dir: str | Path,
+    *,
+    seed: int = 150,
+    device: str = "auto",
+) -> dict[str, object]:
+    """Run the canonical mechanism battery with an explicit replicate seed."""
+
+    return run_mechanistic_analysis(
+        output_dir,
+        config=MechanisticAnalysisConfig(
+            seed=seed,
+            device=device,
+        ),
+    )
+
