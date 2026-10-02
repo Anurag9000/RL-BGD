@@ -253,10 +253,17 @@ The repository includes independent implementations of:
 Task-agnostic regularization baselines use fixed optimizer-update consolidation
 when true task boundaries are unavailable. Boundary-triggered versions are
 separately labelled oracle/privileged. This distinction is part of the method,
-not merely presentation metadata. The paper registry contains a five-seed
-baseline suite for EWC, Online-EWC, SI, MAS, and separately labelled
-oracle-boundary UCL-PPO; runnable configurations are not treated as empirical
-results until canonical raw artifacts exist.
+not merely presentation metadata.
+
+The five-seed `baseline_core` suite uses matched backbone controls. EWC,
+Online-EWC, SI, and MAS share an identical SAC architecture, optimizer/replay
+budget, `recurring_lqr_matched_v1` stream, horizon, phase cadence, step budget,
+and seeds with an unregularized SAC-Adam control. UCL-PPO is compared against a
+phase-matched PPO-Adam oracle control using the same stream, network widths, PPO
+hyperparameters, horizon, phase schedule, and seeds; both receive the same
+evaluator-owned phase boundaries, but only UCL snapshots the previous Bayesian
+posterior and applies UCL regularization. Runnable configurations are not
+treated as empirical results until canonical raw artifacts exist.
 
 ## 12. Benchmark protocols
 
@@ -288,9 +295,13 @@ configuration is explicitly labelled smoke/dev.
 
 ContinualBench has a strict hidden-task adapter and isolated pinned live smoke.
 CORA compatibility covers canonical protocol metadata and metric definitions.
-Its legacy Atari runtime is live-validated in a separate pinned Python 3.10
-workflow, keeping obsolete Gym/ALE dependencies isolated rather than forcing
-them into the primary environment.
+Pinned isolated workflows live-validate CORA's Atari, Procgen, and MiniHack/NLE
+task constructors through real reset/action/step/close paths without installing
+their obsolete dependencies into the modern RL-BGD environment. CHORES/ALFRED
+remains externally blocked because the authoritative regenerated trajectory
+archive referenced by CORA is unavailable; the repository provides a manual
+recovery workflow that validates the complete expected archive before running
+the published trajectory smoke rather than substituting fabricated data.
 
 ## 13. Evaluation
 
