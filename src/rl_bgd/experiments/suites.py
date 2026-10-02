@@ -317,7 +317,7 @@ DEV = ExperimentSuite(
     description="Bounded multi-method development comparison before expensive benchmarks.",
     jobs=(
         *_hidden_context_jobs(
-            prefix="dev_hidden",
+            prefix="hidden_context",
             steps=96,
             seeds=(0, 1),
             device="cpu",
@@ -763,7 +763,9 @@ def _expanded_jobs(
             kwargs = dict(job.kwargs)
             if job.seed_kwarg is not None:
                 kwargs[job.seed_kwarg] = seed
-            run_id = f"{job.job_id}__seed_{seed}"
+            run_id = (
+                f"{suite.name}__{job.job_id}__seed_{seed}"
+            )
             run_dir = output_root / suite.name / run_id
             if job.output_kwarg is not None:
                 kwargs[job.output_kwarg] = str(run_dir / "artifacts")
