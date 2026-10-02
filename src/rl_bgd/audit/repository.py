@@ -17,6 +17,11 @@ _REQUIRED_PATHS = (
     "docs/paper_suites.md",
     "docs/paper_artifacts.md",
     "docs/mechanistic_analysis.md",
+    "docs/experiments.md",
+    "docs/literature_review.md",
+    "docs/reproducibility.md",
+    "paper/FIGURE_PLAN.md",
+    "paper/RESULTS_TEMPLATE.md",
     "paper/METHOD.md",
     "paper/LIMITATIONS.md",
     "src/rl_bgd/artifacts/run.py",
@@ -29,6 +34,11 @@ _REQUIRED_PATHS = (
     "scripts/build_paper_artifacts.py",
     "scripts/run_mechanistic_analysis.py",
     ".github/workflows/typecheck.yml",
+    ".github/workflows/lint.yml",
+    ".github/workflows/tests.yml",
+    ".github/workflows/carl.yml",
+    ".github/workflows/continual-bench.yml",
+    ".github/workflows/recurrent-learning.yml",
     ".github/workflows/paper-pipeline-smoke.yml",
 )
 
@@ -311,8 +321,8 @@ def audit_repository(
     for phrase in (
         "Recurrent BGD-PPO | COMPLETE",
         "Recurrent BGD-SAC | COMPLETE",
-        "Mechanistic experiments |",
-        "Paper tables/figures |",
+        "Mechanistic experiments | COMPLETE",
+        "Paper tables/figures | COMPLETE",
     ):
         checks_run += 1
         if phrase not in ledger:
@@ -321,6 +331,48 @@ def audit_repository(
                     "ledger_coverage",
                     "docs/CAPABILITY_LEDGER.md",
                     f"missing expected ledger entry containing {phrase!r}",
+                )
+            )
+
+    allowed_closure_statuses = {
+        "COMPLETE",
+        "BLOCKED",
+    }
+    for line in ledger.splitlines():
+        if not line.startswith("|"):
+            continue
+        cells = [
+            cell.strip()
+            for cell in line.strip().strip("|").split("|")
+        ]
+        if (
+            len(cells) < 3
+            or cells[0] == "Capability"
+            or set(cells[0]) <= {"-"}
+        ):
+            continue
+        checks_run += 1
+        status = cells[1]
+        if status not in allowed_closure_statuses:
+            findings.append(
+                AuditFinding(
+                    "ledger_software_closure",
+                    "docs/CAPABILITY_LEDGER.md",
+                    (
+                        f"{cells[0]!r} still has non-closure status "
+                        f"{status!r}"
+                    ),
+                )
+            )
+        elif (
+            status == "BLOCKED"
+            and not cells[2]
+        ):
+            findings.append(
+                AuditFinding(
+                    "ledger_blocked_rationale",
+                    "docs/CAPABILITY_LEDGER.md",
+                    f"{cells[0]!r} is BLOCKED without a rationale",
                 )
             )
 
