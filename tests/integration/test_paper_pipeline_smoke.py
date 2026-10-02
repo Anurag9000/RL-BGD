@@ -61,8 +61,69 @@ def test_smoke_suite_to_paper_artifacts_end_to_end(
         "incomplete_runs_allowed"
     ] is False
     assert (paper_dir / "paper_manifest.json").is_file()
+    expected_table_stems = {
+        "aggregate_statistics",
+        "hierarchical_task_statistics",
+        "paired_differences",
+        "results_summary",
+        "information_access",
+        "run_index",
+    }
+    generated_tables = set(
+        manifest[
+            "generated_tables"
+        ]
+    )
+    for stem in expected_table_stems:
+        for extension in (
+            "csv",
+            "md",
+            "tex",
+        ):
+            relative = (
+                f"tables/{stem}.{extension}"
+            )
+            assert relative in generated_tables
+            assert (
+                paper_dir
+                / relative
+            ).is_file()
+
+    source_runs = manifest[
+        "source_runs"
+    ]
+    assert len(source_runs) == 3
+    for source in source_runs:
+        hashes = source[
+            "source_hashes"
+        ]
+        assert set(
+            hashes
+        ) == {
+            "manifest.json",
+            "config.yaml",
+            "metrics.csv",
+            "summary.json",
+        }
+        assert all(
+            len(value) == 64
+            for value in hashes.values()
+        )
+
+    generated_figures = set(
+        manifest[
+            "generated_figures"
+        ]
+    )
+    assert "figures/final_performance.png" in generated_figures
+    assert "figures/compute_performance.png" in generated_figures
     assert (
         paper_dir
-        / "tables"
-        / "aggregate_statistics.csv"
+        / "figures"
+        / "final_performance.png"
+    ).is_file()
+    assert (
+        paper_dir
+        / "figures"
+        / "compute_performance.png"
     ).is_file()
