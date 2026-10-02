@@ -33,11 +33,12 @@ construction, reset, action sampling, step, finite reward, and close behavior.
   ALE/AutoROM, and CORA's wrapped `PongNoFrameskip-v4` task.
 - **Procgen**: validated in the isolated legacy workflow with CORA's own
   Procgen task constructor and a real reset/step path.
-- **MiniHack/NLE**: isolated compatibility uses the historical CORA wrapper and
-  pinned NLE/MiniHack stack. CORA assumes an old private `_vardir` wrapper
-  layout; RL-BGD confines a compatibility shim to the smoke so the cwd hop is
-  preserved when that private API exists and bypassed when newer NLE no longer
-  exposes it. This does not alter task/reward/action semantics.
+- **MiniHack/NLE**: live-validated in Python 3.8 with NLE 0.9.0 and MiniHack
+  0.1.5. CORA assumes historical private `_vardir` and three-argument seed
+  behavior; RL-BGD confines a compatibility shim to the smoke, preserves the
+  cwd hop when that private API exists, and delegates directly when it does
+  not. Real upstream task construction, reset, sampled action, step, finite
+  reward, and close all pass without changing task/reward/action semantics.
 - **CHORES/ALFRED**: the runtime path is scripted separately in
   `.github/workflows/cora-chores.yml`, pinned to CORA and `crl_alfred`.
   Faithful execution requires CORA's regenerated 2021 trajectory archive,

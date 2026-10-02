@@ -64,8 +64,17 @@ sequential schedules plus CORA-style isolated forgetting and isolated zero-shot
 forward-transfer calculations directly from numeric evaluation traces.
 
 The legacy CORA environment runtime remains intentionally isolated from the
-modern Python/Gymnasium base. A dedicated Python 3.10/Gym 0.25 workflow now
-passes a real pinned-upstream Pong reset/step smoke with accepted Atari ROMs.
-This validates the isolated Atari path without silently downgrading the primary
-runtime. It does not imply full Procgen/NetHack/CHORES or historical
-dependency-matrix compatibility.
+modern Python/Gymnasium base. Dedicated workflows now pass real pinned-upstream
+reset/step smokes for all three video-game families: Atari
+(`PongNoFrameskip-v4` with ALE/AutoROM), Procgen, and NetHack/MiniHack.
+MiniHack uses a narrowly scoped compatibility bridge for CORA's historical
+private `_vardir`/seed assumptions; the bridge delegates directly when the
+installed NLE no longer exposes that private directory and does not change task,
+reward, observation, or action semantics.
+
+CHORES/ALFRED remains separate. Its pinned runtime, Xvfb path, `crl_alfred`
+integration, exact published-demo validation, and reset/step smoke are
+implemented, but CORA's documented regenerated-trajectory archive is no longer
+available from its historical OneDrive URL. The manual recovery workflow
+therefore requires an authoritative archive URL (and optionally verifies its
+SHA-256) rather than silently substituting generic ALFRED data.

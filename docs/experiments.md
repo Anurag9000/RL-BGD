@@ -42,12 +42,18 @@ Meta-World paths, an upstream debug-only undefined symbol is supplied without
 changing reward computation, and the pinned no-op close stub is tolerated.
 
 CORA now has dependency-free canonical protocol metadata plus isolated
-forgetting and isolated zero-shot forward-transfer metrics with tests. Its
-legacy Atari environment runtime is also validated in a separate Python 3.10
-workflow against pinned CORA revision `f2754bb282757829765beb4703f24b87efa13ff9`.
-The smoke constructs CORA's own wrapped `PongNoFrameskip-v4` task, resets it,
-and steps it under Gym 0.25.2/ALE while keeping all legacy dependencies outside
-the modern RL-BGD environment.
+forgetting and isolated zero-shot forward-transfer metrics with tests. Separate
+legacy workflows pin CORA revision
+`f2754bb282757829765beb4703f24b87efa13ff9` and live-validate real upstream
+Atari, Procgen, and NetHack/MiniHack task construction plus reset/step behavior
+without installing those historical dependencies into RL-BGD's modern runtime.
+The MiniHack smoke bridges only CORA's obsolete private `_vardir`/seed wrapper
+assumptions.
+
+CHORES/ALFRED has a pinned Xvfb/`crl_alfred` manual recovery workflow and an
+exact published-demo smoke, but faithful execution remains blocked by the
+unavailable official CORA regenerated-trajectory archive. Generic ALFRED or
+ALFWorld trajectories are not treated as substitutes.
 
 
 UCL-PPO is implemented as an explicitly oracle-boundary comparator because the
