@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 
 import torch
 from torch import nn
@@ -71,9 +71,9 @@ def _metadata_batch(
 
 def _objective_with_evidence(
     evidence_weights: torch.Tensor,
-) -> Callable[[dict[str, torch.Tensor]], BGDLoss]:
+) -> Callable[[Mapping[str, torch.Tensor]], BGDLoss]:
     def objective(
-        params: dict[str, torch.Tensor],
+        params: Mapping[str, torch.Tensor],
     ) -> BGDLoss:
         per_item = 0.5 * params["w"].square().reshape(1, 1)
         return BGDLoss(
