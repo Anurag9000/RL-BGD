@@ -7,7 +7,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 
-
 def _checkpoint_int(
     value: object,
     *,

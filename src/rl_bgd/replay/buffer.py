@@ -8,7 +8,6 @@ import torch
 from torch import Tensor
 
 
-
 def _checkpoint_int(
     value: object,
     *,

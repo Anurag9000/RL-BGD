@@ -3,16 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import torch
-from torch import Tensor
 
-from rl_bgd.agents.ppo.recurrent_agent import (
-    RecurrentPPOAgent,
-)
+import torch
+
+from rl_bgd.agents.ppo.recurrent_agent import RecurrentPPOAgent
+from rl_bgd.agents.ppo.recurrent_rollout import RecurrentRolloutBuffer
 from rl_bgd.envs.protocols import ContinuousTensorEnv
-from rl_bgd.agents.ppo.recurrent_rollout import (
-    RecurrentRolloutBuffer,
-)
 
 
 @dataclass(frozen=True)

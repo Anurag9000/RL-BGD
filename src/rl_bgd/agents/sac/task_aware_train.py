@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+
 import torch
-from torch import Tensor
 
 from rl_bgd.agents.sac.task_aware_agent import TaskAwareSACAgent
 from rl_bgd.envs.protocols import TaskAwareTensorEnv

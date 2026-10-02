@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 import torch
-from torch import Tensor
 
 from rl_bgd.agents.sac.regularized_agent import RegularizedSACAgent
 from rl_bgd.envs.protocols import ContinuousTensorEnv
