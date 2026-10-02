@@ -45,8 +45,6 @@ class SquashedGaussianActor(nn.Module):
         self.action_bias: Tensor
         action_scale = (action_high - action_low) / 2.0
         action_bias = (action_high + action_low) / 2.0
-        self.action_scale: Tensor
-        self.action_bias: Tensor
         self.register_buffer("action_scale", action_scale.float())
         self.register_buffer("action_bias", action_bias.float())
 
