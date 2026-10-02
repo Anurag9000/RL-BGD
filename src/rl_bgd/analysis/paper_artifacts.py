@@ -6,7 +6,7 @@ import json
 import math
 import re
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -2409,6 +2409,38 @@ def build_paper_artifacts(
     )
     skipped_figures.extend(
         curve_skips
+    )
+
+    matrix_files, matrix_skips = (
+        _matrix_figures(
+            runs,
+            figures_dir,
+            resolved.figure_formats,
+            config=resolved,
+        )
+    )
+    figure_artifacts.extend(
+        f"figures/{name}"
+        for name in matrix_files
+    )
+    skipped_figures.extend(
+        matrix_skips
+    )
+
+    timeline_files, timeline_skips = (
+        _timeline_figures(
+            runs,
+            figures_dir,
+            resolved.figure_formats,
+            config=resolved,
+        )
+    )
+    figure_artifacts.extend(
+        f"figures/{name}"
+        for name in timeline_files
+    )
+    skipped_figures.extend(
+        timeline_skips
     )
 
     sources = [
