@@ -5,14 +5,13 @@ from __future__ import annotations
 import json
 from typing import Any
 
-import gym
-import numpy as np
-import procgen
-
 from continual_rl.experiments.tasks.make_procgen_task import (
     get_single_procgen_task,
 )
 from continual_rl.utils.utils import Utils
+import gym
+import numpy as np
+import procgen
 
 
 def _reset(env: Any) -> Any:
