@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -291,3 +293,47 @@ def test_chores_archive_root_requires_unique_match(
         )
 
     assert archive_root.is_dir()
+
+
+def test_chores_archive_cli_root_only(tmp_path: Path) -> None:
+    metadata_root, archive_root, _ = _fixture_tree(tmp_path)
+    repository_root = Path(__file__).resolve().parents[2]
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(repository_root / "scripts" / "validate_cora_chores_archive.py"),
+            "--search-root",
+            str(tmp_path / "extracted"),
+            "--metadata-root",
+            str(metadata_root),
+            "--expected-trajectories",
+            "1",
+            "--root-only",
+        ],
+        cwd=repository_root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert Path(completed.stdout.strip()) == archive_root
+
+
+def test_chores_archive_cli_defaults_to_pinned_cardinality(tmp_path: Path) -> None:
+    metadata_root, _, _ = _fixture_tree(tmp_path)
+    repository_root = Path(__file__).resolve().parents[2]
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(repository_root / "scripts" / "validate_cora_chores_archive.py"),
+            "--search-root",
+            str(tmp_path / "extracted"),
+            "--metadata-root",
+            str(metadata_root),
+        ],
+        cwd=repository_root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode != 0
+    assert "expected 27, found 1" in completed.stderr
