@@ -6,11 +6,21 @@ from rl_bgd.runners.carl_pendulum_sac import run_carl_pendulum_sac
 
 
 @pytest.mark.benchmark
-def test_live_carl_sac_runner_is_strict_task_agnostic() -> None:
+@pytest.mark.parametrize(
+    "optimizer",
+    [
+        "adam",
+        "bgd",
+        "adaptive_bgd",
+    ],
+)
+def test_live_carl_sac_runner_is_strict_task_agnostic(
+    optimizer: str,
+) -> None:
     pytest.importorskip("carl")
     result = run_carl_pendulum_sac(
         mode="recurring",
-        optimizer="adam",
+        optimizer=optimizer,  # type: ignore[arg-type]
         steps=32,
         phase_steps=12,
         seed=160,
