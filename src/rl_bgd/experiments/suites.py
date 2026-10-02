@@ -331,6 +331,85 @@ def _fixed_tempering_jobs(
     )
 
 
+def _recurring_retention_policy_jobs(
+    *,
+    total_steps: int,
+    phase_steps: int,
+    seeds: tuple[int, ...],
+    runtime_class: str,
+) -> tuple[ExperimentJob, ...]:
+    specs = (
+        (
+            "vanilla",
+            "none",
+            1.0,
+            "SAC-BGD-Vanilla-Retention",
+        ),
+        (
+            "fixed_0p97",
+            "none",
+            0.97,
+            "SAC-BGD-Fixed-Retention-0.97",
+        ),
+        (
+            "adaptive_td",
+            "td",
+            1.0,
+            "SAC-Adaptive-BGD-TD",
+        ),
+        (
+            "adaptive_ensemble",
+            "ensemble",
+            1.0,
+            "SAC-Adaptive-BGD-Ensemble",
+        ),
+        (
+            "adaptive_predictive",
+            "predictive",
+            1.0,
+            "SAC-Adaptive-BGD-Predictive",
+        ),
+    )
+    return tuple(
+        _job(
+            f"retention_policy_{name}",
+            "D-E",
+            "rl_bgd.runners.adaptive_bgd_lqr_stream:run_adaptive_bgd_lqr_stream",
+            kwargs={
+                "total_steps": total_steps,
+                "phase_steps": phase_steps,
+                "device": "auto",
+                "surprise_source": source,
+                "fixed_retention": fixed_retention,
+            },
+            seeds=seeds,
+            algorithm=algorithm,
+            environment="recurring_lqr",
+            protocol="strict_task_agnostic_retention_policy",
+            config_path="configs/environments/lqr_recurring.yaml",
+            primary_metric="training.final_10_mean_return",
+            secondary_metrics=(
+                "training.mean_episode_return",
+                "training.last_update_metrics.critic1_sigma_mean",
+                "training.last_update_metrics.critic1_effective_lr_mean",
+                "change_detection.f1",
+            ),
+            comparison_group="recurring_retention_policy",
+            runtime_class=runtime_class,
+            notes=(
+                "Matched recurring-LQR retention-policy comparison; "
+                "all arms share stream, budget, seed set, model, and optimizer."
+            ),
+        )
+        for (
+            name,
+            source,
+            fixed_retention,
+            algorithm,
+        ) in specs
+    )
+
+
 def _regularized_baseline_jobs(
     *,
     steps: int,
@@ -1129,6 +1208,7 @@ UNCERTAINTY_ANALYSIS = ExperimentSuite(
                 "training.last_update_metrics.retention_lambda",
                 "training.last_update_metrics.critic1_sigma_mean",
             ),
+            comparison_group="surprise_source_detection",
             runtime_class="medium",
         ),
         *tuple(
@@ -1174,6 +1254,7 @@ UNCERTAINTY_ANALYSIS = ExperimentSuite(
                         else ()
                     )
                 ),
+                comparison_group="surprise_source_detection",
                 runtime_class="medium",
             )
             for source in (
@@ -1182,29 +1263,10 @@ UNCERTAINTY_ANALYSIS = ExperimentSuite(
                 "predictive",
             )
         ),
-        _job(
-            "fixed_retention_recurring_0p97",
-            "D",
-            "rl_bgd.runners.adaptive_bgd_lqr_stream:run_adaptive_bgd_lqr_stream",
-            kwargs={
-                "total_steps": 900,
-                "phase_steps": 300,
-                "device": "auto",
-                "surprise_source": "none",
-                "fixed_retention": 0.97,
-            },
+        *_recurring_retention_policy_jobs(
+            total_steps=900,
+            phase_steps=300,
             seeds=(0, 1, 2, 3, 4),
-            algorithm="SAC-BGD-Fixed-Retention-0.97",
-            environment="recurring_lqr",
-            protocol="strict_task_agnostic_fixed_tempering",
-            config_path="configs/environments/lqr_recurring.yaml",
-            primary_metric="training.final_10_mean_return",
-            secondary_metrics=(
-                "training.mean_episode_return",
-                "training.last_update_metrics.critic1_sigma_mean",
-                "training.last_update_metrics.critic1_effective_lr_mean",
-            ),
-            comparison_group="recurring_retention_policy",
             runtime_class="medium",
         ),
         *_evidence_temperature_jobs(
