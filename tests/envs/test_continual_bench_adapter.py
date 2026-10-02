@@ -334,3 +334,63 @@ def test_asset_repair_ignores_unreachable_stale_xml(
         dependency.parent
         / "shared_config.xml"
     ).exists()
+
+
+def test_asset_repair_ignores_commented_file_references(
+    tmp_path: Path,
+) -> None:
+    continual_package = tmp_path / "continual_bench" / "envs"
+    metaworld_package = tmp_path / "metaworld"
+    destination_root = continual_package / "assets"
+    source_root = metaworld_package / "assets"
+
+    root_xml = (
+        destination_root
+        / "sawyer_xyz"
+        / "sawyer_bench.xml"
+    )
+    root_xml.parent.mkdir(parents=True)
+    root_xml.write_text(
+        '<mujoco><include file="../objects/assets/xyz_base.xml"/></mujoco>',
+        encoding="utf-8",
+    )
+
+    xyz_base = (
+        destination_root
+        / "objects"
+        / "assets"
+        / "xyz_base.xml"
+    )
+    xyz_base.parent.mkdir(parents=True)
+    xyz_base.write_text(
+        (
+            '<mujocoinclude>'
+            '<!-- <include file="shared_config.xml"/> -->'
+            '<geom type="box" size="1 1 1"/>'
+            '</mujocoinclude>'
+        ),
+        encoding="utf-8",
+    )
+
+    source_root.mkdir(parents=True)
+
+    repaired = _repair_missing_metaworld_assets(
+        SimpleNamespace(
+            __file__=str(
+                continual_package
+                / "__init__.py"
+            )
+        ),
+        SimpleNamespace(
+            __file__=str(
+                metaworld_package
+                / "__init__.py"
+            )
+        ),
+    )
+
+    assert repaired == ()
+    assert not (
+        xyz_base.parent
+        / "shared_config.xml"
+    ).exists()
