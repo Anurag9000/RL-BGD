@@ -69,3 +69,14 @@ critic-only/actor-only/actor-and-critic each run 600 environment steps on the
 same synthetic LQR protocol with seeds 0, 1, and 2. Launcher wall-clock duration
 is the primary resource metric and post-training return/improvement are the
 matched outcome metrics.
+
+
+The `cw20_final` suite is comparison-matched rather than method-only. The
+feed-forward strict task-agnostic family contains SAC-Adam and SAC-BGD with the
+same CW20 stream, one-million steps per task, five evaluation episodes per
+stage, and seeds 0-4. The recurrent 3RL-style family contains recurrent
+SAC-Adam, recurrent SAC-BGD, and recurrent SAC-adaptive-BGD with the same CW20
+stream, one-million steps per task, ten evaluation episodes per stage, recurrent
+architecture/config, and seeds 0-4. All task-agnostic CW20 jobs record the same
+revisit/reacquisition recurrence metrics; Bayesian jobs additionally expose
+posterior uncertainty, and the adaptive job additionally exposes retention.
