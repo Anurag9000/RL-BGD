@@ -485,3 +485,78 @@ def test_paper_builder_aggregates_only_declared_suite_metrics(
     assert "horizon" not in metrics
     assert "phases" not in metrics
     assert "phase_summaries" not in metrics
+
+
+def test_paper_builder_accepts_declared_resource_primary_without_duplicate(
+    tmp_path: Path,
+) -> None:
+    results = tmp_path / "results"
+    for seed, duration in (
+        (0, 2.0),
+        (1, 4.0),
+    ):
+        run_id = f"compute_{seed}"
+        write_run_artifacts(
+            results / run_id,
+            manifest=RunManifest(
+                run_id=run_id,
+                method="ComputeMethod",
+                setting="stationary_compute",
+                benchmark="toy",
+                seed=seed,
+                git_commit="deadbeef",
+                information_access={
+                    "receives_task_id": False,
+                    "receives_task_boundary": False,
+                    "receives_environment_context": False,
+                },
+                metadata={
+                    "suite": "compute_analysis",
+                    "job_id": "compute_job",
+                    "primary_metric": "duration_seconds",
+                    "secondary_metrics": ["post_return"],
+                },
+            ),
+            summary=RunSummary(
+                run_id=run_id,
+                metrics={
+                    "post_return": 1.0 + seed,
+                },
+                resources={
+                    "duration_seconds": duration,
+                },
+            ),
+            resolved_config={
+                "seed": seed,
+            },
+            metrics_rows=[
+                {
+                    "series": "summary",
+                    "row_index": 0,
+                    "post_return": 1.0 + seed,
+                }
+            ],
+        )
+
+    output = tmp_path / "paper"
+    build_paper_artifacts(
+        results,
+        output,
+        config=PaperArtifactConfig(
+            bootstrap_resamples=50,
+            seed=43,
+            figure_formats=("png",),
+        ),
+    )
+
+    aggregate = pd.read_csv(
+        output / "tables" / "aggregate_statistics.csv"
+    )
+    metrics = set(aggregate["metric"])
+    assert "duration_seconds" in metrics
+    assert "post_return" in metrics
+    assert "resource.duration_seconds" not in metrics
+    duration_row = aggregate[
+        aggregate["metric"] == "duration_seconds"
+    ].iloc[0]
+    assert duration_row["mean"] == pytest.approx(3.0)
