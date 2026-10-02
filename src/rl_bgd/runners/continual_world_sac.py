@@ -7,6 +7,12 @@ from typing import Literal
 
 from rl_bgd.agents.sac.agent import SACAgent, SACConfig
 from rl_bgd.agents.sac.bgd_agent import BGDSACAgent, BGDSACConfig
+from rl_bgd.agents.sac.regularized_agent import (
+    RegularizationMethod,
+    RegularizationTarget,
+    RegularizedSACAgent,
+    RegularizedSACConfig,
+)
 from rl_bgd.agents.sac.train import SACTrainConfig, train_sac
 from rl_bgd.bayes.bgd import BGDConfig
 from rl_bgd.envs.continual_world.evaluation import (
@@ -21,7 +27,14 @@ from rl_bgd.envs.continual_world.stream import ContinualWorldBenchmark
 from rl_bgd.utils.device import resolve_device
 from rl_bgd.utils.randomness import preserved_random_state, seed_everything
 
-OptimizerFamily = Literal["adam", "bgd"]
+OptimizerFamily = Literal[
+    "adam",
+    "bgd",
+    "ewc",
+    "online_ewc",
+    "si",
+    "mas",
+]
 
 
 def run_ta_continual_world_sac(
@@ -38,6 +51,10 @@ def run_ta_continual_world_sac(
     batch_size: int = 128,
     random_steps: int = 10_000,
     bayesianization: str = "critic_only",
+    consolidation_interval_updates: int = 50_000,
+    regularization_strength: float = 0.1,
+    regularization_target: RegularizationTarget = "actor_and_critic",
+    importance_samples: int = 4,
 ) -> dict[str, object]:
     """Run TA-CW10/TA-CW20 while keeping stage knowledge evaluator-only."""
 
@@ -93,6 +110,41 @@ def run_ta_continual_world_sac(
                         mc_samples=4,
                         antithetic=True,
                     ),
+                ),
+                device=resolved,
+            )
+        elif optimizer in {
+            "ewc",
+            "online_ewc",
+            "si",
+            "mas",
+        }:
+            methods: dict[
+                str,
+                RegularizationMethod,
+            ] = {
+                "ewc": "ewc",
+                "online_ewc": "online_ewc",
+                "si": "si",
+                "mas": "mas",
+            }
+            agent = RegularizedSACAgent(
+                observation_dim,
+                action_dim,
+                action_low=bundle.train_env.action_space.low,
+                action_high=bundle.train_env.action_space.high,
+                hidden_dims=hidden_dims,
+                sac_config=sac_config,
+                regularization_config=RegularizedSACConfig(
+                    method=methods[optimizer],
+                    target=regularization_target,
+                    strength=regularization_strength,
+                    consolidation_interval_updates=(
+                        consolidation_interval_updates
+                    ),
+                    importance_samples=importance_samples,
+                    online_ewc_decay=0.95,
+                    si_damping=0.1,
                 ),
                 device=resolved,
             )
@@ -168,6 +220,36 @@ def run_ta_continual_world_sac(
             "return_summary": return_matrix.summary(),
             "success_summary": success_matrix.summary(),
             "recurrence_summary": recurrence_summary,
+            "information_access": {
+                "receives_task_id": False,
+                "receives_task_boundary": False,
+                "receives_environment_context": False,
+                "task_specific_heads": False,
+                "replay_reset_on_task_change": False,
+                "optimizer_reset_on_task_change": False,
+                "consolidation_trigger": (
+                    "fixed_optimizer_update_interval"
+                    if optimizer
+                    in {
+                        "ewc",
+                        "online_ewc",
+                        "si",
+                        "mas",
+                    }
+                    else "none"
+                ),
+                "consolidation_interval_updates": (
+                    consolidation_interval_updates
+                    if optimizer
+                    in {
+                        "ewc",
+                        "online_ewc",
+                        "si",
+                        "mas",
+                    }
+                    else None
+                ),
+            },
         }
 
     finally:
