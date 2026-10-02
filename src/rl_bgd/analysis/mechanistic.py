@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import csv
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol
 
 import matplotlib
 
@@ -22,6 +24,13 @@ from rl_bgd.bayes.diagonal_gaussian import (
 from rl_bgd.envs.synthetic.quadratic import diagonal_quadratic
 from rl_bgd.utils.device import resolve_device
 from rl_bgd.utils.randomness import seed_everything
+
+
+class LossTask(Protocol):
+    def loss(
+        self,
+        theta: Tensor,
+    ) -> Tensor: ...
 
 
 class MechanisticVector(nn.Module):
@@ -136,7 +145,12 @@ def _new_posterior(
     return model, posterior, updater
 
 
-def _loss_objective(task: object):
+def _loss_objective(
+    task: LossTask,
+) -> Callable[
+    [dict[str, Tensor]],
+    Tensor,
+]:
     def objective(params: dict[str, Tensor]) -> Tensor:
         return task.loss(params["theta"])
 
@@ -160,7 +174,7 @@ def _clone_updater(
 def _adapt_with_freeze(
     initial_state: dict[str, object],
     config: MechanisticAnalysisConfig,
-    target: object,
+    target: LossTask,
     frozen_indices: Tensor | None,
     *,
     device: torch.device,
