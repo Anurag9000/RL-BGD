@@ -47,4 +47,12 @@ The canonical builder automatically:
 9. records skipped-figure reasons rather than inventing unavailable data;
 10. emits a paper_manifest.json tying every table/figure to source runs.
 
+When the corresponding raw metrics exist, figures include matched-seed learning
+curves with bootstrap confidence bands, seed-mean continual return/success
+matrices, stage-average adaptation curves with bootstrap bands, diagnostic
+surprise/retention/sigma/effective-learning-rate timelines, final-performance
+confidence intervals, and compute/performance tradeoffs. Missing evidence is
+recorded as an explicit skipped-figure reason rather than replaced by a
+surrogate number.
+
 No metric is manually transcribed and no missing metric is silently substituted.
