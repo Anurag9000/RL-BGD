@@ -3,35 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol
-
 import torch
 from torch import Tensor
 
 from rl_bgd.agents.sac.regularized_agent import RegularizedSACAgent
+from rl_bgd.envs.protocols import ContinuousTensorEnv
 from rl_bgd.replay.buffer import ReplayBuffer
-
-
-class ContinuousEnv(Protocol):
-    action_space: object
-    observation_space: object
-
-    def reset(
-        self,
-        *,
-        seed: int | None = None,
-    ) -> tuple[Tensor, dict[str, object]]: ...
-
-    def step(
-        self,
-        action: Tensor,
-    ) -> tuple[
-        Tensor,
-        float,
-        bool,
-        bool,
-        dict[str, object],
-    ]: ...
 
 
 @dataclass(frozen=True)
@@ -68,7 +45,7 @@ class BoundaryRegularizedSACTrainConfig:
 
 
 def train_boundary_regularized_sac(
-    env: ContinuousEnv,
+    env: ContinuousTensorEnv,
     agent: RegularizedSACAgent,
     *,
     config: BoundaryRegularizedSACTrainConfig,
