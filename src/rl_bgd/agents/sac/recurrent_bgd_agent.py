@@ -156,7 +156,7 @@ class BGDRecurrentSACAgent(RecurrentSACAgent):
     def _sampled_critic_loss(
         self,
         module: torch.nn.Module,
-        params: dict[str, Tensor],
+        params: Mapping[str, Tensor],
         batch: SequenceReplayBatch,
         target: Tensor,
         evidence: SequenceReplayEvidenceSummary,
@@ -164,7 +164,7 @@ class BGDRecurrentSACAgent(RecurrentSACAgent):
         q = functional_call(
             module,
             (
-                params,
+                dict(params),
                 dict(module.named_buffers()),
             ),
             (
@@ -208,7 +208,7 @@ class BGDRecurrentSACAgent(RecurrentSACAgent):
             raise RuntimeError("recurrent critic BGD is not configured")
 
         def objective1(
-            params: dict[str, Tensor],
+            params: Mapping[str, Tensor],
         ) -> BGDLoss:
             return self._sampled_critic_loss(
                 self.critic1,
@@ -219,7 +219,7 @@ class BGDRecurrentSACAgent(RecurrentSACAgent):
             )
 
         def objective2(
-            params: dict[str, Tensor],
+            params: Mapping[str, Tensor],
         ) -> BGDLoss:
             return self._sampled_critic_loss(
                 self.critic2,
@@ -263,7 +263,7 @@ class BGDRecurrentSACAgent(RecurrentSACAgent):
         self._set_critics_trainable(False)
 
         def objective(
-            params: dict[str, Tensor],
+            params: Mapping[str, Tensor],
         ) -> BGDLoss:
             (
                 sampled_actions,
@@ -274,7 +274,7 @@ class BGDRecurrentSACAgent(RecurrentSACAgent):
             ) = functional_call(
                 self.actor,
                 (
-                    params,
+                    dict(params),
                     dict(self.actor.named_buffers()),
                 ),
                 (
