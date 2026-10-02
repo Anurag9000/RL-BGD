@@ -7,6 +7,8 @@ import pytest
 from rl_bgd.analysis.paper_artifacts import (
     PaperArtifactConfig,
     build_paper_artifacts,
+    load_paper_runs,
+    paired_method_differences,
 )
 from rl_bgd.artifacts import (
     RunManifest,
@@ -891,6 +893,10 @@ def _write_paired_contract_run(
                 "receives_task_id": False,
                 "receives_task_boundary": False,
                 "receives_environment_context": False,
+                **(
+                    extra_information_access
+                    or {}
+                ),
             },
             metadata={
                 "suite": "paired_contract_suite",
@@ -996,9 +1002,10 @@ def _write_grouped_comparison_run(
     run_id: str,
     method: str,
     job_id: str,
-    comparison_group: str,
+    comparison_group: str | None,
     seed: int,
     score: float,
+    extra_information_access: dict[str, bool] | None = None,
 ) -> None:
     write_run_artifacts(
         root
@@ -1152,3 +1159,102 @@ def test_paired_statistics_respect_explicit_comparison_groups(
             )
         ),
     }
+
+
+
+def test_paired_statistics_ignore_method_internal_access_metadata(
+    tmp_path: Path,
+) -> None:
+    results = tmp_path / "results"
+    for seed in (0, 1):
+        _write_grouped_comparison_run(
+            results,
+            run_id=f"plain_{seed}",
+            method="Plain",
+            job_id="plain",
+            comparison_group="matched_family",
+            seed=seed,
+            score=1.0 + seed,
+        )
+        _write_grouped_comparison_run(
+            results,
+            run_id=f"recurrent_{seed}",
+            method="Recurrent",
+            job_id="recurrent",
+            comparison_group="matched_family",
+            seed=seed,
+            score=1.2 + seed,
+            extra_information_access={
+                "task_specific_heads": False,
+                "replay_reset_on_task_change": False,
+            },
+        )
+
+    paired = paired_method_differences(
+        load_paper_runs(
+            results
+        ),
+        config=PaperArtifactConfig(
+            bootstrap_resamples=20,
+            seed=61,
+            figure_formats=("png",),
+        ),
+    )
+    assert not paired.empty
+    score = paired[
+        paired[
+            "metric"
+        ]
+        == "score"
+    ].iloc[
+        0
+    ]
+    assert score[
+        "comparison_group"
+    ] == "matched_family"
+    assert abs(
+        float(
+            score[
+                "mean"
+            ]
+        )
+    ) == pytest.approx(
+        0.2
+    )
+
+
+def test_suite_jobs_without_comparison_group_are_not_paired(
+    tmp_path: Path,
+) -> None:
+    results = tmp_path / "results"
+    for seed in (0, 1):
+        _write_grouped_comparison_run(
+            results,
+            run_id=f"a_{seed}",
+            method="A",
+            job_id="a",
+            comparison_group=None,
+            seed=seed,
+            score=1.0 + seed,
+        )
+        _write_grouped_comparison_run(
+            results,
+            run_id=f"b_{seed}",
+            method="B",
+            job_id="b",
+            comparison_group=None,
+            seed=seed,
+            score=0.5 + seed,
+        )
+
+    paired = paired_method_differences(
+        load_paper_runs(
+            results
+        ),
+        config=PaperArtifactConfig(
+            bootstrap_resamples=20,
+            seed=62,
+            figure_formats=("png",),
+        ),
+    )
+    assert paired.empty
