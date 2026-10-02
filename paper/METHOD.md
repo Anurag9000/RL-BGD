@@ -92,6 +92,12 @@ mean movement but different uncertainty contraction. The paper suite therefore
 contains a matched evidence-temperature sweep rather than treating beta as a
 renamed learning rate.
 
+Monte Carlo sample count is treated as a separate ablation rather than folded
+into bayesianization comparisons. Critic-only BGD is evaluated at K=1/2/4/8
+under matched training budgets, and the compute suite repeats K=1/2/4/8 with
+wall-clock duration as the primary resource metric. Bayesianization cost is
+measured separately at fixed K=2.
+
 ## 5. Controlled posterior tempering
 
 Before a Bayesian evidence update, the current posterior may be mixed back
