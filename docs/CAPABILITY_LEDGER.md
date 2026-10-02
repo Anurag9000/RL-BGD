@@ -61,7 +61,7 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | T80/T90 primitive / post-change AUC / recurrence metrics | COMPLETE | metrics/adaptation.py + tests |
 | Surprise change-detection event metrics | COMPLETE | delay/FPR/precision/recall/F1/false alarms + tests |
 | Surprise AUROC primitive | COMPLETE | rank-based binary AUROC + tests |
-| Adaptive surprise causal timeline runner | COMPLETE | adaptive BGD-SAC on recurring LQR + slow integration test |
+| Adaptive surprise causal timeline runner | COMPLETE | recurring-LQR BGD-SAC supports none/TD/ensemble/predictive source selection + matched suite jobs + slow integration coverage without boundary input |
 | CARL 1.1.1 strict hidden-context adapter | COMPLETE | isolated real CARL 1.1.1 reset/step smoke + strict context stripping |
 | CARL abrupt/smooth/recurring configs | COMPLETE | v1.1.1-valid context keys + live Pendulum schedule smoke |
 | PPO Adam baseline | COMPLETE | clipped surrogate + GAE + minibatch epochs + value clipping + checkpoint + stationary LQR learning smoke |
