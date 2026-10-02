@@ -49,6 +49,20 @@ registry statically validates callable signatures/config references, while a
 separate bounded smoke pipeline executes end to end to validate launcher,
 canonical artifact conversion, and paper aggregation.
 
+The `baseline_core` suite is explicitly backbone-matched. SAC-Adam,
+SAC-EWC, SAC-Online-EWC, SAC-SI, and SAC-MAS all use the same
+`recurring_lqr_matched_v1` stream, 600 environment steps, phase length 120,
+horizon 32, network width, optimizer settings, replay budget, and five seeds.
+The regularized methods differ only by the continual regularizer and its
+fixed-update consolidation state.
+
+PPO-UCL is paired with a phase-matched PPO-Adam oracle control under the same
+`oracle_boundary` protocol, stream, phase length, horizon, PPO
+hyperparameters, model widths, phases, and five seeds. The Adam control receives
+the same evaluator-owned phase segmentation but performs no Bayesian posterior
+snapshot or UCL penalty. This lets Phase-15 form matched-seed differences within
+each backbone family instead of comparing heterogeneous SAC and PPO conditions.
+
 The `compute_analysis` suite is a matched stationary SAC comparison rather
 than a reuse of heterogeneous smoke jobs: SAC-Adam and SAC-BGD
 critic-only/actor-only/actor-and-critic each run 600 environment steps on the
