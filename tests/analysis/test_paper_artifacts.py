@@ -409,7 +409,6 @@ def test_paper_builder_rejects_metric_missing_from_one_matched_seed(
         )
 
 
-
 def test_paper_builder_generates_continual_matrix_and_timeline_figures(
     tmp_path: Path,
 ) -> None:
@@ -480,6 +479,19 @@ def test_paper_builder_generates_continual_matrix_and_timeline_figures(
                     ),
                     "critic1_sigma_mean": (
                         0.12 + offset / 10.0
+                    ),
+                },
+            ],
+            "post_shift_loss_timeline": [
+                {
+                    "step": 0,
+                    "normalized_target_loss": 1.0,
+                },
+                {
+                    "step": 1,
+                    "normalized_target_loss": (
+                        0.6
+                        + offset / 10.0
                     ),
                 },
             ],
@@ -582,6 +594,11 @@ def test_paper_builder_generates_continual_matrix_and_timeline_figures(
     )
     assert any(
         "timeline_surprise_timeline"
+        in name
+        for name in generated
+    )
+    assert any(
+        "timeline_post_shift_loss_timeline"
         in name
         for name in generated
     )
