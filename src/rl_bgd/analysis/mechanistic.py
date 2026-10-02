@@ -424,11 +424,18 @@ def run_mechanistic_analysis(
         1.0,
         -1.0,
     )
+    # Isolate the BGD mean-mobility mechanism from curvature.  For a
+    # diagonal quadratic, grad_i = h_i * (theta_i - optimum_i).  Choosing the
+    # new optimum from the consolidated mean makes the immediate post-shift
+    # gradient magnitude identical in every coordinate, so differences in
+    # movement are attributable to the sigma^2 multiplier in the BGD mean
+    # update rather than to larger gradients in high-curvature dimensions.
+    shifted_optimum = mean_before - signs / curvature
     shifted_task = diagonal_quadratic(
         resolved_config.dimension,
-        optimum=signs,
+        optimum=shifted_optimum,
         curvature=curvature,
-        name="abrupt_shift",
+        name="equal_gradient_abrupt_shift",
         device=device,
     )
     updater.step(
