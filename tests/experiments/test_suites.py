@@ -18,6 +18,7 @@ def test_required_paper_suites_validate_against_real_targets() -> None:
     validate_suite_registry()
     assert set(SUITES) == {
         "smoke",
+        "stationary_core",
         "dev",
         "baseline_core",
         "carl_core",
@@ -127,6 +128,56 @@ def test_comparison_and_ablation_jobs_are_atomic() -> None:
         == "post_shift_normalized_auc"
         for job in plasticity_jobs
     )
+
+
+def test_stationary_and_mechanism_suites_have_replicate_coverage() -> None:
+    stationary = SUITES[
+        "stationary_core"
+    ].jobs
+    assert {
+        job.job_id
+        for job in stationary
+    } == {
+        "stationary_sac_adam",
+        "stationary_sac_bgd",
+        "stationary_ppo_adam",
+        "stationary_ppo_bgd",
+    }
+    assert all(
+        job.hypothesis_id
+        == "A"
+        for job in stationary
+    )
+    assert all(
+        job.seeds
+        == (
+            0,
+            1,
+            2,
+            3,
+            4,
+        )
+        for job in stationary
+    )
+
+    mechanisms = SUITES[
+        "mechanism_analysis"
+    ].jobs
+    assert len(
+        mechanisms
+    ) == 1
+    assert mechanisms[
+        0
+    ].seeds == (
+        150,
+        151,
+        152,
+        153,
+        154,
+    )
+    assert mechanisms[
+        0
+    ].seed_kwarg == "seed"
 
 
 def test_external_baseline_suite_has_full_method_coverage() -> None:
