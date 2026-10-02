@@ -158,6 +158,56 @@ def _resolve_primary_metric(
     )
 
 
+def _contract_kwargs(
+    job: Mapping[str, Any],
+) -> dict[str, object]:
+    """Return scientific invocation kwargs with per-run fields removed."""
+
+    raw = job.get(
+        "kwargs",
+        {},
+    )
+    if not isinstance(
+        raw,
+        Mapping,
+    ):
+        raise TypeError(
+            "suite job kwargs must be a mapping"
+        )
+    normalized: dict[
+        str,
+        object,
+    ] = {}
+    for key, value in raw.items():
+        if not isinstance(
+            key,
+            str,
+        ):
+            raise TypeError(
+                "suite job kwarg names must be strings"
+            )
+        normalized[
+            key
+        ] = value
+
+    for field_name in (
+        "seed_kwarg",
+        "output_kwarg",
+    ):
+        field = job.get(
+            field_name
+        )
+        if isinstance(
+            field,
+            str,
+        ) and field:
+            normalized.pop(
+                field,
+                None,
+            )
+    return normalized
+
+
 def record_completed_suite_run(
     run_dir: str | Path,
     *,
@@ -200,6 +250,9 @@ def record_completed_suite_run(
                 )
             ),
             "source_config_path": (source_path),
+            "contract_kwargs": _contract_kwargs(
+                job
+            ),
         },
     )
     summary = summarize_runner_result(
@@ -270,6 +323,9 @@ def record_failed_suite_run(
             "job_id": str(job["job_id"]),
             "hypothesis_id": str(job["hypothesis_id"]),
             "target": str(job["target"]),
+            "contract_kwargs": _contract_kwargs(
+                job
+            ),
             "failure_reason": (failure_reason),
         },
     )

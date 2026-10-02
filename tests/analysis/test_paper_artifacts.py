@@ -795,3 +795,75 @@ def test_paper_builder_rejects_cross_method_information_access_mismatch(
                 figure_formats=("png",),
             ),
         )
+
+
+def test_paper_builder_rejects_mismatched_nonseed_invocation_contract(
+    tmp_path: Path,
+) -> None:
+    results = tmp_path / "results"
+    for seed, learning_rate in (
+        (0, 3e-4),
+        (1, 1e-3),
+    ):
+        run_id = f"contract_{seed}"
+        write_run_artifacts(
+            results / run_id,
+            manifest=RunManifest(
+                run_id=run_id,
+                method="ContractMethod",
+                setting="stationary",
+                benchmark="toy",
+                seed=seed,
+                git_commit="deadbeef",
+                information_access={
+                    "receives_task_id": False,
+                    "receives_task_boundary": False,
+                    "receives_environment_context": False,
+                },
+                metadata={
+                    "suite": "contract_suite",
+                    "job_id": "contract_job",
+                    "hypothesis_id": "TEST",
+                    "target": "module:runner",
+                    "primary_metric": "score",
+                    "secondary_metrics": [],
+                    "source_config_path": None,
+                    "contract_kwargs": {
+                        "learning_rate": learning_rate,
+                        "steps": 100,
+                    },
+                },
+            ),
+            summary=RunSummary(
+                run_id=run_id,
+                metrics={
+                    "score": 1.0 + seed,
+                },
+            ),
+            resolved_config={
+                "seed": seed,
+                "learning_rate": learning_rate,
+                "steps": 100,
+            },
+            metrics_rows=[
+                {
+                    "series": "summary",
+                    "row_index": 0,
+                    "score": 1.0 + seed,
+                }
+            ],
+        )
+
+    with pytest.raises(
+        ValueError,
+        match="contract_kwargs",
+    ):
+        build_paper_artifacts(
+            results,
+            tmp_path / "paper",
+            config=PaperArtifactConfig(
+                bootstrap_resamples=50,
+                seed=47,
+                figure_formats=("png",),
+            ),
+        )

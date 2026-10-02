@@ -132,6 +132,7 @@ def _group_runs(
             "target": reference.manifest.metadata.get("target"),
             "source_config_path": reference.manifest.metadata.get("source_config_path"),
             "declared_metrics": _declared_metric_names(reference),
+            "contract_kwargs": reference.manifest.metadata.get("contract_kwargs"),
         }
         for run in values[1:]:
             contract = {
@@ -141,6 +142,7 @@ def _group_runs(
                 "target": run.manifest.metadata.get("target"),
                 "source_config_path": run.manifest.metadata.get("source_config_path"),
                 "declared_metrics": _declared_metric_names(run),
+                "contract_kwargs": run.manifest.metadata.get("contract_kwargs"),
             }
             for field, expected in reference_contract.items():
                 if field == "git_commit" and reference_suite is None:
