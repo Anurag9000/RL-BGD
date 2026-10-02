@@ -48,3 +48,10 @@ Large benchmark suites are intentionally not executed by routine CI. The
 registry statically validates callable signatures/config references, while a
 separate bounded smoke pipeline executes end to end to validate launcher,
 canonical artifact conversion, and paper aggregation.
+
+The `compute_analysis` suite is a matched stationary SAC comparison rather
+than a reuse of heterogeneous smoke jobs: SAC-Adam and SAC-BGD
+critic-only/actor-only/actor-and-critic each run 600 environment steps on the
+same synthetic LQR protocol with seeds 0, 1, and 2. Launcher wall-clock duration
+is the primary resource metric and post-training return/improvement are the
+matched outcome metrics.
