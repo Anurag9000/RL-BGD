@@ -545,6 +545,101 @@ def test_ucl_structured_outputs_are_not_declared_as_scalar_metrics() -> None:
     )
 
 
+def test_uncertainty_suite_has_matched_surprise_source_controls() -> None:
+    jobs = [
+        job
+        for job in SUITES[
+            "uncertainty_analysis"
+        ].jobs
+        if job.target.endswith(
+            ":run_adaptive_bgd_lqr_stream"
+        )
+    ]
+    by_source = {
+        str(
+            job.kwargs[
+                "surprise_source"
+            ]
+        ): job
+        for job in jobs
+    }
+    assert set(
+        by_source
+    ) == {
+        "none",
+        "td",
+        "ensemble",
+        "predictive",
+    }
+    assert {
+        int(
+            job.kwargs[
+                "total_steps"
+            ]
+        )
+        for job in jobs
+    } == {
+        900
+    }
+    assert {
+        int(
+            job.kwargs[
+                "phase_steps"
+            ]
+        )
+        for job in jobs
+    } == {
+        300
+    }
+    assert {
+        job.seeds
+        for job in jobs
+    } == {
+        (
+            0,
+            1,
+            2,
+            3,
+            4,
+        )
+    }
+    assert {
+        job.environment
+        for job in jobs
+    } == {
+        "recurring_lqr"
+    }
+    assert {
+        job.protocol
+        for job in jobs
+    } == {
+        "strict_task_agnostic"
+    }
+    for source in (
+        "td",
+        "ensemble",
+        "predictive",
+    ):
+        assert (
+            "training.last_update_metrics.retention_lambda"
+            in by_source[
+                source
+            ].secondary_metrics
+        )
+    assert (
+        "training.last_update_metrics.retention_lambda"
+        not in by_source[
+            "none"
+        ].secondary_metrics
+    )
+    assert (
+        "training.last_update_metrics.predictive_model_loss"
+        in by_source[
+            "predictive"
+        ].secondary_metrics
+    )
+
+
 def test_mechanistic_and_detection_metrics_are_scalar_safe() -> None:
     mechanism = SUITES[
         "mechanism_analysis"
