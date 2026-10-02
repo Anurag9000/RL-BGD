@@ -343,6 +343,96 @@ def test_carl_and_cw_metric_declarations_match_runner_contracts() -> None:
         )
 
 
+def test_cw10_regularization_baselines_are_matched_and_boundary_free() -> None:
+    jobs = [
+        job
+        for job in SUITES[
+            "cw10_core"
+        ].jobs
+        if job.kwargs.get(
+            "optimizer"
+        )
+        in {
+            "ewc",
+            "online_ewc",
+            "si",
+            "mas",
+        }
+    ]
+    assert {
+        job.kwargs[
+            "optimizer"
+        ]
+        for job in jobs
+    } == {
+        "ewc",
+        "online_ewc",
+        "si",
+        "mas",
+    }
+    assert {
+        job.seeds
+        for job in jobs
+    } == {
+        (
+            0,
+            1,
+            2,
+            3,
+            4,
+        )
+    }
+    assert {
+        int(
+            job.kwargs[
+                "steps_per_task"
+            ]
+        )
+        for job in jobs
+    } == {
+        1_000_000
+    }
+    assert {
+        int(
+            job.kwargs[
+                "evaluation_episodes"
+            ]
+        )
+        for job in jobs
+    } == {
+        5
+    }
+    assert {
+        int(
+            job.kwargs[
+                "consolidation_interval_updates"
+            ]
+        )
+        for job in jobs
+    } == {
+        50_000
+    }
+    assert {
+        job.kwargs[
+            "regularization_target"
+        ]
+        for job in jobs
+    } == {
+        "actor_and_critic"
+    }
+    assert {
+        job.protocol
+        for job in jobs
+    } == {
+        "strict_task_agnostic_fixed_update"
+    }
+    assert all(
+        "no ground-truth task boundary"
+        in job.notes
+        for job in jobs
+    )
+
+
 def test_cw20_final_has_matched_task_agnostic_and_recurrent_controls() -> None:
     jobs = SUITES[
         "cw20_final"
