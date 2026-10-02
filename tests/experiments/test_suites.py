@@ -252,7 +252,10 @@ def test_carl_and_cw_metric_declarations_match_runner_contracts() -> None:
         "recurrence_summary.relearning_gain",
     }
     for job_id in (
+        "cw20_ta_adam",
         "cw20_ta_bgd",
+        "cw20_recurrent_adam",
+        "cw20_recurrent_bgd",
         "cw20_recurrent_adaptive",
     ):
         assert recurrence_metrics <= set(
@@ -260,6 +263,122 @@ def test_carl_and_cw_metric_declarations_match_runner_contracts() -> None:
                 job_id
             ].secondary_metrics
         )
+
+
+def test_cw20_final_has_matched_task_agnostic_and_recurrent_controls() -> None:
+    jobs = SUITES[
+        "cw20_final"
+    ].jobs
+    task_agnostic = [
+        job
+        for job in jobs
+        if job.target.endswith(
+            ":run_ta_continual_world_sac"
+        )
+    ]
+    assert {
+        job.kwargs[
+            "optimizer"
+        ]
+        for job in task_agnostic
+    } == {
+        "adam",
+        "bgd",
+    }
+    assert {
+        int(
+            job.kwargs[
+                "steps_per_task"
+            ]
+        )
+        for job in task_agnostic
+    } == {
+        1_000_000
+    }
+    assert {
+        int(
+            job.kwargs[
+                "evaluation_episodes"
+            ]
+        )
+        for job in task_agnostic
+    } == {
+        5
+    }
+    assert {
+        job.seeds
+        for job in task_agnostic
+    } == {
+        (
+            0,
+            1,
+            2,
+            3,
+            4,
+        )
+    }
+    assert {
+        job.protocol
+        for job in task_agnostic
+    } == {
+        "strict_task_agnostic"
+    }
+
+    recurrent = [
+        job
+        for job in jobs
+        if job.target.endswith(
+            ":run_recurrent_ta_continual_world_sac"
+        )
+    ]
+    assert {
+        job.kwargs[
+            "optimizer"
+        ]
+        for job in recurrent
+    } == {
+        "adam",
+        "bgd",
+        "adaptive_bgd",
+    }
+    assert {
+        int(
+            job.kwargs[
+                "steps_per_task"
+            ]
+        )
+        for job in recurrent
+    } == {
+        1_000_000
+    }
+    assert {
+        int(
+            job.kwargs[
+                "evaluation_episodes"
+            ]
+        )
+        for job in recurrent
+    } == {
+        10
+    }
+    assert {
+        job.seeds
+        for job in recurrent
+    } == {
+        (
+            0,
+            1,
+            2,
+            3,
+            4,
+        )
+    }
+    assert {
+        job.protocol
+        for job in recurrent
+    } == {
+        "3RL-style_task_agnostic"
+    }
 
 
 def test_hidden_and_bayesianization_metric_declarations_are_capability_matched() -> None:
