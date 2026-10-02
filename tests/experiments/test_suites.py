@@ -60,7 +60,7 @@ def test_comparison_and_ablation_jobs_are_atomic() -> None:
         job
         for job in SUITES["dev"].jobs
         if job.job_id.startswith(
-            "dev_hidden_"
+            "hidden_context_"
         )
     ]
     assert len(hidden_jobs) == 5
