@@ -19,6 +19,7 @@ def test_required_paper_suites_validate_against_real_targets() -> None:
     assert set(SUITES) == {
         "smoke",
         "dev",
+        "baseline_core",
         "carl_core",
         "cw10_core",
         "cw20_final",
@@ -125,6 +126,58 @@ def test_comparison_and_ablation_jobs_are_atomic() -> None:
         job.primary_metric
         == "post_shift_normalized_auc"
         for job in plasticity_jobs
+    )
+
+
+def test_external_baseline_suite_has_full_method_coverage() -> None:
+    jobs = SUITES[
+        "baseline_core"
+    ].jobs
+    regularized = [
+        job
+        for job in jobs
+        if job.job_id.startswith(
+            "baseline_"
+        )
+        and job.hypothesis_id
+        == "B"
+    ]
+    assert {
+        job.kwargs[
+            "method"
+        ]
+        for job in regularized
+    } == {
+        "ewc",
+        "online_ewc",
+        "si",
+        "mas",
+    }
+    assert all(
+        job.seeds
+        == (
+            0,
+            1,
+            2,
+            3,
+            4,
+        )
+        for job in jobs
+    )
+
+    ucl = [
+        job
+        for job in jobs
+        if job.hypothesis_id
+        == "UCL"
+    ]
+    assert len(
+        ucl
+    ) == 1
+    assert ucl[
+        0
+    ].protocol == (
+        "oracle_boundary"
     )
 
 
