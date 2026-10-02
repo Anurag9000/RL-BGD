@@ -58,10 +58,24 @@ def evaluate_task(
             observation, reward, terminated, truncated, info = env.step(action)
             episode_return += reward
             if "success" in info:
+                success_value = info["success"]
+                if (
+                    isinstance(
+                        success_value,
+                        bool,
+                    )
+                    or not isinstance(
+                        success_value,
+                        (int, float),
+                    )
+                ):
+                    raise TypeError(
+                        "Continual World success must be numeric"
+                    )
                 saw_success_signal = True
                 episode_success = max(
                     episode_success,
-                    float(info["success"]),
+                    float(success_value),
                 )
             if terminated or truncated:
                 break
