@@ -8,7 +8,6 @@ import torch
 from torch import Tensor
 
 from rl_bgd.agents.sac.task_aware_agent import TaskAwareSACAgent
-from rl_bgd.envs.protocols import TaskAwareContinuousEnv
 from rl_bgd.envs.protocols import TaskAwareTensorEnv
 from rl_bgd.replay.buffer import ReplayBuffer
 
