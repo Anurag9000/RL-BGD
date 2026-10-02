@@ -264,6 +264,13 @@ class RegularizedSACAgent(SACAgent):
                 torch.cuda.manual_seed_all(100_000 + self.update_count)
 
             if self.actor_regularizer is not None:
+                if isinstance(
+                    self.actor_regularizer,
+                    SynapticIntelligence,
+                ):
+                    raise RuntimeError(
+                        "SI consolidation must use the path-integral branch"
+                    )
                 actor_importance = self._actor_importance(batch)
                 self.actor_regularizer.consolidate(
                     self.actor,
@@ -271,6 +278,13 @@ class RegularizedSACAgent(SACAgent):
                 )
 
             if self.critic_regularizer is not None:
+                if isinstance(
+                    self.critic_regularizer,
+                    SynapticIntelligence,
+                ):
+                    raise RuntimeError(
+                        "SI consolidation must use the path-integral branch"
+                    )
                 target = (
                     critic_target.detach()
                     if critic_target is not None
