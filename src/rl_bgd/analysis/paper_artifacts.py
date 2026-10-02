@@ -176,13 +176,161 @@ def load_paper_runs(
     return runs
 
 
+def _declared_metric_names(
+    run: LoadedRun,
+) -> tuple[str, ...] | None:
+    """Return suite-declared paper metrics, or None for non-suite artifacts."""
+
+    primary = (
+        run.manifest.metadata.get(
+            "primary_metric"
+        )
+    )
+    if primary is None:
+        return None
+    if (
+        not isinstance(
+            primary,
+            str,
+        )
+        or not primary
+    ):
+        raise ValueError(
+            f"{run.manifest.run_id}: primary_metric metadata must be a non-empty string"
+        )
+
+    secondary_raw = (
+        run.manifest.metadata.get(
+            "secondary_metrics",
+            (),
+        )
+    )
+    if (
+        isinstance(
+            secondary_raw,
+            (str, bytes),
+        )
+        or not isinstance(
+            secondary_raw,
+            Sequence,
+        )
+    ):
+        raise ValueError(
+            f"{run.manifest.run_id}: secondary_metrics metadata must be a sequence"
+        )
+
+    secondary: list[str] = []
+    for value in secondary_raw:
+        if (
+            not isinstance(
+                value,
+                str,
+            )
+            or not value
+        ):
+            raise ValueError(
+                f"{run.manifest.run_id}: secondary metric names must be non-empty strings"
+            )
+        secondary.append(
+            value
+        )
+    return tuple(
+        dict.fromkeys(
+            (
+                primary,
+                *secondary,
+            )
+        )
+    )
+
+
+def _resolve_declared_scalar_metric(
+    run: LoadedRun,
+    name: str,
+) -> float | None:
+    metrics = (
+        run.summary.metrics
+    )
+    if name in metrics:
+        return metrics[
+            name
+        ]
+
+    suffix = (
+        "."
+        + name
+    )
+    matches = [
+        value
+        for key, value in metrics.items()
+        if key.endswith(
+            suffix
+        )
+    ]
+    if len(
+        matches
+    ) > 1:
+        raise ValueError(
+            f"{run.manifest.run_id}: declared metric {name!r} is ambiguous"
+        )
+    if matches:
+        return matches[
+            0
+        ]
+    return None
+
+
 def _metric_map(
     run: LoadedRun,
 ) -> dict[str, float]:
-    values = dict(run.summary.metrics)
-    for key, value in run.summary.resources.items():
-        metric = key if key not in values else f"resource.{key}"
-        values[metric] = value
+    """Expose paper-authorized scalar outcomes plus recorded resources."""
+
+    declared = (
+        _declared_metric_names(
+            run
+        )
+    )
+    if declared is None:
+        values = dict(
+            run.summary.metrics
+        )
+    else:
+        values: dict[
+            str,
+            float,
+        ] = {}
+        for name in declared:
+            value = (
+                _resolve_declared_scalar_metric(
+                    run,
+                    name,
+                )
+            )
+            if value is not None:
+                values[
+                    name
+                ] = value
+
+        primary = declared[
+            0
+        ]
+        if primary not in values:
+            raise ValueError(
+                f"{run.manifest.run_id}: declared primary metric {primary!r} "
+                "is not a scalar paper metric"
+            )
+
+    for key, value in (
+        run.summary.resources.items()
+    ):
+        metric = (
+            key
+            if key not in values
+            else f"resource.{key}"
+        )
+        values[
+            metric
+        ] = value
     return values
 
 
