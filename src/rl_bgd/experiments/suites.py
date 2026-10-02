@@ -867,6 +867,55 @@ CW10_CORE = ExperimentSuite(
             optional_extra="continual-world",
             runtime_class="very_large",
         ),
+        *tuple(
+            _job(
+                f"cw10_ta_{method}",
+                "B",
+                "rl_bgd.runners.continual_world_sac:run_ta_continual_world_sac",
+                kwargs={
+                    "benchmark": "CW10",
+                    "optimizer": method,
+                    "steps_per_task": 1_000_000,
+                    "device": "auto",
+                    "evaluation_episodes": 5,
+                    "consolidation_interval_updates": 50_000,
+                    "regularization_strength": 0.1,
+                    "regularization_target": "actor_and_critic",
+                    "importance_samples": 4,
+                },
+                seeds=(0, 1, 2, 3, 4),
+                algorithm={
+                    "ewc": "SAC-EWC",
+                    "online_ewc": "SAC-Online-EWC",
+                    "si": "SAC-SI",
+                    "mas": "SAC-MAS",
+                }[method],
+                environment="CW10",
+                protocol="strict_task_agnostic_fixed_update",
+                config_path="configs/benchmarks/continual_world_ta_cw10.yaml",
+                primary_metric="final_average",
+                secondary_metrics=(
+                    "forgetting",
+                    "bwt",
+                    "success_rate",
+                    "training.last_update_metrics.consolidation_count",
+                    "training.last_update_metrics.actor_regularization_penalty",
+                    "training.last_update_metrics.critic_regularization_penalty",
+                ),
+                optional_extra="continual-world",
+                runtime_class="very_large",
+                notes=(
+                    "Consolidation is driven only by optimizer-update count; "
+                    "no ground-truth task boundary or task identity is exposed."
+                ),
+            )
+            for method in (
+                "ewc",
+                "online_ewc",
+                "si",
+                "mas",
+            )
+        ),
         _job(
             "cw10_recurrent_adaptive",
             "H",
