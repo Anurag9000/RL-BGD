@@ -1064,6 +1064,7 @@ def _expanded_jobs(
             expanded.append(
                 {
                     **asdict(job),
+                    "suite_revision": suite.revision,
                     "seed": seed,
                     "kwargs": kwargs,
                     "run_id": run_id,
