@@ -193,7 +193,7 @@ def run_adam_ppo_oracle_recurring_lqr_control(
     return {
         "algorithm": "ppo_adam_oracle_phase_control",
         "final_phase_return": (_final_phase_return(phase_summaries)),
-        "protocol": "oracle_boundary_control",
+        "protocol": "oracle_boundary",
         "steps": phase_steps * phases,
         "phase_steps": phase_steps,
         "phases": phases,
