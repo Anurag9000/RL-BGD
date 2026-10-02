@@ -4,31 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Protocol
-
 import torch
 from torch import Tensor
 
 from rl_bgd.agents.sac.recurrent_agent import RecurrentSACAgent
+from rl_bgd.envs.protocols import ContinuousTensorEnv
 from rl_bgd.replay.sequence_buffer import SequenceReplayBuffer
 
 PostStepObserver = Callable[[int, RecurrentSACAgent], None]
-
-
-class ContinuousEnv(Protocol):
-    action_space: object
-    observation_space: object
-
-    def reset(
-        self,
-        *,
-        seed: int | None = None,
-    ) -> tuple[Tensor, dict[str, object]]: ...
-
-    def step(
-        self,
-        action: Tensor,
-    ) -> tuple[Tensor, float, bool, bool, dict[str, object]]: ...
 
 
 @dataclass(frozen=True)
@@ -59,7 +42,7 @@ class RecurrentSACTrainConfig:
 
 
 def train_recurrent_sac(
-    env: ContinuousEnv,
+    env: ContinuousTensorEnv,
     agent: RecurrentSACAgent,
     *,
     config: RecurrentSACTrainConfig,
