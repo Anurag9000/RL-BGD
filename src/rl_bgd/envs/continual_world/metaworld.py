@@ -125,7 +125,15 @@ class MetaWorldTaskAdapter:
 
         safe_info: dict[str, object] = {}
         if isinstance(info, dict) and "success" in info:
-            safe_info["success"] = float(info["success"])
+            success_value = info["success"]
+            if not isinstance(
+                success_value,
+                (bool, int, float),
+            ):
+                raise TypeError(
+                    "Meta-World success signal must be numeric"
+                )
+            safe_info["success"] = float(success_value)
         return (
             self._observation_tensor(observation),
             float(reward),
@@ -151,7 +159,7 @@ def _build_metaworld_task_adapters(
     seed: int,
     device: torch.device | str,
     episode_horizon: int,
-) -> tuple[list[MetaWorldTaskAdapter], list[str]]:
+) -> tuple[list[ContinuousTaskEnv], list[str]]:
     try:
         import metaworld
     except ImportError as exc:
@@ -164,7 +172,7 @@ def _build_metaworld_task_adapters(
     train_classes = benchmark_api.train_classes
     train_tasks = benchmark_api.train_tasks
 
-    envs: list[MetaWorldTaskAdapter] = []
+    envs: list[ContinuousTaskEnv] = []
     for task_name in task_names:
         if task_name not in train_classes:
             raise RuntimeError(
