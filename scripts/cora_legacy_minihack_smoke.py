@@ -76,7 +76,7 @@ def _compat_seed(
     vardir = _find_vardir(self)
     seed = getattr(self.env, "seed")
     if vardir is None:
-        return seed(core, disp, reseed)
+        return seed(core)
     restore_dir = getattr(self, "basedir", os.getcwd())
     os.chdir(vardir)
     try:
