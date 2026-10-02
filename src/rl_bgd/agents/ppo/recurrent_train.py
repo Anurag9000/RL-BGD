@@ -13,7 +13,6 @@ from rl_bgd.envs.protocols import ContinuousTensorEnv
 from rl_bgd.agents.ppo.recurrent_rollout import (
     RecurrentRolloutBuffer,
 )
-from rl_bgd.envs.protocols import ContinuousEnv
 
 
 @dataclass(frozen=True)
