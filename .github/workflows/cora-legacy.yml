@@ -7,11 +7,13 @@ on:
     paths:
       - "scripts/cora_legacy_smoke.py"
       - "scripts/cora_legacy_procgen_smoke.py"
+      - "scripts/cora_legacy_minihack_smoke.py"
       - ".github/workflows/cora-legacy.yml"
   pull_request:
     paths:
       - "scripts/cora_legacy_smoke.py"
       - "scripts/cora_legacy_procgen_smoke.py"
+      - "scripts/cora_legacy_minihack_smoke.py"
       - ".github/workflows/cora-legacy.yml"
 
 concurrency:
@@ -83,3 +85,49 @@ jobs:
         env:
           PYTHONPATH: /tmp/continual_rl
         run: python scripts/cora_legacy_procgen_smoke.py
+
+
+  cora-minihack:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+          cache: pip
+
+      - name: Install NetHack build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            flex \
+            bison \
+            libbz2-dev \
+            libncurses5-dev \
+            libncursesw5-dev
+
+      - name: Install isolated historical MiniHack runtime
+        run: |
+          python -m pip install --upgrade "pip<24" "setuptools<60" wheel
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu \
+            "torch==2.1.2" "torchvision==0.16.2"
+          python -m pip install \
+            "numpy==1.23.5" \
+            "gym==0.23.1" \
+            "nle==0.9.0" \
+            "minihack==0.1.5" \
+            "opencv-python-headless==4.8.1.78"
+
+      - name: Install pinned CORA source without obsolete dependency pins
+        run: |
+          git clone https://github.com/AGI-Labs/continual_rl.git /tmp/continual_rl
+          git -C /tmp/continual_rl checkout f2754bb282757829765beb4703f24b87efa13ff9
+          python -m pip install --no-deps -e /tmp/continual_rl
+
+      - name: Run real CORA MiniHack task smoke
+        env:
+          PYTHONPATH: /tmp/continual_rl
+        run: python scripts/cora_legacy_minihack_smoke.py
