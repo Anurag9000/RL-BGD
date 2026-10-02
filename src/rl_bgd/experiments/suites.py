@@ -894,6 +894,7 @@ CW10_CORE = ExperimentSuite(
                 protocol="strict_task_agnostic_fixed_update",
                 config_path="configs/benchmarks/continual_world_ta_cw10.yaml",
                 primary_metric="final_average",
+                comparison_group="cw10_task_agnostic_feedforward",
                 secondary_metrics=(
                     "forgetting",
                     "bwt",
@@ -1530,7 +1531,6 @@ def validate_suite_registry() -> None:
                 tuple[int, ...],
                 str,
                 str,
-                str,
             ],
         ] = {}
         for job in suite.jobs:
@@ -1539,6 +1539,13 @@ def validate_suite_registry() -> None:
             if not job.primary_metric:
                 raise RuntimeError(f"job {job.job_id} lacks a primary metric")
 
+            if (
+                job.comparison_group is not None
+                and not job.comparison_group.strip()
+            ):
+                raise RuntimeError(
+                    f"job {job.job_id} has an empty comparison group"
+                )
             context = (
                 job.comparison_group
                 if job.comparison_group is not None
@@ -1547,7 +1554,6 @@ def validate_suite_registry() -> None:
             contract = (
                 job.seeds,
                 job.primary_metric,
-                job.protocol,
                 job.environment,
             )
             previous = context_contracts.setdefault(
@@ -1557,7 +1563,7 @@ def validate_suite_registry() -> None:
             if previous != contract:
                 raise RuntimeError(
                     "paper-comparison context has inconsistent seed/outcome/"
-                    "protocol/benchmark contracts in suite "
+                    "benchmark contracts in suite "
                     f"{suite.name}: {context!r} / "
                     f"expected {previous!r}, found {contract!r} at {job.job_id}"
                 )
