@@ -11,6 +11,7 @@ import yaml
 
 from rl_bgd.artifacts.run import (
     RunManifest,
+    RunSummary,
     metrics_rows_from_result,
     summarize_runner_result,
     write_run_artifacts,
