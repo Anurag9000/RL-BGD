@@ -130,6 +130,9 @@ def _group_runs(
             "suite_revision": reference.manifest.metadata.get("suite_revision"),
             "information_access": reference.manifest.information_access,
             "hypothesis_id": reference.manifest.metadata.get("hypothesis_id"),
+            "comparison_group": reference.manifest.metadata.get(
+                "comparison_group"
+            ),
             "target": reference.manifest.metadata.get("target"),
             "source_config_path": reference.manifest.metadata.get("source_config_path"),
             "declared_metrics": _declared_metric_names(reference),
@@ -141,6 +144,9 @@ def _group_runs(
                 "suite_revision": run.manifest.metadata.get("suite_revision"),
                 "information_access": run.manifest.information_access,
                 "hypothesis_id": run.manifest.metadata.get("hypothesis_id"),
+                "comparison_group": run.manifest.metadata.get(
+                    "comparison_group"
+                ),
                 "target": run.manifest.metadata.get("target"),
                 "source_config_path": run.manifest.metadata.get("source_config_path"),
                 "declared_metrics": _declared_metric_names(run),
@@ -507,16 +513,40 @@ def aggregate_task_metrics(
     return pd.DataFrame(rows)
 
 
+def _comparison_group(
+    run: LoadedRun,
+) -> str:
+    raw = run.manifest.metadata.get(
+        "comparison_group"
+    )
+    if raw is None:
+        return (
+            f"{run.manifest.setting}|"
+            f"{run.manifest.benchmark}"
+        )
+    if (
+        not isinstance(
+            raw,
+            str,
+        )
+        or not raw.strip()
+    ):
+        raise ValueError(
+            f"{run.manifest.run_id}: comparison_group must be a non-empty string"
+        )
+    return raw
+
+
 def paired_method_differences(
     runs: Sequence[LoadedRun],
     *,
     config: PaperArtifactConfig,
 ) -> pd.DataFrame:
-    """Create matched-seed method differences within suite/setting/benchmark."""
+    """Create matched-seed differences only inside declared comparison groups."""
 
     grouped = _group_runs(runs)
     by_context: dict[
-        tuple[str, str, str],
+        tuple[str, str, str, str],
         list[
             tuple[
                 RunGroup,
@@ -533,9 +563,15 @@ def paired_method_differences(
             if "/" in group.experiment
             else ""
         )
+        comparison_group = _comparison_group(
+            group_runs[
+                0
+            ]
+        )
         by_context[
             (
                 suite,
+                comparison_group,
                 group.setting,
                 group.benchmark,
             )
@@ -550,6 +586,7 @@ def paired_method_differences(
     comparison_index = 0
     for (
         suite,
+        comparison_group,
         setting,
         benchmark,
     ), groups in sorted(by_context.items()):
@@ -666,6 +703,9 @@ def paired_method_differences(
                     rows.append(
                         {
                             "suite": suite,
+                            "comparison_group": (
+                                comparison_group
+                            ),
                             "setting": setting,
                             "benchmark": benchmark,
                             "left_experiment": (left_group.experiment),
