@@ -24,8 +24,8 @@ from rl_bgd.bayes.bgd import BGDConfig
 from rl_bgd.envs.continual_world.evaluation import (
     PerformanceMatrixRecorder,
     TaskEvaluation,
-)
     repeated_sequence_recurrence_summary,
+)
 from rl_bgd.envs.continual_world.metaworld import make_continual_world_protocol
 from rl_bgd.envs.continual_world.stream import ContinualWorldBenchmark
 from rl_bgd.envs.recurrent_context import PreviousTransitionContextEnv
