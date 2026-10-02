@@ -51,7 +51,7 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Replay evidence inverse_reuse_weight | COMPLETE | usage-weight tests + synthetic precision comparison |
 | Replay evidence normalized_batch_evidence | COMPLETE | uniform batch-scale test + BGD-SAC wiring |
 | Replay evidence diagnostics / ESS | COMPLETE | per-update metrics |
-| Fixed controlled forgetting | COMPLETE | exact Gaussian tempering + BGD fixed retention |
+| Fixed controlled forgetting | COMPLETE | exact Gaussian tempering + BGD fixed retention + matched recurring-LQR fixed-vs-adaptive control job |
 | TD surprise estimator | COMPLETE | online normalized TD surprise + tests |
 | TD adaptive retention in BGD-SAC | COMPLETE | no-boundary SAC wiring + checkpoint state + metrics |
 | Ensemble-disagreement surprise primitive | COMPLETE | twin-critic BGD-SAC adaptive-retention wiring + state/checkpoint tests |
@@ -60,7 +60,7 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Lifetime AUC / plasticity retention | COMPLETE | metrics/continual.py + tests |
 | T80/T90 primitive / post-change AUC / recurrence metrics | COMPLETE | metrics/adaptation.py + tests |
 | Surprise change-detection event metrics | COMPLETE | delay/FPR/precision/recall/F1/false alarms + tests |
-| Surprise AUROC primitive | COMPLETE | rank-based binary AUROC + tests |
+| Surprise AUROC primitive | COMPLETE | rank-based binary AUROC + tests + evaluator-only recurring-LQR source-comparison wiring |
 | Adaptive surprise causal timeline runner | COMPLETE | recurring-LQR BGD-SAC supports none/TD/ensemble/predictive source selection + matched suite jobs + slow integration coverage without boundary input |
 | CARL 1.1.1 strict hidden-context adapter | COMPLETE | isolated real CARL 1.1.1 reset/step smoke + strict context stripping |
 | CARL abrupt/smooth/recurring configs | COMPLETE | v1.1.1-valid context keys + live Pendulum schedule smoke |
