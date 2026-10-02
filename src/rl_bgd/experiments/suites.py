@@ -21,6 +21,7 @@ from rl_bgd.artifacts import (
     summarize_runner_result,
     write_run_artifacts,
 )
+from rl_bgd.artifacts.suite import information_access_for_protocol
 from rl_bgd.experiments.invoke import resolve_target
 
 
@@ -715,7 +716,12 @@ def materialize_suite(
 
 def _result_information_access(
     result: Mapping[str, object],
+    *,
+    protocol: str,
 ) -> dict[str, bool]:
+    derived = information_access_for_protocol(
+        protocol
+    )
     raw = result.get(
         "information_access",
         {},
@@ -724,8 +730,10 @@ def _result_information_access(
         raw,
         Mapping,
     ):
-        return {}
-    return {
+        raise TypeError(
+            "runner information_access must be a mapping when present"
+        )
+    explicit = {
         str(key): value
         for key, value in raw.items()
         if isinstance(
@@ -733,7 +741,19 @@ def _result_information_access(
             bool,
         )
     }
-
+    for key, expected in derived.items():
+        if (
+            key in explicit
+            and explicit[key] != expected
+        ):
+            raise ValueError(
+                "runner information-access metadata contradicts "
+                f"registered protocol {protocol!r}: {key}"
+            )
+    return {
+        **derived,
+        **explicit,
+    }
 
 def _result_task_order(
     result: Mapping[str, object],
@@ -884,7 +904,12 @@ def _write_strict_suite_artifacts(
             result
         ),
         information_access=_result_information_access(
-            result
+            result,
+            protocol=str(
+                job[
+                    "protocol"
+                ]
+            ),
         ),
         metadata={
             "suite": suite_name,
@@ -1014,6 +1039,13 @@ def _write_failed_suite_manifest(
         ),
         git_commit=git_commit,
         status="failed",
+        information_access=information_access_for_protocol(
+            str(
+                job[
+                    "protocol"
+                ]
+            )
+        ),
         metadata={
             "suite": suite_name,
             "job_id": str(
