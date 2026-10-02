@@ -78,9 +78,13 @@ obsolete relative to the modern base environment. RL-BGD uses modern
 Meta-World adapters and documents deviations; it does not claim binary
 reproduction of historical dependency stacks.
 
-ContinualBench source distributions have exposed missing/legacy asset-layout
-issues. Compatibility repairs are constrained to referenced assets and the
-adapter remains incomplete until its pinned live reset/step workflow passes.
+ContinualBench source distributions expose legacy asset-layout and runtime
+defects. RL-BGD confines compatibility handling to the adapter boundary:
+referenced missing assets are restored from canonical Meta-World paths, the
+pinned debug-only undefined symbol is supplied without replacing reward
+computation, and the upstream no-op close stub is tolerated. The pinned live
+reset/step workflow now passes, but the integration remains dependent on
+legacy Gym/MuJoCo internals and third-party benchmark behavior.
 
 CORA metric/protocol compatibility is implemented, while the legacy environment
 runtime remains intentionally isolated rather than downgrading the main
