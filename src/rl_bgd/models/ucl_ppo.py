@@ -10,7 +10,7 @@ import torch
 from torch import Tensor, nn
 from torch.distributions import Normal
 
-from rl_bgd.baselines.ucl import UCLBayesianLayer, positive_sigma
+from rl_bgd.baselines.ucl import positive_sigma
 
 
 class UCLBayesianLinear(nn.Module):
