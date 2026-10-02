@@ -395,7 +395,6 @@ def test_paper_builder_generates_continual_matrix_and_timeline_figures(
     assert any("timeline_post_shift_loss_timeline" in name for name in generated)
 
 
-
 def test_paper_builder_aggregates_only_declared_suite_metrics(
     tmp_path: Path,
 ) -> None:
