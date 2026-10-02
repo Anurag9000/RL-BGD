@@ -891,7 +891,7 @@ CW10_CORE = ExperimentSuite(
                     "mas": "SAC-MAS",
                 }[method],
                 environment="CW10",
-                protocol="strict_task_agnostic_fixed_update",
+                protocol="strict_task_agnostic",
                 config_path="configs/benchmarks/continual_world_ta_cw10.yaml",
                 primary_metric="final_average",
                 comparison_group="cw10_task_agnostic_feedforward",
@@ -903,6 +903,7 @@ CW10_CORE = ExperimentSuite(
                     "training.last_update_metrics.actor_regularization_penalty",
                     "training.last_update_metrics.critic_regularization_penalty",
                 ),
+                comparison_group="cw10_task_agnostic_feedforward",
                 optional_extra="continual-world",
                 runtime_class="very_large",
                 notes=(
@@ -917,32 +918,63 @@ CW10_CORE = ExperimentSuite(
                 "mas",
             )
         ),
-        _job(
-            "cw10_recurrent_adaptive",
-            "H",
-            "rl_bgd.runners.recurrent_continual_world:run_recurrent_ta_continual_world_sac",
-            kwargs={
-                "benchmark": "CW10",
-                "optimizer": "adaptive_bgd",
-                "steps_per_task": 1_000_000,
-                "device": "auto",
-                "evaluation_episodes": 10,
-            },
-            seeds=(0, 1, 2, 3, 4),
-            algorithm="Recurrent-SAC-Adaptive-BGD",
-            environment="CW10",
-            protocol="3RL-style_task_agnostic",
-            config_path="configs/benchmarks/three_rl_style_cw10.yaml",
-            primary_metric="final_average",
-            secondary_metrics=(
-                "forgetting",
-                "bwt",
-                "success_rate",
-                "training.last_update_metrics.critic1_sigma_mean",
-                "training.last_update_metrics.retention_lambda",
-            ),
-            optional_extra="continual-world",
-            runtime_class="very_large",
+        *tuple(
+            _job(
+                f"cw10_recurrent_{optimizer}",
+                "H",
+                "rl_bgd.runners.recurrent_continual_world:run_recurrent_ta_continual_world_sac",
+                kwargs={
+                    "benchmark": "CW10",
+                    "optimizer": optimizer,
+                    "steps_per_task": 1_000_000,
+                    "device": "auto",
+                    "evaluation_episodes": 10,
+                },
+                seeds=(0, 1, 2, 3, 4),
+                algorithm={
+                    "adam": "Recurrent-SAC-Adam",
+                    "bgd": "Recurrent-SAC-BGD",
+                    "adaptive_bgd": "Recurrent-SAC-Adaptive-BGD",
+                }[optimizer],
+                environment="CW10",
+                protocol="3RL-style_task_agnostic",
+                config_path="configs/benchmarks/three_rl_style_cw10.yaml",
+                primary_metric="final_average",
+                secondary_metrics=(
+                    (
+                        "forgetting",
+                        "bwt",
+                        "success_rate",
+                    )
+                    + (
+                        (
+                            "training.last_update_metrics.critic1_sigma_mean",
+                        )
+                        if optimizer
+                        in {
+                            "bgd",
+                            "adaptive_bgd",
+                        }
+                        else ()
+                    )
+                    + (
+                        (
+                            "training.last_update_metrics.retention_lambda",
+                        )
+                        if optimizer
+                        == "adaptive_bgd"
+                        else ()
+                    )
+                ),
+                comparison_group="cw10_recurrent",
+                optional_extra="continual-world",
+                runtime_class="very_large",
+            )
+            for optimizer in (
+                "adam",
+                "bgd",
+                "adaptive_bgd",
+            )
         ),
     ),
 )
@@ -1037,6 +1069,61 @@ CW20_FINAL = ExperimentSuite(
             ),
             optional_extra="continual-world",
             runtime_class="very_large",
+        ),
+        *tuple(
+            _job(
+                f"cw20_ta_{method}",
+                "B",
+                "rl_bgd.runners.continual_world_sac:run_ta_continual_world_sac",
+                kwargs={
+                    "benchmark": "CW20",
+                    "optimizer": method,
+                    "steps_per_task": 1_000_000,
+                    "device": "auto",
+                    "evaluation_episodes": 5,
+                    "consolidation_interval_updates": 50_000,
+                    "regularization_strength": 0.1,
+                    "regularization_target": "actor_and_critic",
+                    "importance_samples": 4,
+                },
+                seeds=(0, 1, 2, 3, 4),
+                algorithm={
+                    "ewc": "SAC-EWC",
+                    "online_ewc": "SAC-Online-EWC",
+                    "si": "SAC-SI",
+                    "mas": "SAC-MAS",
+                }[method],
+                environment="CW20",
+                protocol="strict_task_agnostic",
+                config_path="configs/benchmarks/continual_world_ta_cw20.yaml",
+                primary_metric="final_average",
+                secondary_metrics=(
+                    "forgetting",
+                    "bwt",
+                    "success_rate",
+                    "training.last_update_metrics.consolidation_count",
+                    "training.last_update_metrics.actor_regularization_penalty",
+                    "training.last_update_metrics.critic_regularization_penalty",
+                    "recurrence_summary.reference_success",
+                    "recurrence_summary.zero_shot_success",
+                    "recurrence_summary.recovered_success",
+                    "recurrence_summary.pre_revisit_change",
+                    "recurrence_summary.relearning_gain",
+                ),
+                comparison_group="cw20_task_agnostic_feedforward",
+                optional_extra="continual-world",
+                runtime_class="very_large",
+                notes=(
+                    "Consolidation is driven only by optimizer-update count; "
+                    "no ground-truth task boundary or task identity is exposed."
+                ),
+            )
+            for method in (
+                "ewc",
+                "online_ewc",
+                "si",
+                "mas",
+            )
         ),
         _job(
             "cw20_recurrent_adam",
