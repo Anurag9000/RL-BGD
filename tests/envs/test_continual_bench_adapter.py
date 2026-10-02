@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 from typing import Any
 
 import numpy as np
@@ -430,3 +430,44 @@ def test_close_ignores_pinned_upstream_not_implemented() -> None:
     )
 
     env.close()
+
+class FakeUnclosableContinualBench(
+    FakeContinualBench
+):
+    def close(self) -> None:
+        raise NotImplementedError
+
+
+def test_pinned_runtime_compatibility_defines_only_missing_debug_symbol() -> None:
+    module = ModuleType(
+        "fake_sawyer_bench"
+    )
+
+    repaired = (
+        _install_pinned_runtime_compatibility(
+            module
+        )
+    )
+
+    assert repaired == (
+        "debug_grasp_reward_pad",
+    )
+    assert (
+        module.debug_grasp_reward_pad
+        == 0.0
+    )
+    assert (
+        _install_pinned_runtime_compatibility(
+            module
+        )
+        == ()
+    )
+
+
+def test_close_tolerates_pinned_upstream_not_implemented() -> None:
+    env = ContinualBenchStreamEnv(
+        FakeUnclosableContinualBench()
+    )
+
+    env.close()
+
