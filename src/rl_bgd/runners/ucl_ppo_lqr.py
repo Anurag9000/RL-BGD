@@ -28,32 +28,19 @@ def _matched_ppo_config() -> PPOConfig:
 
 
 def _final_phase_return(
-    phase_summaries: list[
-        dict[str, object]
-    ],
+    phase_summaries: list[dict[str, object]],
 ) -> float:
-    final_phase = phase_summaries[
-        -1
-    ]
-    value = final_phase.get(
-        "final_10_mean_return"
-    )
-    if (
-        isinstance(
-            value,
-            bool,
-        )
-        or not isinstance(
-            value,
-            (int, float),
-        )
+    final_phase = phase_summaries[-1]
+    value = final_phase.get("final_10_mean_return")
+    if isinstance(
+        value,
+        bool,
+    ) or not isinstance(
+        value,
+        (int, float),
     ):
-        raise TypeError(
-            "PPO final phase did not expose final_10_mean_return"
-        )
-    return float(
-        value
-    )
+        raise TypeError("PPO final phase did not expose final_10_mean_return")
+    return float(value)
 
 
 def run_ucl_ppo_recurring_lqr(
@@ -72,9 +59,7 @@ def run_ucl_ppo_recurring_lqr(
         seed,
         deterministic=True,
     )
-    resolved = resolve_device(
-        device
-    )
+    resolved = resolve_device(device)
     env = make_baseline_recurring_lqr(
         seed=seed,
         device=resolved,
@@ -116,9 +101,7 @@ def run_ucl_ppo_recurring_lqr(
                 }
             )
 
-    final_phase_return = _final_phase_return(
-        phase_summaries
-    )
+    final_phase_return = _final_phase_return(phase_summaries)
 
     return {
         "algorithm": "ucl_ppo",
@@ -127,9 +110,7 @@ def run_ucl_ppo_recurring_lqr(
         "steps": phase_steps * phases,
         "phase_steps": phase_steps,
         "phases": phases,
-        "benchmark_profile": (
-            BASELINE_RECURRING_LQR_PROFILE
-        ),
+        "benchmark_profile": (BASELINE_RECURRING_LQR_PROFILE),
         "horizon": horizon,
         "phase_summaries": phase_summaries,
         "boundaries": boundary_log,
@@ -162,16 +143,12 @@ def run_adam_ppo_oracle_recurring_lqr_control(
     """Run a phase-matched Adam PPO control for the oracle UCL comparator."""
 
     if phase_steps < 32 or phases < 2:
-        raise ValueError(
-            "oracle PPO control requires nontrivial phases"
-        )
+        raise ValueError("oracle PPO control requires nontrivial phases")
     seed_everything(
         seed,
         deterministic=True,
     )
-    resolved = resolve_device(
-        device
-    )
+    resolved = resolve_device(device)
     env = make_baseline_recurring_lqr(
         seed=seed,
         device=resolved,
@@ -188,15 +165,9 @@ def run_adam_ppo_oracle_recurring_lqr_control(
         device=resolved,
     )
 
-    phase_summaries: list[
-        dict[str, object]
-    ] = []
-    boundary_log: list[
-        dict[str, object]
-    ] = []
-    for phase_index in range(
-        phases
-    ):
+    phase_summaries: list[dict[str, object]] = []
+    boundary_log: list[dict[str, object]] = []
+    for phase_index in range(phases):
         phase_summaries.append(
             train_ppo(
                 env,
@@ -215,41 +186,27 @@ def run_adam_ppo_oracle_recurring_lqr_control(
             boundary_log.append(
                 {
                     "after_phase": phase_index + 1,
-                    "environment_step": (
-                        env.environment_step
-                    ),
+                    "environment_step": (env.environment_step),
                 }
             )
 
     return {
         "algorithm": "ppo_adam_oracle_phase_control",
-        "final_phase_return": (
-            _final_phase_return(
-                phase_summaries
-            )
-        ),
+        "final_phase_return": (_final_phase_return(phase_summaries)),
         "protocol": "oracle_boundary_control",
         "steps": phase_steps * phases,
         "phase_steps": phase_steps,
         "phases": phases,
-        "benchmark_profile": (
-            BASELINE_RECURRING_LQR_PROFILE
-        ),
+        "benchmark_profile": (BASELINE_RECURRING_LQR_PROFILE),
         "horizon": horizon,
-        "phase_summaries": (
-            phase_summaries
-        ),
+        "phase_summaries": (phase_summaries),
         "boundaries": boundary_log,
-        "final_evaluation_context": (
-            env.evaluation_context
-        ),
+        "final_evaluation_context": (env.evaluation_context),
         "information_access": {
             "receives_task_id": False,
             "receives_task_boundary": True,
             "receives_environment_context": False,
-            "boundary_use": (
-                "phasewise_training_control"
-            ),
+            "boundary_use": ("phasewise_training_control"),
         },
         "source_alignment": {
             "optimizer": "adam",

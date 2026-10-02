@@ -23,86 +23,30 @@ def _run(
 
 
 def test_late_consolidation_reduces_vanilla_post_shift_plasticity() -> None:
-    vanilla = _run(
-        1.0
-    )
-    tempered = _run(
-        0.97
-    )
+    vanilla = _run(1.0)
+    tempered = _run(0.97)
 
-    assert (
-        float(
-            tempered[
-                "pre_shift_sigma_mean"
-            ]
-        )
-        > 1.5
-        * float(
-            vanilla[
-                "pre_shift_sigma_mean"
-            ]
-        )
+    assert float(tempered["pre_shift_sigma_mean"]) > 1.5 * float(vanilla["pre_shift_sigma_mean"])
+    assert float(tempered["first_step_mean_movement"]) > 2.5 * float(
+        vanilla["first_step_mean_movement"]
     )
-    assert (
-        float(
-            tempered[
-                "first_step_mean_movement"
-            ]
-        )
-        > 2.5
-        * float(
-            vanilla[
-                "first_step_mean_movement"
-            ]
-        )
+    assert float(tempered["post_shift_normalized_auc"]) < float(
+        vanilla["post_shift_normalized_auc"]
     )
-    assert float(
-        tempered[
-            "post_shift_normalized_auc"
-        ]
-    ) < float(
-        vanilla[
-            "post_shift_normalized_auc"
-        ]
-    )
-    assert float(
-        tempered[
-            "recovery_fraction"
-        ]
-    ) > float(
-        vanilla[
-            "recovery_fraction"
-        ]
-    )
+    assert float(tempered["recovery_fraction"]) > float(vanilla["recovery_fraction"])
 
 
 def test_plasticity_runner_holds_post_shift_update_rule_fixed() -> None:
-    result = _run(
-        1.0
-    )
+    result = _run(1.0)
 
-    assert (
-        result[
-            "hypothesis_id"
-        ]
-        == "C"
-    )
-    assert (
-        result[
-            "adaptation_retention"
-        ]
-        == 1.0
-    )
-    curve = result[
-        "post_shift_loss_curve"
-    ]
+    assert result["hypothesis_id"] == "C"
+    assert result["adaptation_retention"] == 1.0
+    curve = result["post_shift_loss_curve"]
     assert isinstance(
         curve,
         list,
     )
-    assert len(
-        curve
-    ) == 17
+    assert len(curve) == 17
     assert all(
         isinstance(
             value,
@@ -110,45 +54,19 @@ def test_plasticity_runner_holds_post_shift_update_rule_fixed() -> None:
         )
         for value in curve
     )
-    timeline = result[
-        "post_shift_loss_timeline"
-    ]
+    timeline = result["post_shift_loss_timeline"]
     assert isinstance(
         timeline,
         list,
     )
-    assert len(
-        timeline
-    ) == len(
-        curve
-    )
-    assert timeline[
-        0
-    ] == {
+    assert len(timeline) == len(curve)
+    assert timeline[0] == {
         "step": 0,
-        "target_loss": curve[
-            0
-        ],
+        "target_loss": curve[0],
         "normalized_target_loss": 1.0,
     }
 
-    rows = metrics_rows_from_result(
-        result
-    )
-    assert len(
-        rows
-    ) == len(
-        curve
-    )
-    assert all(
-        row[
-            "series"
-        ]
-        == "post_shift_loss_timeline"
-        for row in rows
-    )
-    assert rows[
-        0
-    ][
-        "normalized_target_loss"
-    ] == 1.0
+    rows = metrics_rows_from_result(result)
+    assert len(rows) == len(curve)
+    assert all(row["series"] == "post_shift_loss_timeline" for row in rows)
+    assert rows[0]["normalized_target_loss"] == 1.0

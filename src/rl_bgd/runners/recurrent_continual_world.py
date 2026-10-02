@@ -92,19 +92,14 @@ def evaluate_recurrent_task(
             episode_return += reward
             if "success" in info:
                 success_value = info["success"]
-                if (
-                    isinstance(
-                        success_value,
-                        bool,
-                    )
-                    or not isinstance(
-                        success_value,
-                        (int, float),
-                    )
+                if isinstance(
+                    success_value,
+                    bool,
+                ) or not isinstance(
+                    success_value,
+                    (int, float),
                 ):
-                    raise TypeError(
-                        "recurrent Continual World success must be numeric"
-                    )
+                    raise TypeError("recurrent Continual World success must be numeric")
                 saw_success = True
                 episode_success = max(
                     episode_success,

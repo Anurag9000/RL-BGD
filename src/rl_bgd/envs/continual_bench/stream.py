@@ -51,12 +51,8 @@ def _install_pinned_runtime_compatibility(
         "debug_grasp_reward_pad",
     ):
         sawyer_bench_module.debug_grasp_reward_pad = 0.0
-        repaired.append(
-            "debug_grasp_reward_pad"
-        )
-    return tuple(
-        repaired
-    )
+        repaired.append("debug_grasp_reward_pad")
+    return tuple(repaired)
 
 
 _ASSET_FILE_PATTERN = re.compile(r"""\bfile\s*=\s*["']([^"']+)["']""")
@@ -95,15 +91,9 @@ def _repair_missing_metaworld_assets(
         )
 
     destination_resolved = destination_root.resolve()
-    benchmark_root = (
-        destination_root
-        / "sawyer_xyz"
-        / "sawyer_bench.xml"
-    )
+    benchmark_root = destination_root / "sawyer_xyz" / "sawyer_bench.xml"
     queue = (
-        [benchmark_root]
-        if benchmark_root.is_file()
-        else sorted(destination_root.rglob("*.xml"))
+        [benchmark_root] if benchmark_root.is_file() else sorted(destination_root.rglob("*.xml"))
     )
     visited: set[Path] = set()
     repaired: list[str] = []
@@ -427,9 +417,7 @@ def make_continual_bench_stream(
 
     try:
         envs = import_module("continual_bench.envs")
-        sawyer_bench = import_module(
-            "continual_bench.envs.mujoco.sawyer_bench"
-        )
+        sawyer_bench = import_module("continual_bench.envs.mujoco.sawyer_bench")
         metaworld = import_module("metaworld")
     except ImportError as exc:
         raise ContinualBenchImportError(
@@ -439,9 +427,7 @@ def make_continual_bench_stream(
         envs,
         metaworld,
     )
-    _install_pinned_runtime_compatibility(
-        sawyer_bench
-    )
+    _install_pinned_runtime_compatibility(sawyer_bench)
     env_class = getattr(envs, "ContinualBenchEnv", None)
     if env_class is None:
         raise ContinualBenchImportError("installed package does not expose ContinualBenchEnv")

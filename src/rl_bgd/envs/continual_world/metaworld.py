@@ -130,9 +130,7 @@ class MetaWorldTaskAdapter:
                 success_value,
                 (bool, int, float),
             ):
-                raise TypeError(
-                    "Meta-World success signal must be numeric"
-                )
+                raise TypeError("Meta-World success signal must be numeric")
             safe_info["success"] = float(success_value)
         return (
             self._observation_tensor(observation),

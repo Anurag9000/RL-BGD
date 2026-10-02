@@ -140,10 +140,7 @@ class UCLPPOActor(nn.Module):
 
     @property
     def bayesian_layers(self) -> Sequence[UCLBayesianLinear]:
-        return tuple(
-            cast(UCLBayesianLinear, layer)
-            for layer in self.backbone.hidden_layers
-        )
+        return tuple(cast(UCLBayesianLinear, layer) for layer in self.backbone.hidden_layers)
 
     def distribution(
         self,
@@ -239,10 +236,7 @@ class UCLValueNetwork(nn.Module):
 
     @property
     def bayesian_layers(self) -> Sequence[UCLBayesianLinear]:
-        return tuple(
-            cast(UCLBayesianLinear, layer)
-            for layer in self.net.hidden_layers
-        )
+        return tuple(cast(UCLBayesianLinear, layer) for layer in self.net.hidden_layers)
 
     def forward(
         self,

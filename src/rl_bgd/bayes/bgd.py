@@ -223,15 +223,18 @@ class BGDUpdater:
         self.posterior.assert_finite()
         self.step_count += 1
 
-        gradient_norm = torch.stack(
-            [torch.sum(value.square()) for value in g_bar.values()]
-        ).sum().sqrt().item()
-        uncertainty_gradient_norm = torch.stack(
-            [torch.sum(value.square()) for value in uncertainty_g_bar.values()]
-        ).sum().sqrt().item()
-        c_norm = torch.stack(
-            [torch.sum(value.square()) for value in c.values()]
-        ).sum().sqrt().item()
+        gradient_norm = (
+            torch.stack([torch.sum(value.square()) for value in g_bar.values()]).sum().sqrt().item()
+        )
+        uncertainty_gradient_norm = (
+            torch.stack([torch.sum(value.square()) for value in uncertainty_g_bar.values()])
+            .sum()
+            .sqrt()
+            .item()
+        )
+        c_norm = (
+            torch.stack([torch.sum(value.square()) for value in c.values()]).sum().sqrt().item()
+        )
         return BGDStepResult(
             mean_loss=torch.stack(losses).mean().item(),
             uncertainty_loss=torch.stack(uncertainty_losses).mean().item(),

@@ -85,31 +85,18 @@ class RepositoryAuditReport:
 
 
 def _repo_root(start: str | Path | None) -> Path:
-    candidate = (
-        Path(start).resolve()
-        if start is not None
-        else Path.cwd().resolve()
-    )
+    candidate = Path(start).resolve() if start is not None else Path.cwd().resolve()
     for path in (candidate, *candidate.parents):
-        if (
-            (path / "pyproject.toml").is_file()
-            and (path / "src" / "rl_bgd").is_dir()
-        ):
+        if (path / "pyproject.toml").is_file() and (path / "src" / "rl_bgd").is_dir():
             return path
-    raise FileNotFoundError(
-        "could not locate RL-BGD repository root"
-    )
+    raise FileNotFoundError("could not locate RL-BGD repository root")
 
 
 def _python_files(root: Path) -> tuple[Path, ...]:
     files: list[Path] = []
     for relative in ("src", "scripts"):
         base = root / relative
-        files.extend(
-            path
-            for path in base.rglob("*.py")
-            if "__pycache__" not in path.parts
-        )
+        files.extend(path for path in base.rglob("*.py") if "__pycache__" not in path.parts)
     return tuple(sorted(files))
 
 
@@ -218,22 +205,13 @@ def audit_repository(
                 ),
             )
         ]
-        duplicates = sorted(
-            name
-            for name, count in Counter(
-                top_level_names
-            ).items()
-            if count > 1
-        )
+        duplicates = sorted(name for name, count in Counter(top_level_names).items() if count > 1)
         if duplicates:
             findings.append(
                 AuditFinding(
                     "duplicate_top_level_definition",
                     relative,
-                    "duplicate definitions: "
-                    + ", ".join(
-                        duplicates
-                    ),
+                    "duplicate definitions: " + ", ".join(duplicates),
                 )
             )
 
@@ -242,10 +220,7 @@ def audit_repository(
             if not isinstance(node, ast.Raise) or node.exc is None:
                 continue
             raised = node.exc.func if isinstance(node.exc, ast.Call) else node.exc
-            if (
-                isinstance(raised, ast.Name)
-                and raised.id == "NotImplementedError"
-            ):
+            if isinstance(raised, ast.Name) and raised.id == "NotImplementedError":
                 findings.append(
                     AuditFinding(
                         "placeholder_not_implemented",
@@ -255,20 +230,12 @@ def audit_repository(
                 )
                 break
 
-    compatibility_artifacts = (
-        root
-        / "src"
-        / "rl_bgd"
-        / "analysis"
-        / "artifacts.py"
-    ).read_text(encoding="utf-8")
-    paper_artifacts = (
-        root
-        / "src"
-        / "rl_bgd"
-        / "analysis"
-        / "paper_artifacts.py"
-    ).read_text(encoding="utf-8")
+    compatibility_artifacts = (root / "src" / "rl_bgd" / "analysis" / "artifacts.py").read_text(
+        encoding="utf-8"
+    )
+    paper_artifacts = (root / "src" / "rl_bgd" / "analysis" / "paper_artifacts.py").read_text(
+        encoding="utf-8"
+    )
     checks_run += 1
     if (
         "run_metadata.json" in compatibility_artifacts
@@ -302,9 +269,7 @@ def audit_repository(
             )
         )
 
-    readme = (root / "README.md").read_text(
-        encoding="utf-8"
-    )
+    readme = (root / "README.md").read_text(encoding="utf-8")
     checks_run += 1
     if "RL agents and benchmark adapters remain explicitly tracked as incomplete" in readme:
         findings.append(
@@ -315,11 +280,7 @@ def audit_repository(
             )
         )
 
-    ledger = (
-        root
-        / "docs"
-        / "CAPABILITY_LEDGER.md"
-    ).read_text(encoding="utf-8")
+    ledger = (root / "docs" / "CAPABILITY_LEDGER.md").read_text(encoding="utf-8")
     for phrase in (
         "Recurrent BGD-PPO | COMPLETE",
         "Recurrent BGD-SAC | COMPLETE",
@@ -343,15 +304,8 @@ def audit_repository(
     for line in ledger.splitlines():
         if not line.startswith("|"):
             continue
-        cells = [
-            cell.strip()
-            for cell in line.strip().strip("|").split("|")
-        ]
-        if (
-            len(cells) < 3
-            or cells[0] == "Capability"
-            or set(cells[0]) <= {"-"}
-        ):
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) < 3 or cells[0] == "Capability" or set(cells[0]) <= {"-"}:
             continue
         checks_run += 1
         status = cells[1]
@@ -360,16 +314,10 @@ def audit_repository(
                 AuditFinding(
                     "ledger_software_closure",
                     "docs/CAPABILITY_LEDGER.md",
-                    (
-                        f"{cells[0]!r} still has non-closure status "
-                        f"{status!r}"
-                    ),
+                    (f"{cells[0]!r} still has non-closure status {status!r}"),
                 )
             )
-        elif (
-            status == "BLOCKED"
-            and not cells[2]
-        ):
+        elif status == "BLOCKED" and not cells[2]:
             findings.append(
                 AuditFinding(
                     "ledger_blocked_rationale",

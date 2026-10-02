@@ -110,10 +110,7 @@ def _hidden_context_jobs(
         _job(
             f"{prefix}_{variant}",
             "H",
-            (
-                "rl_bgd.runners.hidden_context_sac_comparison:"
-                "run_hidden_context_sac_variant"
-            ),
+            ("rl_bgd.runners.hidden_context_sac_comparison:run_hidden_context_sac_variant"),
             kwargs={
                 "variant": variant,
                 "steps": steps,
@@ -237,10 +234,7 @@ def _late_plasticity_jobs(
         _job(
             f"late_plasticity_{name}",
             "C",
-            (
-                "rl_bgd.runners.late_plasticity:"
-                "run_late_plasticity_quadratic"
-            ),
+            ("rl_bgd.runners.late_plasticity:run_late_plasticity_quadratic"),
             kwargs={
                 "consolidation_retention": retention,
                 "dimension": 16,
@@ -334,10 +328,7 @@ def _regularized_baseline_jobs(
         _job(
             f"baseline_{method}",
             "B",
-            (
-                "rl_bgd.runners.regularized_sac_continual_lqr:"
-                "run_regularized_sac_recurring_lqr"
-            ),
+            ("rl_bgd.runners.regularized_sac_continual_lqr:run_regularized_sac_recurring_lqr"),
             kwargs={
                 "method": method,
                 "steps": steps,
@@ -421,9 +412,7 @@ SMOKE = ExperimentSuite(
 
 STATIONARY_CORE = ExperimentSuite(
     name="stationary_core",
-    description=(
-        "Five-seed stationary SAC/PPO Adam-versus-BGD learning confirmation."
-    ),
+    description=("Five-seed stationary SAC/PPO Adam-versus-BGD learning confirmation."),
     jobs=(
         _job(
             "stationary_sac_adam",
@@ -569,17 +558,12 @@ DEV = ExperimentSuite(
 
 BASELINE_CORE = ExperimentSuite(
     name="baseline_core",
-    description=(
-        "Five-seed external continual-learning baseline confirmation on recurring LQR."
-    ),
+    description=("Five-seed external continual-learning baseline confirmation on recurring LQR."),
     jobs=(
         _job(
             "baseline_sac_adam_control",
             "B",
-            (
-                "rl_bgd.runners.regularized_sac_continual_lqr:"
-                "run_sac_recurring_lqr_control"
-            ),
+            ("rl_bgd.runners.regularized_sac_continual_lqr:run_sac_recurring_lqr_control"),
             kwargs={
                 "steps": 600,
                 "device": "auto",
@@ -592,9 +576,7 @@ BASELINE_CORE = ExperimentSuite(
             protocol="task_agnostic_fixed_update",
             config_path=None,
             primary_metric="final_10_mean_return",
-            secondary_metrics=(
-                "training.mean_episode_return",
-            ),
+            secondary_metrics=("training.mean_episode_return",),
             runtime_class="medium",
             notes=(
                 "Unregularized SAC uses the same recurring-LQR profile, "
@@ -612,10 +594,7 @@ BASELINE_CORE = ExperimentSuite(
         _job(
             "baseline_ppo_adam_oracle_control",
             "UCL",
-            (
-                "rl_bgd.runners.ucl_ppo_lqr:"
-                "run_adam_ppo_oracle_recurring_lqr_control"
-            ),
+            ("rl_bgd.runners.ucl_ppo_lqr:run_adam_ppo_oracle_recurring_lqr_control"),
             kwargs={
                 "phase_steps": 120,
                 "phases": 5,
@@ -660,10 +639,7 @@ BASELINE_CORE = ExperimentSuite(
                 "boundaries",
             ),
             runtime_class="medium",
-            notes=(
-                "UCL is an oracle-boundary comparator and is not labelled "
-                "task-agnostic."
-            ),
+            notes=("UCL is an oracle-boundary comparator and is not labelled task-agnostic."),
         ),
     ),
 )
@@ -870,16 +846,8 @@ TASK_AGNOSTIC_FINAL = ExperimentSuite(
             runtime_class="medium",
         ),
         *CARL_CORE.jobs,
-        *tuple(
-            job
-            for job in CW10_CORE.jobs
-            if "canonical" not in job.job_id
-        ),
-        *tuple(
-            job
-            for job in CW20_FINAL.jobs
-            if "canonical" not in job.job_id
-        ),
+        *tuple(job for job in CW10_CORE.jobs if "canonical" not in job.job_id),
+        *tuple(job for job in CW20_FINAL.jobs if "canonical" not in job.job_id),
     ),
 )
 
@@ -982,10 +950,7 @@ MECHANISM_ANALYSIS = ExperimentSuite(
         _job(
             "mechanistic_quadratic",
             "I-J",
-            (
-                "rl_bgd.analysis.mechanistic:"
-                "run_seeded_mechanistic_analysis"
-            ),
+            ("rl_bgd.analysis.mechanistic:run_seeded_mechanistic_analysis"),
             kwargs={
                 "device": "auto",
             },
@@ -1054,9 +1019,7 @@ SUITES: dict[str, ExperimentSuite] = {
 
 
 def _git_head() -> str | None:
-    repository_root = Path(
-        __file__
-    ).resolve().parents[3]
+    repository_root = Path(__file__).resolve().parents[3]
     try:
         result = subprocess.run(
             [
@@ -1085,9 +1048,7 @@ def _expanded_jobs(
             kwargs = dict(job.kwargs)
             if job.seed_kwarg is not None:
                 kwargs[job.seed_kwarg] = seed
-            run_id = (
-                f"{suite.name}__{job.job_id}__seed_{seed}"
-            )
+            run_id = f"{suite.name}__{job.job_id}__seed_{seed}"
             run_dir = output_root / suite.name / run_id
             if job.output_kwarg is not None:
                 kwargs[job.output_kwarg] = str(run_dir / "artifacts")
@@ -1190,9 +1151,7 @@ def execute_suite(
     )
     git_commit = manifest.get("git_commit")
     if not isinstance(git_commit, str) or not git_commit:
-        raise RuntimeError(
-            "suite execution requires a concrete git commit for provenance"
-        )
+        raise RuntimeError("suite execution requires a concrete git commit for provenance")
 
     failures: list[str] = []
     for job in manifest["jobs"]:
@@ -1226,9 +1185,7 @@ def execute_suite(
         artifact_error: str | None = None
         if status == "success":
             try:
-                result = parse_runner_stdout(
-                    completed.stdout
-                )
+                result = parse_runner_stdout(completed.stdout)
                 record_completed_suite_run(
                     run_dir,
                     suite_name=suite_name,
@@ -1243,27 +1200,18 @@ def execute_suite(
                 ValueError,
             ) as exc:
                 status = "failed"
-                artifact_error = (
-                    f"{type(exc).__name__}: {exc}"
-                )
+                artifact_error = f"{type(exc).__name__}: {exc}"
                 with stderr_path.open(
                     "a",
                     encoding="utf-8",
                 ) as handle:
-                    handle.write(
-                        "\nSTRICT_ARTIFACT_ERROR: "
-                        + artifact_error
-                        + "\n"
-                    )
+                    handle.write("\nSTRICT_ARTIFACT_ERROR: " + artifact_error + "\n")
 
         if status != "success":
             failure_reason = (
                 artifact_error
                 if artifact_error is not None
-                else (
-                    "runner subprocess exited with "
-                    f"code {completed.returncode}"
-                )
+                else (f"runner subprocess exited with code {completed.returncode}")
             )
             record_failed_suite_run(
                 run_dir,
@@ -1310,9 +1258,7 @@ def execute_suite(
             encoding="utf-8",
         )
         if status != "success":
-            failures.append(
-                str(job["run_id"])
-            )
+            failures.append(str(job["run_id"]))
             if not continue_on_error:
                 break
 
@@ -1323,11 +1269,7 @@ def execute_suite(
         "failures": failures,
         "status": "success" if not failures else "failed",
     }
-    summary_path = (
-        Path(output_root)
-        / suite_name
-        / "suite_execution_summary.json"
-    )
+    summary_path = Path(output_root) / suite_name / "suite_execution_summary.json"
     summary_path.write_text(
         json.dumps(
             summary,
@@ -1337,4 +1279,3 @@ def execute_suite(
         encoding="utf-8",
     )
     return summary
-

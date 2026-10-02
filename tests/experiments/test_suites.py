@@ -58,50 +58,20 @@ def test_suite_manifest_contains_complete_job_metadata(
 
 
 def test_comparison_and_ablation_jobs_are_atomic() -> None:
-    hidden_jobs = [
-        job
-        for job in SUITES["dev"].jobs
-        if job.job_id.startswith(
-            "hidden_context_"
-        )
-    ]
+    hidden_jobs = [job for job in SUITES["dev"].jobs if job.job_id.startswith("hidden_context_")]
     assert len(hidden_jobs) == 5
-    assert all(
-        job.target.endswith(
-            ":run_hidden_context_sac_variant"
-        )
-        for job in hidden_jobs
-    )
-    assert len(
-        {
-            job.kwargs["variant"]
-            for job in hidden_jobs
-        }
-    ) == 5
+    assert all(job.target.endswith(":run_hidden_context_sac_variant") for job in hidden_jobs)
+    assert len({job.kwargs["variant"] for job in hidden_jobs}) == 5
 
-    ablations = SUITES[
-        "ablation_core"
-    ].jobs
-    replay_jobs = [
-        job
-        for job in ablations
-        if job.hypothesis_id == "F"
-    ]
-    assert {
-        job.kwargs[
-            "replay_evidence_mode"
-        ]
-        for job in replay_jobs
-    } == {
+    ablations = SUITES["ablation_core"].jobs
+    replay_jobs = [job for job in ablations if job.hypothesis_id == "F"]
+    assert {job.kwargs["replay_evidence_mode"] for job in replay_jobs} == {
         "all_replay",
         "fresh_only_uncertainty",
         "inverse_reuse_weight",
         "normalized_batch_evidence",
     }
-    assert {
-        job.hypothesis_id
-        for job in ablations
-    } >= {
+    assert {job.hypothesis_id for job in ablations} >= {
         "C",
         "D",
         "F",
@@ -109,33 +79,16 @@ def test_comparison_and_ablation_jobs_are_atomic() -> None:
         "GB-T",
     }
 
-    plasticity_jobs = [
-        job
-        for job in ablations
-        if job.hypothesis_id == "C"
-    ]
-    assert {
-        job.kwargs[
-            "consolidation_retention"
-        ]
-        for job in plasticity_jobs
-    } == {
+    plasticity_jobs = [job for job in ablations if job.hypothesis_id == "C"]
+    assert {job.kwargs["consolidation_retention"] for job in plasticity_jobs} == {
         1.0,
         0.97,
     }
-    assert all(
-        job.primary_metric
-        == "post_shift_normalized_auc"
-        for job in plasticity_jobs
-    )
+    assert all(job.primary_metric == "post_shift_normalized_auc" for job in plasticity_jobs)
 
 
 def test_paper_suites_cover_every_execution_hypothesis() -> None:
-    hypothesis_ids = {
-        job.hypothesis_id
-        for suite in SUITES.values()
-        for job in suite.jobs
-    }
+    hypothesis_ids = {job.hypothesis_id for suite in SUITES.values() for job in suite.jobs}
     assert {
         "A",
         "B",
@@ -156,23 +109,14 @@ def test_paper_suites_cover_every_execution_hypothesis() -> None:
 
 
 def test_stationary_and_mechanism_suites_have_replicate_coverage() -> None:
-    stationary = SUITES[
-        "stationary_core"
-    ].jobs
-    assert {
-        job.job_id
-        for job in stationary
-    } == {
+    stationary = SUITES["stationary_core"].jobs
+    assert {job.job_id for job in stationary} == {
         "stationary_sac_adam",
         "stationary_sac_bgd",
         "stationary_ppo_adam",
         "stationary_ppo_bgd",
     }
-    assert all(
-        job.hypothesis_id
-        == "A"
-        for job in stationary
-    )
+    assert all(job.hypothesis_id == "A" for job in stationary)
     assert all(
         job.seeds
         == (
@@ -185,43 +129,22 @@ def test_stationary_and_mechanism_suites_have_replicate_coverage() -> None:
         for job in stationary
     )
 
-    mechanisms = SUITES[
-        "mechanism_analysis"
-    ].jobs
-    assert len(
-        mechanisms
-    ) == 1
-    assert mechanisms[
-        0
-    ].seeds == (
+    mechanisms = SUITES["mechanism_analysis"].jobs
+    assert len(mechanisms) == 1
+    assert mechanisms[0].seeds == (
         150,
         151,
         152,
         153,
         154,
     )
-    assert mechanisms[
-        0
-    ].seed_kwarg == "seed"
+    assert mechanisms[0].seed_kwarg == "seed"
 
 
 def test_external_baseline_suite_has_full_method_coverage() -> None:
-    jobs = SUITES[
-        "baseline_core"
-    ].jobs
-    regularized = [
-        job
-        for job in jobs
-        if job.target.endswith(
-            ":run_regularized_sac_recurring_lqr"
-        )
-    ]
-    assert {
-        job.kwargs[
-            "method"
-        ]
-        for job in regularized
-    } == {
+    jobs = SUITES["baseline_core"].jobs
+    regularized = [job for job in jobs if job.target.endswith(":run_regularized_sac_recurring_lqr")]
+    assert {job.kwargs["method"] for job in regularized} == {
         "ewc",
         "online_ewc",
         "si",
@@ -239,129 +162,33 @@ def test_external_baseline_suite_has_full_method_coverage() -> None:
         for job in jobs
     )
 
-    sac_controls = [
-        job
-        for job in jobs
-        if job.target.endswith(
-            ":run_sac_recurring_lqr_control"
-        )
-    ]
-    assert len(
-        sac_controls
-    ) == 1
+    sac_controls = [job for job in jobs if job.target.endswith(":run_sac_recurring_lqr_control")]
+    assert len(sac_controls) == 1
     sac_family = [
         *sac_controls,
         *regularized,
     ]
-    assert {
-        job.environment
-        for job in sac_family
-    } == {
-        "recurring_lqr_matched_v1"
-    }
-    assert {
-        job.protocol
-        for job in sac_family
-    } == {
-        "task_agnostic_fixed_update"
-    }
-    assert {
-        int(
-            job.kwargs[
-                "steps"
-            ]
-        )
-        for job in sac_family
-    } == {
-        600
-    }
-    assert {
-        int(
-            job.kwargs[
-                "phase_steps"
-            ]
-        )
-        for job in sac_family
-    } == {
-        120
-    }
-    assert {
-        int(
-            job.kwargs[
-                "horizon"
-            ]
-        )
-        for job in sac_family
-    } == {
-        32
-    }
+    assert {job.environment for job in sac_family} == {"recurring_lqr_matched_v1"}
+    assert {job.protocol for job in sac_family} == {"task_agnostic_fixed_update"}
+    assert {int(job.kwargs["steps"]) for job in sac_family} == {600}
+    assert {int(job.kwargs["phase_steps"]) for job in sac_family} == {120}
+    assert {int(job.kwargs["horizon"]) for job in sac_family} == {32}
 
-    ucl = [
-        job
-        for job in jobs
-        if job.target.endswith(
-            ":run_ucl_ppo_recurring_lqr"
-        )
-    ]
+    ucl = [job for job in jobs if job.target.endswith(":run_ucl_ppo_recurring_lqr")]
     ucl_controls = [
-        job
-        for job in jobs
-        if job.target.endswith(
-            ":run_adam_ppo_oracle_recurring_lqr_control"
-        )
+        job for job in jobs if job.target.endswith(":run_adam_ppo_oracle_recurring_lqr_control")
     ]
-    assert len(
-        ucl
-    ) == 1
-    assert len(
-        ucl_controls
-    ) == 1
+    assert len(ucl) == 1
+    assert len(ucl_controls) == 1
     ppo_family = [
         *ucl_controls,
         *ucl,
     ]
-    assert {
-        job.environment
-        for job in ppo_family
-    } == {
-        "recurring_lqr_matched_v1"
-    }
-    assert {
-        job.protocol
-        for job in ppo_family
-    } == {
-        "oracle_boundary"
-    }
-    assert {
-        int(
-            job.kwargs[
-                "phase_steps"
-            ]
-        )
-        for job in ppo_family
-    } == {
-        120
-    }
-    assert {
-        int(
-            job.kwargs[
-                "phases"
-            ]
-        )
-        for job in ppo_family
-    } == {
-        5
-    }
-    assert {
-        int(
-            job.kwargs[
-                "horizon"
-            ]
-        )
-        for job in ppo_family
-    } == {
-        32
-    }
+    assert {job.environment for job in ppo_family} == {"recurring_lqr_matched_v1"}
+    assert {job.protocol for job in ppo_family} == {"oracle_boundary"}
+    assert {int(job.kwargs["phase_steps"]) for job in ppo_family} == {120}
+    assert {int(job.kwargs["phases"]) for job in ppo_family} == {5}
+    assert {int(job.kwargs["horizon"]) for job in ppo_family} == {32}
 
 
 def _tiny_suite(
@@ -369,17 +196,12 @@ def _tiny_suite(
 ) -> ExperimentSuite:
     return ExperimentSuite(
         name="smoke",
-        description=(
-            "strict-artifact execution test"
-        ),
+        description=("strict-artifact execution test"),
         jobs=(
             ExperimentJob(
                 job_id="tiny_smoke",
                 hypothesis_id="TEST",
-                target=(
-                    "rl_bgd.runners.smoke:"
-                    "run_smoke"
-                ),
+                target=("rl_bgd.runners.smoke:run_smoke"),
                 kwargs={
                     "steps": 4,
                     "device": "cpu",
@@ -390,9 +212,7 @@ def _tiny_suite(
                 protocol="stationary",
                 config_path=None,
                 primary_metric=primary_metric,
-                secondary_metrics=(
-                    "initial_abs_mean",
-                ),
+                secondary_metrics=("initial_abs_mean",),
                 runtime_class="smoke",
             ),
         ),
@@ -403,9 +223,7 @@ def test_execute_suite_writes_strict_artifacts(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
-    suite = _tiny_suite(
-        "final_abs_mean"
-    )
+    suite = _tiny_suite("final_abs_mean")
     monkeypatch.setitem(
         SUITES,
         "smoke",
@@ -415,46 +233,21 @@ def test_execute_suite_writes_strict_artifacts(
         "smoke",
         tmp_path,
     )
-    assert result[
-        "status"
-    ] == "success"
-    run_dir = (
-        tmp_path
-        / "smoke"
-        / "smoke__tiny_smoke__seed_0"
-    )
-    loaded = load_run_directory(
-        run_dir
-    )
-    assert loaded.manifest.method == (
-        "BGD-smoke"
-    )
-    assert loaded.summary.metrics[
-        "final_abs_mean"
-    ] >= 0.0
-    metadata = json.loads(
-        (
-            run_dir
-            / "run_metadata.json"
-        ).read_text(
-            encoding="utf-8"
-        )
-    )
-    assert metadata[
-        "strict_artifacts"
-    ] is True
-    assert metadata[
-        "job_id"
-    ] == "tiny_smoke"
+    assert result["status"] == "success"
+    run_dir = tmp_path / "smoke" / "smoke__tiny_smoke__seed_0"
+    loaded = load_run_directory(run_dir)
+    assert loaded.manifest.method == ("BGD-smoke")
+    assert loaded.summary.metrics["final_abs_mean"] >= 0.0
+    metadata = json.loads((run_dir / "run_metadata.json").read_text(encoding="utf-8"))
+    assert metadata["strict_artifacts"] is True
+    assert metadata["job_id"] == "tiny_smoke"
 
 
 def test_execute_suite_fails_closed_on_missing_primary_metric(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
-    suite = _tiny_suite(
-        "does_not_exist"
-    )
+    suite = _tiny_suite("does_not_exist")
     monkeypatch.setitem(
         SUITES,
         suite.name,
@@ -464,46 +257,15 @@ def test_execute_suite_fails_closed_on_missing_primary_metric(
         suite.name,
         tmp_path,
     )
-    assert result[
-        "status"
-    ] == "failed"
-    run_dir = (
-        tmp_path
-        / suite.name
-        / "smoke__tiny_smoke__seed_0"
-    )
-    metadata = json.loads(
-        (
-            run_dir
-            / "run_metadata.json"
-        ).read_text(
-            encoding="utf-8"
-        )
-    )
-    assert metadata[
-        "strict_artifacts"
-    ] is False
-    assert (
-        "declared primary metric"
-        in metadata[
-            "artifact_error"
-        ]
-    )
-    failed_manifest = json.loads(
-        (
-            run_dir
-            / "manifest.json"
-        ).read_text(
-            encoding="utf-8"
-        )
-    )
-    assert failed_manifest[
-        "status"
-    ] == "failed"
+    assert result["status"] == "failed"
+    run_dir = tmp_path / suite.name / "smoke__tiny_smoke__seed_0"
+    metadata = json.loads((run_dir / "run_metadata.json").read_text(encoding="utf-8"))
+    assert metadata["strict_artifacts"] is False
+    assert "declared primary metric" in metadata["artifact_error"]
+    failed_manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert failed_manifest["status"] == "failed"
     with pytest.raises(
         ValueError,
         match="refuses incomplete",
     ):
-        load_run_directory(
-            run_dir
-        )
+        load_run_directory(run_dir)

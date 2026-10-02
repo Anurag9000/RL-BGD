@@ -14,9 +14,7 @@ def _checkpoint_int(
     name: str,
 ) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
-        raise TypeError(
-            f"{name} must be an integer"
-        )
+        raise TypeError(f"{name} must be an integer")
     return value
 
 
@@ -170,10 +168,13 @@ class ReplayBuffer:
     def load_state_dict(self, state: dict[str, object]) -> None:
         if state.get("version") != 1:
             raise ValueError("unsupported replay checkpoint version")
-        if _checkpoint_int(
-            state["capacity"],
-            name="replay capacity",
-        ) != self.capacity:
+        if (
+            _checkpoint_int(
+                state["capacity"],
+                name="replay capacity",
+            )
+            != self.capacity
+        ):
             raise ValueError("replay checkpoint capacity mismatch")
         size = _checkpoint_int(
             state["size"],

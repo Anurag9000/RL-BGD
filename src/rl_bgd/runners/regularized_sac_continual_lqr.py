@@ -65,9 +65,7 @@ def run_regularized_sac_recurring_lqr(
         seed,
         deterministic=True,
     )
-    resolved = resolve_device(
-        device
-    )
+    resolved = resolve_device(device)
     env = make_baseline_recurring_lqr(
         seed=seed,
         device=resolved,
@@ -103,9 +101,7 @@ def run_regularized_sac_recurring_lqr(
     return {
         "method": method,
         "steps": steps,
-        "benchmark_profile": (
-            BASELINE_RECURRING_LQR_PROFILE
-        ),
+        "benchmark_profile": (BASELINE_RECURRING_LQR_PROFILE),
         "phase_steps": phase_steps,
         "horizon": horizon,
         "training": training,
@@ -132,16 +128,12 @@ def run_sac_recurring_lqr_control(
     """Run the unregularized SAC control on the exact baseline stream."""
 
     if steps < 32:
-        raise ValueError(
-            "training horizon is too short"
-        )
+        raise ValueError("training horizon is too short")
     seed_everything(
         seed,
         deterministic=True,
     )
-    resolved = resolve_device(
-        device
-    )
+    resolved = resolve_device(device)
     env = make_baseline_recurring_lqr(
         seed=seed,
         device=resolved,
@@ -168,15 +160,11 @@ def run_sac_recurring_lqr_control(
     return {
         "method": "adam_control",
         "steps": steps,
-        "benchmark_profile": (
-            BASELINE_RECURRING_LQR_PROFILE
-        ),
+        "benchmark_profile": (BASELINE_RECURRING_LQR_PROFILE),
         "phase_steps": phase_steps,
         "horizon": horizon,
         "training": training,
-        "final_evaluation_context": (
-            env.evaluation_context
-        ),
+        "final_evaluation_context": (env.evaluation_context),
         "information_access": {
             "receives_task_id": False,
             "receives_task_boundary": False,

@@ -269,72 +269,37 @@ def test_asset_repair_ignores_unreachable_stale_xml(
     destination_root = continual_package / "assets"
     source_root = metaworld_package / "assets"
 
-    root_xml = (
-        destination_root
-        / "sawyer_xyz"
-        / "sawyer_bench.xml"
-    )
+    root_xml = destination_root / "sawyer_xyz" / "sawyer_bench.xml"
     root_xml.parent.mkdir(parents=True)
     root_xml.write_text(
         '<mujoco><include file="../objects/assets/buttonbox_dependencies.xml"/></mujoco>',
         encoding="utf-8",
     )
 
-    dependency = (
-        destination_root
-        / "objects"
-        / "assets"
-        / "buttonbox_dependencies.xml"
-    )
+    dependency = destination_root / "objects" / "assets" / "buttonbox_dependencies.xml"
     dependency.parent.mkdir(parents=True)
     dependency.write_text(
         '<mujoco><asset><texture file="../textures/metal1.png"/></asset></mujoco>',
         encoding="utf-8",
     )
 
-    stale = (
-        destination_root
-        / "objects"
-        / "assets"
-        / "xyz_base.xml"
-    )
+    stale = destination_root / "objects" / "assets" / "xyz_base.xml"
     stale.write_text(
         '<mujoco><include file="shared_config.xml"/></mujoco>',
         encoding="utf-8",
     )
 
-    canonical = (
-        source_root
-        / "textures"
-        / "metal1.png"
-    )
+    canonical = source_root / "textures" / "metal1.png"
     canonical.parent.mkdir(parents=True)
-    canonical.write_bytes(
-        b"canonical-metal"
-    )
+    canonical.write_bytes(b"canonical-metal")
 
     repaired = _repair_missing_metaworld_assets(
-        SimpleNamespace(
-            __file__=str(
-                continual_package
-                / "__init__.py"
-            )
-        ),
-        SimpleNamespace(
-            __file__=str(
-                metaworld_package
-                / "__init__.py"
-            )
-        ),
+        SimpleNamespace(__file__=str(continual_package / "__init__.py")),
+        SimpleNamespace(__file__=str(metaworld_package / "__init__.py")),
     )
 
-    assert repaired == (
-        "objects/textures/metal1.png",
-    )
-    assert not (
-        dependency.parent
-        / "shared_config.xml"
-    ).exists()
+    assert repaired == ("objects/textures/metal1.png",)
+    assert not (dependency.parent / "shared_config.xml").exists()
 
 
 def test_asset_repair_ignores_commented_file_references(
@@ -345,30 +310,21 @@ def test_asset_repair_ignores_commented_file_references(
     destination_root = continual_package / "assets"
     source_root = metaworld_package / "assets"
 
-    root_xml = (
-        destination_root
-        / "sawyer_xyz"
-        / "sawyer_bench.xml"
-    )
+    root_xml = destination_root / "sawyer_xyz" / "sawyer_bench.xml"
     root_xml.parent.mkdir(parents=True)
     root_xml.write_text(
         '<mujoco><include file="../objects/assets/xyz_base.xml"/></mujoco>',
         encoding="utf-8",
     )
 
-    xyz_base = (
-        destination_root
-        / "objects"
-        / "assets"
-        / "xyz_base.xml"
-    )
+    xyz_base = destination_root / "objects" / "assets" / "xyz_base.xml"
     xyz_base.parent.mkdir(parents=True)
     xyz_base.write_text(
         (
-            '<mujocoinclude>'
+            "<mujocoinclude>"
             '<!-- <include file="shared_config.xml"/> -->'
             '<geom type="box" size="1 1 1"/>'
-            '</mujocoinclude>'
+            "</mujocoinclude>"
         ),
         encoding="utf-8",
     )
@@ -376,65 +332,30 @@ def test_asset_repair_ignores_commented_file_references(
     source_root.mkdir(parents=True)
 
     repaired = _repair_missing_metaworld_assets(
-        SimpleNamespace(
-            __file__=str(
-                continual_package
-                / "__init__.py"
-            )
-        ),
-        SimpleNamespace(
-            __file__=str(
-                metaworld_package
-                / "__init__.py"
-            )
-        ),
+        SimpleNamespace(__file__=str(continual_package / "__init__.py")),
+        SimpleNamespace(__file__=str(metaworld_package / "__init__.py")),
     )
 
     assert repaired == ()
-    assert not (
-        xyz_base.parent
-        / "shared_config.xml"
-    ).exists()
+    assert not (xyz_base.parent / "shared_config.xml").exists()
 
 
-
-class FakeUnclosableContinualBench(
-    FakeContinualBench
-):
+class FakeUnclosableContinualBench(FakeContinualBench):
     def close(self) -> None:
         raise NotImplementedError
 
 
 def test_pinned_runtime_compatibility_defines_only_missing_debug_symbol() -> None:
-    module = ModuleType(
-        "fake_sawyer_bench"
-    )
+    module = ModuleType("fake_sawyer_bench")
 
-    repaired = (
-        _install_pinned_runtime_compatibility(
-            module
-        )
-    )
+    repaired = _install_pinned_runtime_compatibility(module)
 
-    assert repaired == (
-        "debug_grasp_reward_pad",
-    )
-    assert (
-        module.debug_grasp_reward_pad
-        == 0.0
-    )
-    assert (
-        _install_pinned_runtime_compatibility(
-            module
-        )
-        == ()
-    )
+    assert repaired == ("debug_grasp_reward_pad",)
+    assert module.debug_grasp_reward_pad == 0.0
+    assert _install_pinned_runtime_compatibility(module) == ()
 
 
 def test_close_tolerates_pinned_upstream_not_implemented() -> None:
-    env = ContinualBenchStreamEnv(
-        FakeUnclosableContinualBench()
-    )
+    env = ContinualBenchStreamEnv(FakeUnclosableContinualBench())
 
     env.close()
-

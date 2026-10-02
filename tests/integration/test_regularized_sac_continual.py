@@ -25,7 +25,6 @@ def test_regularized_sac_runner_does_not_receive_hidden_context() -> None:
     assert math.isfinite(metrics["critic_total_loss"])
 
 
-
 def test_regularized_sac_and_control_share_exact_baseline_profile() -> None:
     control = run_sac_recurring_lqr_control(
         steps=80,
@@ -45,53 +44,16 @@ def test_regularized_sac_and_control_share_exact_baseline_profile() -> None:
     )
 
     assert (
-        control[
-            "benchmark_profile"
-        ]
-        == regularized[
-            "benchmark_profile"
-        ]
+        control["benchmark_profile"]
+        == regularized["benchmark_profile"]
         == "recurring_lqr_matched_v1"
     )
-    assert control[
-        "phase_steps"
-    ] == regularized[
-        "phase_steps"
-    ] == 40
-    assert control[
-        "horizon"
-    ] == regularized[
-        "horizon"
-    ] == 24
-    assert (
-        control[
-            "final_evaluation_context"
-        ]
-        == regularized[
-            "final_evaluation_context"
-        ]
-    )
-    control_access = control[
-        "information_access"
-    ]
-    assert control_access[
-        "receives_task_id"
-    ] is False
-    assert control_access[
-        "receives_task_boundary"
-    ] is False
-    assert control_access[
-        "receives_environment_context"
-    ] is False
-    assert control_access[
-        "consolidation_trigger"
-    ] == "none"
-    assert math.isfinite(
-        float(
-            control[
-                "training"
-            ][
-                "final_10_mean_return"
-            ]
-        )
-    )
+    assert control["phase_steps"] == regularized["phase_steps"] == 40
+    assert control["horizon"] == regularized["horizon"] == 24
+    assert control["final_evaluation_context"] == regularized["final_evaluation_context"]
+    control_access = control["information_access"]
+    assert control_access["receives_task_id"] is False
+    assert control_access["receives_task_boundary"] is False
+    assert control_access["receives_environment_context"] is False
+    assert control_access["consolidation_trigger"] == "none"
+    assert math.isfinite(float(control["training"]["final_10_mean_return"]))

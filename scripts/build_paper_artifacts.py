@@ -51,13 +51,9 @@ def main() -> None:
         args.output_dir,
         config=PaperArtifactConfig(
             confidence=args.confidence,
-            bootstrap_resamples=(
-                args.bootstrap_resamples
-            ),
+            bootstrap_resamples=(args.bootstrap_resamples),
             seed=args.seed,
-            figure_formats=tuple(
-                args.figure_formats
-            ),
+            figure_formats=tuple(args.figure_formats),
         ),
     )
     print(

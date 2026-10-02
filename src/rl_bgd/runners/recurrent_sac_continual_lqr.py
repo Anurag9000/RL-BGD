@@ -121,12 +121,8 @@ def run_recurrent_sac_recurring_lqr(
                 seed=seed,
             ),
         )
-        recurrent_reset_count = summary.get(
-            "recurrent_reset_count"
-        )
-        completed_episodes = summary.get(
-            "episodes"
-        )
+        recurrent_reset_count = summary.get("recurrent_reset_count")
+        completed_episodes = summary.get("episodes")
         if (
             isinstance(
                 recurrent_reset_count,
@@ -145,9 +141,7 @@ def run_recurrent_sac_recurring_lqr(
                 int,
             )
         ):
-            raise TypeError(
-                "recurrent SAC summary reset/episode counts must be integers"
-            )
+            raise TypeError("recurrent SAC summary reset/episode counts must be integers")
 
         return {
             "optimizer": optimizer,
@@ -167,8 +161,7 @@ def run_recurrent_sac_recurring_lqr(
                     "previous_done",
                 ],
                 "hidden_state_resets_only_on_episode_end": (
-                    recurrent_reset_count
-                    == completed_episodes + 1
+                    recurrent_reset_count == completed_episodes + 1
                 ),
             },
         }

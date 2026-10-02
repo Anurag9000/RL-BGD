@@ -13,9 +13,7 @@ def _checkpoint_int(
     name: str,
 ) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
-        raise TypeError(
-            f"{name} must be an integer"
-        )
+        raise TypeError(f"{name} must be an integer")
     return value
 
 
@@ -24,16 +22,11 @@ def _checkpoint_float(
     *,
     name: str,
 ) -> float:
-    if (
-        isinstance(value, bool)
-        or not isinstance(
-            value,
-            (int, float),
-        )
+    if isinstance(value, bool) or not isinstance(
+        value,
+        (int, float),
     ):
-        raise TypeError(
-            f"{name} must be numeric"
-        )
+        raise TypeError(f"{name} must be numeric")
     return float(value)
 
 

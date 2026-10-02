@@ -34,9 +34,7 @@ def _step(
         observation, reward, terminated, truncated, info = output
         done = bool(terminated) or bool(truncated)
     else:
-        raise RuntimeError(
-            f"unexpected CORA Procgen step signature length: {len(output)}"
-        )
+        raise RuntimeError(f"unexpected CORA Procgen step signature length: {len(output)}")
     if not isinstance(info, dict):
         raise TypeError("CORA Procgen step info must be a dictionary")
     reward_value = float(reward)

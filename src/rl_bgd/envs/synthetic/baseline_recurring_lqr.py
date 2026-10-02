@@ -15,13 +15,10 @@ from rl_bgd.envs.synthetic.nonstationary_lqr import (
     ScheduledLQREnv,
 )
 
-BASELINE_RECURRING_LQR_PROFILE = (
-    "recurring_lqr_matched_v1"
-)
+BASELINE_RECURRING_LQR_PROFILE = "recurring_lqr_matched_v1"
 
 
-def baseline_recurring_lqr_anchors(
-) -> tuple[
+def baseline_recurring_lqr_anchors() -> tuple[
     dict[str, float],
     ...,
 ]:
@@ -53,20 +50,14 @@ def make_baseline_recurring_lqr(
     """Build the exact recurring stream shared by baseline/control runners."""
 
     if phase_steps < 1:
-        raise ValueError(
-            "baseline recurring LQR phase_steps must be positive"
-        )
+        raise ValueError("baseline recurring LQR phase_steps must be positive")
     if horizon < 1:
-        raise ValueError(
-            "baseline recurring LQR horizon must be positive"
-        )
+        raise ValueError("baseline recurring LQR horizon must be positive")
 
     schedule = ContextSchedule(
         ContextScheduleConfig(
             mode="recurring",
-            anchors=(
-                baseline_recurring_lqr_anchors()
-            ),
+            anchors=(baseline_recurring_lqr_anchors()),
             phase_steps=phase_steps,
             seed=seed,
         )

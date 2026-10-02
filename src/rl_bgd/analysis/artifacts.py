@@ -33,17 +33,11 @@ class BootstrapConfig:
 
     def validate(self) -> None:
         if self.samples < 1:
-            raise ValueError(
-                "bootstrap samples must be positive"
-            )
+            raise ValueError("bootstrap samples must be positive")
         if not 0.0 < self.confidence < 1.0:
-            raise ValueError(
-                "bootstrap confidence must lie in (0, 1)"
-            )
+            raise ValueError("bootstrap confidence must lie in (0, 1)")
         if self.seed < 0:
-            raise ValueError(
-                "bootstrap seed must be non-negative"
-            )
+            raise ValueError("bootstrap seed must be non-negative")
 
 
 def bootstrap_mean_ci(
@@ -51,10 +45,7 @@ def bootstrap_mean_ci(
     *,
     config: BootstrapConfig | None = None,
 ) -> dict[str, float]:
-    resolved = (
-        config
-        or BootstrapConfig()
-    )
+    resolved = config or BootstrapConfig()
     resolved.validate()
     estimate = _bootstrap_mean_ci(
         values,
@@ -63,19 +54,13 @@ def bootstrap_mean_ci(
         seed=resolved.seed,
     )
     return {
-        "n": float(
-            estimate.n
-        ),
+        "n": float(estimate.n),
         "mean": estimate.mean,
         "std": estimate.std,
         "ci_low": estimate.ci_low,
         "ci_high": estimate.ci_high,
-        "confidence": (
-            estimate.confidence
-        ),
-        "bootstrap_samples": float(
-            estimate.resamples
-        ),
+        "confidence": (estimate.confidence),
+        "bootstrap_samples": float(estimate.resamples),
     }
 
 
@@ -84,12 +69,8 @@ def discover_run_records(
 ) -> list[dict[str, Any]]:
     """Expose completed canonical runs as flat records without skipping failures."""
 
-    runs = load_paper_runs(
-        run_root
-    )
-    records: list[
-        dict[str, Any]
-    ] = []
+    runs = load_paper_runs(run_root)
+    records: list[dict[str, Any]] = []
     for run in runs:
         record: dict[
             str,
@@ -97,54 +78,20 @@ def discover_run_records(
         ] = {
             "run_id": run.manifest.run_id,
             "seed": run.manifest.seed,
-            "git_commit": (
-                run.manifest.git_commit
-            ),
-            "algorithm": (
-                run.manifest.method
-            ),
-            "environment": (
-                run.manifest.benchmark
-            ),
-            "protocol": (
-                run.manifest.setting
-            ),
-            "suite": (
-                run.manifest.metadata.get(
-                    "suite"
-                )
-            ),
-            "job_id": (
-                run.manifest.metadata.get(
-                    "job_id"
-                )
-            ),
-            "hypothesis_id": (
-                run.manifest.metadata.get(
-                    "hypothesis_id"
-                )
-            ),
-            "primary_metric": (
-                run.manifest.metadata.get(
-                    "primary_metric"
-                )
-            ),
+            "git_commit": (run.manifest.git_commit),
+            "algorithm": (run.manifest.method),
+            "environment": (run.manifest.benchmark),
+            "protocol": (run.manifest.setting),
+            "suite": (run.manifest.metadata.get("suite")),
+            "job_id": (run.manifest.metadata.get("job_id")),
+            "hypothesis_id": (run.manifest.metadata.get("hypothesis_id")),
+            "primary_metric": (run.manifest.metadata.get("primary_metric")),
         }
-        for key, value in (
-            run.summary.metrics.items()
-        ):
-            record[
-                f"metric.{key}"
-            ] = value
-        for key, value in (
-            run.summary.resources.items()
-        ):
-            record[
-                f"resource.{key}"
-            ] = value
-        records.append(
-            record
-        )
+        for key, value in run.summary.metrics.items():
+            record[f"metric.{key}"] = value
+        for key, value in run.summary.resources.items():
+            record[f"resource.{key}"] = value
+        records.append(record)
     return records
 
 
@@ -156,37 +103,24 @@ def build_paper_artifacts(
 ) -> dict[str, Any]:
     """Delegate to the strict builder while returning legacy report keys too."""
 
-    resolved = (
-        bootstrap
-        or BootstrapConfig()
-    )
+    resolved = bootstrap or BootstrapConfig()
     resolved.validate()
     manifest = _build_paper_artifacts(
         run_root,
         output_dir,
         config=PaperArtifactConfig(
             confidence=resolved.confidence,
-            bootstrap_resamples=(
-                resolved.samples
-            ),
+            bootstrap_resamples=(resolved.samples),
             seed=resolved.seed,
         ),
     )
-    output = Path(
-        output_dir
-    )
-    aggregate_path = (
-        output
-        / "tables"
-        / "aggregate_statistics.csv"
-    )
+    output = Path(output_dir)
+    aggregate_path = output / "tables" / "aggregate_statistics.csv"
     bootstrap_groups = 0
     if aggregate_path.is_file():
         import pandas as pd
 
-        aggregate = pd.read_csv(
-            aggregate_path
-        )
+        aggregate = pd.read_csv(aggregate_path)
         bootstrap_groups = int(
             len(
                 aggregate[
@@ -199,39 +133,19 @@ def build_paper_artifacts(
                 ].drop_duplicates()
             )
         )
-    suite_manifests = tuple(
-        Path(
-            run_root
-        ).rglob(
-            "suite_manifest.json"
-        )
-    )
-    generated_tables = manifest.get(
-        "generated_tables"
-    )
-    generated_figures = manifest.get(
-        "generated_figures"
-    )
+    suite_manifests = tuple(Path(run_root).rglob("suite_manifest.json"))
+    generated_tables = manifest.get("generated_tables")
+    generated_figures = manifest.get("generated_figures")
     if not isinstance(
         generated_tables,
         list,
-    ) or not all(
-        isinstance(value, str)
-        for value in generated_tables
-    ):
-        raise TypeError(
-            "paper manifest generated_tables must be a list of strings"
-        )
+    ) or not all(isinstance(value, str) for value in generated_tables):
+        raise TypeError("paper manifest generated_tables must be a list of strings")
     if not isinstance(
         generated_figures,
         list,
-    ) or not all(
-        isinstance(value, str)
-        for value in generated_figures
-    ):
-        raise TypeError(
-            "paper manifest generated_figures must be a list of strings"
-        )
+    ) or not all(isinstance(value, str) for value in generated_figures):
+        raise TypeError("paper manifest generated_figures must be a list of strings")
     artifacts = [
         *generated_tables,
         *generated_figures,
@@ -239,37 +153,16 @@ def build_paper_artifacts(
     ]
     return {
         "schema_version": 3,
-        "run_schema": (
-            "manifest.json + config.yaml + metrics.csv + summary.json"
-        ),
-        "run_root": str(
-            Path(
-                run_root
-            )
-        ),
-        "runs_aggregated": (
-            manifest[
-                "run_count"
-            ]
-        ),
-        "bootstrap_groups": (
-            bootstrap_groups
-        ),
-        "manifests_indexed": len(
-            suite_manifests
-        ),
+        "run_schema": ("manifest.json + config.yaml + metrics.csv + summary.json"),
+        "run_root": str(Path(run_root)),
+        "runs_aggregated": (manifest["run_count"]),
+        "bootstrap_groups": (bootstrap_groups),
+        "manifests_indexed": len(suite_manifests),
         "bootstrap": {
-            "samples": (
-                resolved.samples
-            ),
-            "confidence": (
-                resolved.confidence
-            ),
+            "samples": (resolved.samples),
+            "confidence": (resolved.confidence),
             "seed": resolved.seed,
         },
         "artifacts": artifacts,
-        "canonical_manifest": str(
-            output
-            / "paper_manifest.json"
-        ),
+        "canonical_manifest": str(output / "paper_manifest.json"),
     }

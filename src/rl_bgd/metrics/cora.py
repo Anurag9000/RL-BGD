@@ -184,10 +184,7 @@ def cora_isolated_zero_shot_forward_transfer(
     output: dict[
         int,
         list[float],
-    ] = {
-        index: []
-        for index in ids
-    }
+    ] = {index: [] for index in ids}
 
     for trace in traces:
         scaled = CORATrace(

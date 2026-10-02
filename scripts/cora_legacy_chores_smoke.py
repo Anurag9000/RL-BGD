@@ -11,10 +11,7 @@ import numpy as np
 from continual_rl.experiments.tasks.make_chores_task import get_chores_task
 from continual_rl.utils.utils import Utils
 
-_DEMO = (
-    "pick_and_place_simple-ToiletPaper-None-ToiletPaperHanger-402/"
-    "trial_T20210817_071626_357261"
-)
+_DEMO = "pick_and_place_simple-ToiletPaper-None-ToiletPaperHanger-402/trial_T20210817_071626_357261"
 
 
 def _reset(env: Any) -> Any:
@@ -37,9 +34,7 @@ def _step(
         observation, reward, terminated, truncated, info = output
         done = bool(terminated) or bool(truncated)
     else:
-        raise RuntimeError(
-            f"unexpected CORA CHORES step signature length: {len(output)}"
-        )
+        raise RuntimeError(f"unexpected CORA CHORES step signature length: {len(output)}")
     if not isinstance(info, dict):
         raise TypeError("CORA CHORES step info must be a dictionary")
     reward_value = float(reward)
@@ -59,10 +54,7 @@ def main() -> None:
         "traj_data.json",
     )
     if not os.path.isfile(expected_demo):
-        raise FileNotFoundError(
-            "official CORA CHORES trajectory was not found: "
-            f"{expected_demo}"
-        )
+        raise FileNotFoundError(f"official CORA CHORES trajectory was not found: {expected_demo}")
 
     task = get_chores_task(
         "rl_bgd_cora_chores_smoke",
@@ -90,10 +82,7 @@ def main() -> None:
             action,
         )
         next_array = np.asarray(next_observation)
-        if (
-            next_array.size == 0
-            or not np.isfinite(next_array.astype(np.float32)).all()
-        ):
+        if next_array.size == 0 or not np.isfinite(next_array.astype(np.float32)).all():
             raise RuntimeError("CORA CHORES step returned an invalid observation")
 
         import ai2thor

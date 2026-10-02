@@ -278,17 +278,8 @@ def test_matrix_rows_preserve_stage_and_task_identity() -> None:
             ],
         }
     )
-    matrix_rows = [
-        row
-        for row in rows
-        if row[
-            "series"
-        ]
-        == "return_matrix"
-    ]
-    assert len(
-        matrix_rows
-    ) == 4
+    matrix_rows = [row for row in rows if row["series"] == "return_matrix"]
+    assert len(matrix_rows) == 4
     assert matrix_rows[-1] == {
         "series": "return_matrix",
         "row_index": 3,

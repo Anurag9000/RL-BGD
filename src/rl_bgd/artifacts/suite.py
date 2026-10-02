@@ -56,19 +56,12 @@ def information_access_for_result(
         {},
     )
     if not isinstance(raw, Mapping):
-        raise TypeError(
-            "runner information_access must be a mapping when present"
-        )
-    explicit = {
-        str(key): value
-        for key, value in raw.items()
-        if isinstance(value, bool)
-    }
+        raise TypeError("runner information_access must be a mapping when present")
+    explicit = {str(key): value for key, value in raw.items() if isinstance(value, bool)}
     for key, expected in derived.items():
         if key in explicit and explicit[key] != expected:
             raise ValueError(
-                "runner information-access metadata contradicts "
-                f"protocol {protocol!r}: {key}"
+                f"runner information-access metadata contradicts protocol {protocol!r}: {key}"
             )
     return {
         **derived,
@@ -84,22 +77,14 @@ def _source_config(
 ]:
     if config_path is None:
         return None, {}
-    declared_path = Path(
-        str(config_path)
-    )
+    declared_path = Path(str(config_path))
     path = (
         declared_path
         if declared_path.is_absolute()
-        else (
-            Path(__file__).resolve().parents[3]
-            / declared_path
-        )
+        else (Path(__file__).resolve().parents[3] / declared_path)
     )
     if not path.is_file():
-        raise FileNotFoundError(
-            "suite source config does not exist: "
-            f"{declared_path}"
-        )
+        raise FileNotFoundError(f"suite source config does not exist: {declared_path}")
     try:
         payload = yaml.safe_load(path.read_text(encoding="utf-8"))
     except (
@@ -163,20 +148,13 @@ def _resolve_primary_metric(
         return float(summary.resources[metric])
 
     suffix = f".{metric}"
-    matches = [
-        float(value)
-        for key, value in summary.metrics.items()
-        if key.endswith(suffix)
-    ]
+    matches = [float(value) for key, value in summary.metrics.items() if key.endswith(suffix)]
     if len(matches) == 1:
         return matches[0]
     if not matches:
-        raise ValueError(
-            f"declared primary metric {metric!r} is absent from run result"
-        )
+        raise ValueError(f"declared primary metric {metric!r} is absent from run result")
     raise ValueError(
-        f"declared primary metric {metric!r} is ambiguous across "
-        f"{len(matches)} result paths"
+        f"declared primary metric {metric!r} is ambiguous across {len(matches)} result paths"
     )
 
 
@@ -234,10 +212,7 @@ def record_completed_suite_run(
         summary,
         primary_metric,
     )
-    if (
-        primary_metric not in summary.metrics
-        and primary_metric not in summary.resources
-    ):
+    if primary_metric not in summary.metrics and primary_metric not in summary.resources:
         summary = RunSummary(
             run_id=summary.run_id,
             metrics={

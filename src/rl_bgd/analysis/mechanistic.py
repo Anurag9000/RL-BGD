@@ -570,6 +570,7 @@ def run_mechanistic_analysis(
     )
     return summary
 
+
 def run_seeded_mechanistic_analysis(
     output_dir: str | Path,
     *,
@@ -585,4 +586,3 @@ def run_seeded_mechanistic_analysis(
             device=device,
         ),
     )
-

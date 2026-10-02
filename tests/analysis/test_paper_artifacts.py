@@ -45,11 +45,7 @@ def _write_run(
             "receives_environment_context": False,
         },
         metadata={
-            "job_id": (
-                "method_a"
-                if method == "A"
-                else "method_b"
-            ),
+            "job_id": ("method_a" if method == "A" else "method_b"),
         },
     )
     write_run_artifacts(
@@ -63,21 +59,12 @@ def _write_run(
             },
             task_metrics={
                 "task_a": {
-                    "final_performance": (
-                        final_average
-                        + 0.1
-                    ),
+                    "final_performance": (final_average + 0.1),
                     "forgetting": forgetting,
                 },
                 "task_b": {
-                    "final_performance": (
-                        final_average
-                        - 0.1
-                    ),
-                    "forgetting": (
-                        forgetting
-                        / 2.0
-                    ),
+                    "final_performance": (final_average - 0.1),
+                    "forgetting": (forgetting / 2.0),
                 },
             },
             resources={
@@ -91,10 +78,7 @@ def _write_run(
         metrics_rows=[
             {
                 "step": 0,
-                "return": (
-                    final_average
-                    - 0.2
-                ),
+                "return": (final_average - 0.2),
             },
             {
                 "step": 10,
@@ -107,10 +91,7 @@ def _write_run(
 def test_paper_builder_generates_provenance_tables_statistics_and_figures(
     tmp_path: Path,
 ) -> None:
-    results = (
-        tmp_path
-        / "results"
-    )
+    results = tmp_path / "results"
     _write_run(
         results,
         run_id="a_seed_0",
@@ -148,45 +129,21 @@ def test_paper_builder_generates_provenance_tables_statistics_and_figures(
         duration=9.0,
     )
 
-    output = (
-        tmp_path
-        / "paper"
-    )
-    manifest = (
-        build_paper_artifacts(
-            results,
-            output,
-            config=PaperArtifactConfig(
-                bootstrap_resamples=200,
-                seed=17,
-                figure_formats=(
-                    "png",
-                ),
-            ),
-        )
+    output = tmp_path / "paper"
+    manifest = build_paper_artifacts(
+        results,
+        output,
+        config=PaperArtifactConfig(
+            bootstrap_resamples=200,
+            seed=17,
+            figure_formats=("png",),
+        ),
     )
 
-    assert manifest[
-        "run_count"
-    ] == 4
-    assert manifest[
-        "integrity"
-    ][
-        "manual_result_transcription"
-    ] is False
-    assert len(
-        manifest[
-            "source_runs"
-        ]
-    ) == 4
-    assert all(
-        source[
-            "source_hashes"
-        ]
-        for source in manifest[
-            "source_runs"
-        ]
-    )
+    assert manifest["run_count"] == 4
+    assert manifest["integrity"]["manual_result_transcription"] is False
+    assert len(manifest["source_runs"]) == 4
+    assert all(source["source_hashes"] for source in manifest["source_runs"])
 
     for stem in (
         "aggregate_statistics",
@@ -201,116 +158,37 @@ def test_paper_builder_generates_provenance_tables_statistics_and_figures(
             "md",
             "tex",
         ):
-            assert (
-                output
-                / "tables"
-                / f"{stem}.{extension}"
-            ).is_file()
+            assert (output / "tables" / f"{stem}.{extension}").is_file()
 
-    aggregate = pd.read_csv(
-        output
-        / "tables"
-        / "aggregate_statistics.csv"
-    )
+    aggregate = pd.read_csv(output / "tables" / "aggregate_statistics.csv")
     a_final = aggregate[
-        (
-            aggregate[
-                "method"
-            ]
-            == "A"
-        )
-        & (
-            aggregate[
-                "metric"
-            ]
-            == "final_average"
-        )
+        (aggregate["method"] == "A") & (aggregate["metric"] == "final_average")
     ].iloc[0]
-    assert a_final[
-        "mean"
-    ] == pytest.approx(
-        0.7
-    )
-    assert a_final[
-        "n"
-    ] == 2
+    assert a_final["mean"] == pytest.approx(0.7)
+    assert a_final["n"] == 2
 
-    paired = pd.read_csv(
-        output
-        / "tables"
-        / "paired_differences.csv"
-    )
-    difference = paired[
-        paired[
-            "metric"
-        ]
-        == "final_average"
-    ].iloc[0]
-    assert difference[
-        "mean"
-    ] == pytest.approx(
-        0.1
-    )
-    assert difference[
-        "n"
-    ] == 2
+    paired = pd.read_csv(output / "tables" / "paired_differences.csv")
+    difference = paired[paired["metric"] == "final_average"].iloc[0]
+    assert difference["mean"] == pytest.approx(0.1)
+    assert difference["n"] == 2
 
-    task_stats = pd.read_csv(
-        output
-        / "tables"
-        / "hierarchical_task_statistics.csv"
-    )
-    assert (
-        "final_performance"
-        in set(
-            task_stats[
-                "metric"
-            ]
-        )
-    )
+    task_stats = pd.read_csv(output / "tables" / "hierarchical_task_statistics.csv")
+    assert "final_performance" in set(task_stats["metric"])
 
-    assert (
-        output
-        / "figures"
-        / "final_performance.png"
-    ).is_file()
-    assert (
-        output
-        / "figures"
-        / "compute_performance.png"
-    ).is_file()
+    assert (output / "figures" / "final_performance.png").is_file()
+    assert (output / "figures" / "compute_performance.png").is_file()
     assert any(
-        path.name.startswith(
-            "learning_curve_"
-        )
-        for path in (
-            output
-            / "figures"
-        ).glob(
-            "*.png"
-        )
+        path.name.startswith("learning_curve_") for path in (output / "figures").glob("*.png")
     )
 
-    saved_manifest = json.loads(
-        (
-            output
-            / "paper_manifest.json"
-        ).read_text(
-            encoding="utf-8"
-        )
-    )
-    assert saved_manifest[
-        "run_count"
-    ] == 4
+    saved_manifest = json.loads((output / "paper_manifest.json").read_text(encoding="utf-8"))
+    assert saved_manifest["run_count"] == 4
 
 
 def test_paper_builder_refuses_failed_seed(
     tmp_path: Path,
 ) -> None:
-    results = (
-        tmp_path
-        / "results"
-    )
+    results = tmp_path / "results"
     _write_run(
         results,
         run_id="ok",
@@ -336,13 +214,10 @@ def test_paper_builder_refuses_failed_seed(
     ):
         build_paper_artifacts(
             results,
-            tmp_path
-            / "paper",
+            tmp_path / "paper",
             config=PaperArtifactConfig(
                 bootstrap_resamples=20,
-                figure_formats=(
-                    "png",
-                ),
+                figure_formats=("png",),
             ),
         )
 
@@ -350,10 +225,7 @@ def test_paper_builder_refuses_failed_seed(
 def test_paper_builder_rejects_metric_missing_from_one_matched_seed(
     tmp_path: Path,
 ) -> None:
-    results = (
-        tmp_path
-        / "results"
-    )
+    results = tmp_path / "results"
     _write_run(
         results,
         run_id="a0",
@@ -372,21 +244,9 @@ def test_paper_builder_rejects_metric_missing_from_one_matched_seed(
         forgetting=0.2,
         duration=1.0,
     )
-    summary_path = (
-        results
-        / "a1"
-        / "summary.json"
-    )
-    payload = json.loads(
-        summary_path.read_text(
-            encoding="utf-8"
-        )
-    )
-    del payload[
-        "metrics"
-    ][
-        "forgetting"
-    ]
+    summary_path = results / "a1" / "summary.json"
+    payload = json.loads(summary_path.read_text(encoding="utf-8"))
+    del payload["metrics"]["forgetting"]
     summary_path.write_text(
         json.dumps(payload),
         encoding="utf-8",
@@ -398,13 +258,10 @@ def test_paper_builder_rejects_metric_missing_from_one_matched_seed(
     ):
         build_paper_artifacts(
             results,
-            tmp_path
-            / "paper",
+            tmp_path / "paper",
             config=PaperArtifactConfig(
                 bootstrap_resamples=20,
-                figure_formats=(
-                    "png",
-                ),
+                figure_formats=("png",),
             ),
         )
 
@@ -412,17 +269,12 @@ def test_paper_builder_rejects_metric_missing_from_one_matched_seed(
 def test_paper_builder_generates_continual_matrix_and_timeline_figures(
     tmp_path: Path,
 ) -> None:
-    results = (
-        tmp_path
-        / "results"
-    )
+    results = tmp_path / "results"
     for seed, offset in (
         (0, 0.0),
         (1, 0.2),
     ):
-        run_id = (
-            f"cw_seed_{seed}"
-        )
+        run_id = f"cw_seed_{seed}"
         result = {
             "task_names": [
                 "task_a",
@@ -459,27 +311,15 @@ def test_paper_builder_generates_continual_matrix_and_timeline_figures(
             "surprise_timeline": [
                 {
                     "step": 10,
-                    "surprise_smoothed": (
-                        0.2 + offset
-                    ),
-                    "retention_lambda": (
-                        0.9 - offset / 10.0
-                    ),
-                    "critic1_sigma_mean": (
-                        0.1 + offset / 10.0
-                    ),
+                    "surprise_smoothed": (0.2 + offset),
+                    "retention_lambda": (0.9 - offset / 10.0),
+                    "critic1_sigma_mean": (0.1 + offset / 10.0),
                 },
                 {
                     "step": 20,
-                    "surprise_smoothed": (
-                        0.5 + offset
-                    ),
-                    "retention_lambda": (
-                        0.7 - offset / 10.0
-                    ),
-                    "critic1_sigma_mean": (
-                        0.12 + offset / 10.0
-                    ),
+                    "surprise_smoothed": (0.5 + offset),
+                    "retention_lambda": (0.7 - offset / 10.0),
+                    "critic1_sigma_mean": (0.12 + offset / 10.0),
                 },
             ],
             "post_shift_loss_timeline": [
@@ -489,22 +329,16 @@ def test_paper_builder_generates_continual_matrix_and_timeline_figures(
                 },
                 {
                     "step": 1,
-                    "normalized_target_loss": (
-                        0.6
-                        + offset / 10.0
-                    ),
+                    "normalized_target_loss": (0.6 + offset / 10.0),
                 },
             ],
         }
         write_run_artifacts(
-            results
-            / run_id,
+            results / run_id,
             manifest=RunManifest(
                 run_id=run_id,
                 method="Adaptive-BGD",
-                setting=(
-                    "strict_task_agnostic"
-                ),
+                setting=("strict_task_agnostic"),
                 benchmark="toy_cw",
                 seed=seed,
                 git_commit="deadbeef",
@@ -518,87 +352,44 @@ def test_paper_builder_generates_continual_matrix_and_timeline_figures(
                     "receives_environment_context": False,
                 },
                 metadata={
-                    "job_id": (
-                        "adaptive_cw"
-                    ),
-                    "primary_metric": (
-                        "final_average"
-                    ),
+                    "job_id": ("adaptive_cw"),
+                    "primary_metric": ("final_average"),
                 },
             ),
             summary=RunSummary(
                 run_id=run_id,
                 metrics={
-                    "final_average": (
-                        1.15 + offset
-                    ),
+                    "final_average": (1.15 + offset),
                 },
                 task_metrics={
                     "task_a": {
-                        "final_performance": (
-                            0.8 + offset
-                        ),
+                        "final_performance": (0.8 + offset),
                     },
                     "task_b": {
-                        "final_performance": (
-                            1.5 + offset
-                        ),
+                        "final_performance": (1.5 + offset),
                     },
                 },
             ),
             resolved_config={
                 "seed": seed,
             },
-            metrics_rows=(
-                metrics_rows_from_result(
-                    result
-                )
-            ),
+            metrics_rows=(metrics_rows_from_result(result)),
         )
 
-    output = (
-        tmp_path
-        / "paper"
-    )
+    output = tmp_path / "paper"
     manifest = build_paper_artifacts(
         results,
         output,
         config=PaperArtifactConfig(
             bootstrap_resamples=100,
             seed=31,
-            figure_formats=(
-                "png",
-            ),
+            figure_formats=("png",),
         ),
     )
 
-    generated = set(
-        manifest[
-            "generated_figures"
-        ]
-    )
-    assert any(
-        "continual_matrix_return_matrix"
-        in name
-        for name in generated
-    )
-    assert any(
-        "continual_matrix_success_matrix"
-        in name
-        for name in generated
-    )
-    assert any(
-        "adaptation_curve_return_matrix"
-        in name
-        for name in generated
-    )
-    assert any(
-        "timeline_surprise_timeline"
-        in name
-        for name in generated
-    )
-    assert any(
-        "timeline_post_shift_loss_timeline"
-        in name
-        for name in generated
-    )
+    generated = set(manifest["generated_figures"])
+    assert any("continual_matrix_return_matrix" in name for name in generated)
+    assert any("continual_matrix_success_matrix" in name for name in generated)
+    assert any("adaptation_curve_return_matrix" in name for name in generated)
+    assert any("timeline_surprise_timeline" in name for name in generated)
+    assert any("timeline_post_shift_loss_timeline" in name for name in generated)

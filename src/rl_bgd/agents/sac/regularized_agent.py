@@ -268,9 +268,7 @@ class RegularizedSACAgent(SACAgent):
                     self.actor_regularizer,
                     SynapticIntelligence,
                 ):
-                    raise RuntimeError(
-                        "SI consolidation must use the path-integral branch"
-                    )
+                    raise RuntimeError("SI consolidation must use the path-integral branch")
                 actor_importance = self._actor_importance(batch)
                 self.actor_regularizer.consolidate(
                     self.actor,
@@ -282,9 +280,7 @@ class RegularizedSACAgent(SACAgent):
                     self.critic_regularizer,
                     SynapticIntelligence,
                 ):
-                    raise RuntimeError(
-                        "SI consolidation must use the path-integral branch"
-                    )
+                    raise RuntimeError("SI consolidation must use the path-integral branch")
                 target = (
                     critic_target.detach()
                     if critic_target is not None
