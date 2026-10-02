@@ -50,10 +50,13 @@ without installing those historical dependencies into RL-BGD's modern runtime.
 The MiniHack smoke bridges only CORA's obsolete private `_vardir`/seed wrapper
 assumptions.
 
-CHORES/ALFRED has a pinned Xvfb/`crl_alfred` manual recovery workflow and an
-exact published-demo smoke, but faithful execution remains blocked by the
-unavailable official CORA regenerated-trajectory archive. Generic ALFRED or
-ALFWorld trajectories are not treated as substitutes.
+CHORES/ALFRED has a pinned Xvfb/`crl_alfred` manual recovery workflow, a
+complete archive validator derived from CORA's four pinned metadata files, and
+an exact published-demo smoke. The validator requires all 27 train/valid_seen
+trajectory references and every raw goal image before runtime. Faithful
+execution remains blocked only by the unavailable official regenerated-
+trajectory archive; generic ALFRED or ALFWorld trajectories are not treated as
+substitutes.
 
 
 UCL-PPO is implemented as an explicitly oracle-boundary comparator because the
