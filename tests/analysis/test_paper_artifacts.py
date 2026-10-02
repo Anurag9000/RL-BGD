@@ -11,6 +11,7 @@ from rl_bgd.analysis.paper_artifacts import (
 from rl_bgd.artifacts import (
     RunManifest,
     RunSummary,
+    metrics_rows_from_result,
     write_run_artifacts,
 )
 
@@ -406,3 +407,181 @@ def test_paper_builder_rejects_metric_missing_from_one_matched_seed(
                 ),
             ),
         )
+
+
+
+def test_paper_builder_generates_continual_matrix_and_timeline_figures(
+    tmp_path: Path,
+) -> None:
+    results = (
+        tmp_path
+        / "results"
+    )
+    for seed, offset in (
+        (0, 0.0),
+        (1, 0.2),
+    ):
+        run_id = (
+            f"cw_seed_{seed}"
+        )
+        result = {
+            "task_names": [
+                "task_a",
+                "task_b",
+            ],
+            "return_stage_labels": [
+                "after_a",
+                "after_b",
+            ],
+            "return_matrix": [
+                [
+                    1.0 + offset,
+                    0.5 + offset,
+                ],
+                [
+                    0.8 + offset,
+                    1.5 + offset,
+                ],
+            ],
+            "success_stage_labels": [
+                "after_a",
+                "after_b",
+            ],
+            "success_matrix": [
+                [
+                    0.5,
+                    0.0,
+                ],
+                [
+                    0.4,
+                    0.8,
+                ],
+            ],
+            "surprise_timeline": [
+                {
+                    "step": 10,
+                    "surprise_smoothed": (
+                        0.2 + offset
+                    ),
+                    "retention_lambda": (
+                        0.9 - offset / 10.0
+                    ),
+                    "critic1_sigma_mean": (
+                        0.1 + offset / 10.0
+                    ),
+                },
+                {
+                    "step": 20,
+                    "surprise_smoothed": (
+                        0.5 + offset
+                    ),
+                    "retention_lambda": (
+                        0.7 - offset / 10.0
+                    ),
+                    "critic1_sigma_mean": (
+                        0.12 + offset / 10.0
+                    ),
+                },
+            ],
+        }
+        write_run_artifacts(
+            results
+            / run_id,
+            manifest=RunManifest(
+                run_id=run_id,
+                method="Adaptive-BGD",
+                setting=(
+                    "strict_task_agnostic"
+                ),
+                benchmark="toy_cw",
+                seed=seed,
+                git_commit="deadbeef",
+                task_order=(
+                    "task_a",
+                    "task_b",
+                ),
+                information_access={
+                    "receives_task_id": False,
+                    "receives_task_boundary": False,
+                    "receives_environment_context": False,
+                },
+                metadata={
+                    "job_id": (
+                        "adaptive_cw"
+                    ),
+                    "primary_metric": (
+                        "final_average"
+                    ),
+                },
+            ),
+            summary=RunSummary(
+                run_id=run_id,
+                metrics={
+                    "final_average": (
+                        1.15 + offset
+                    ),
+                },
+                task_metrics={
+                    "task_a": {
+                        "final_performance": (
+                            0.8 + offset
+                        ),
+                    },
+                    "task_b": {
+                        "final_performance": (
+                            1.5 + offset
+                        ),
+                    },
+                },
+            ),
+            resolved_config={
+                "seed": seed,
+            },
+            metrics_rows=(
+                metrics_rows_from_result(
+                    result
+                )
+            ),
+        )
+
+    output = (
+        tmp_path
+        / "paper"
+    )
+    manifest = build_paper_artifacts(
+        results,
+        output,
+        config=PaperArtifactConfig(
+            bootstrap_resamples=100,
+            seed=31,
+            figure_formats=(
+                "png",
+            ),
+        ),
+    )
+
+    generated = set(
+        manifest[
+            "generated_figures"
+        ]
+    )
+    assert any(
+        "continual_matrix_return_matrix"
+        in name
+        for name in generated
+    )
+    assert any(
+        "continual_matrix_success_matrix"
+        in name
+        for name in generated
+    )
+    assert any(
+        "adaptation_curve_return_matrix"
+        in name
+        for name in generated
+    )
+    assert any(
+        "timeline_surprise_timeline"
+        in name
+        for name in generated
+    )
