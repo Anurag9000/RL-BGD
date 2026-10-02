@@ -573,9 +573,44 @@ def paired_method_differences(
                 ) = ordered[right_index]
                 left_by_seed = {run.manifest.seed: run for run in left_runs}
                 right_by_seed = {run.manifest.seed: run for run in right_runs}
-                matched_seeds = sorted(set(left_by_seed) & set(right_by_seed))
+                left_seeds = set(left_by_seed)
+                right_seeds = set(right_by_seed)
+                if left_seeds != right_seeds:
+                    raise ValueError(
+                        "paired paper methods have different seed sets: "
+                        f"{left_group.label} / {sorted(left_seeds)} versus "
+                        f"{right_group.label} / {sorted(right_seeds)}"
+                    )
+                matched_seeds = sorted(left_seeds)
                 if not matched_seeds:
                     continue
+                for seed in matched_seeds:
+                    left_run = left_by_seed[seed]
+                    right_run = right_by_seed[seed]
+                    if left_run.manifest.git_commit != right_run.manifest.git_commit:
+                        raise ValueError(
+                            "paired paper runs use different git commits: "
+                            f"seed {seed} / {left_run.manifest.run_id}="
+                            f"{left_run.manifest.git_commit!r} / "
+                            f"{right_run.manifest.run_id}="
+                            f"{right_run.manifest.git_commit!r}"
+                        )
+                    if (
+                        left_run.manifest.information_access
+                        != right_run.manifest.information_access
+                    ):
+                        raise ValueError(
+                            "paired paper runs have different information access: "
+                            f"seed {seed} / {left_run.manifest.run_id} / "
+                            f"{right_run.manifest.run_id}"
+                        )
+                    if left_run.manifest.task_order != right_run.manifest.task_order:
+                        raise ValueError(
+                            "paired paper runs have different task order: "
+                            f"seed {seed} / {left_run.manifest.run_id} / "
+                            f"{right_run.manifest.run_id}"
+                        )
+
                 left_metrics = {metric for run in left_runs for metric in _metric_map(run)}
                 right_metrics = {metric for run in right_runs for metric in _metric_map(run)}
                 common_metrics = sorted(left_metrics & right_metrics)
