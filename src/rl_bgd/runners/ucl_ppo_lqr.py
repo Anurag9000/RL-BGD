@@ -95,9 +95,6 @@ def run_ucl_ppo_recurring_lqr(
                 }
             )
 
-    final_phase_return = float(
-        phase_summaries[-1]["final_10_mean_return"]
-    )
     final_phase = phase_summaries[-1]
     final_phase_return = final_phase.get(
         "final_10_mean_return"
