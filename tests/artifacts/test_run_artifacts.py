@@ -156,7 +156,6 @@ def test_runner_result_converter_extracts_cw_metrics_and_tasks() -> None:
             "backward_transfer": -0.1,
             "forgetting_by_task": [
                 0.2,
-                0.0,
             ],
         },
         "training": {
@@ -176,6 +175,10 @@ def test_runner_result_converter_extracts_cw_metrics_and_tasks() -> None:
         "final_performance": 0.8,
         "success_rate": 0.25,
         "forgetting": 0.2,
+    }
+    assert summary.task_metrics["b"] == {
+        "final_performance": 3.0,
+        "success_rate": 1.0,
     }
     assert summary.resources["duration_seconds"] == pytest.approx(5.0)
 
@@ -289,3 +292,115 @@ def test_matrix_rows_preserve_stage_and_task_identity() -> None:
         "task_name": "b",
         "value": 4.0,
     }
+
+
+
+def test_repeated_task_names_preserve_occurrence_metrics() -> None:
+    result = {
+        "task_names": [
+            "a",
+            "b",
+            "a",
+            "b",
+        ],
+        "return_matrix": [
+            [
+                1.0,
+                0.0,
+                1.1,
+                0.1,
+            ],
+            [
+                0.9,
+                2.0,
+                1.0,
+                2.1,
+            ],
+            [
+                0.8,
+                1.9,
+                3.0,
+                2.0,
+            ],
+            [
+                0.7,
+                1.8,
+                2.9,
+                4.0,
+            ],
+        ],
+        "success_matrix": [
+            [
+                0.4,
+                0.0,
+                0.5,
+                0.0,
+            ],
+            [
+                0.3,
+                0.6,
+                0.4,
+                0.7,
+            ],
+            [
+                0.2,
+                0.5,
+                0.8,
+                0.6,
+            ],
+            [
+                0.1,
+                0.4,
+                0.7,
+                0.9,
+            ],
+        ],
+        "return_summary": {
+            "final_average": 2.35,
+            "mean_forgetting": 0.2,
+            "backward_transfer": -0.2,
+            "forgetting_by_task": [
+                0.3,
+                0.2,
+                0.1,
+            ],
+        },
+    }
+
+    summary = summarize_runner_result(
+        "cw20_like",
+        result,
+    )
+
+    assert tuple(
+        summary.task_metrics
+    ) == (
+        "a#occurrence_1",
+        "b#occurrence_1",
+        "a#occurrence_2",
+        "b#occurrence_2",
+    )
+    assert summary.task_metrics[
+        "a#occurrence_1"
+    ] == {
+        "final_performance": 0.7,
+        "success_rate": 0.1,
+        "forgetting": 0.3,
+    }
+    assert summary.task_metrics[
+        "b#occurrence_1"
+    ][
+        "forgetting"
+    ] == pytest.approx(
+        0.2
+    )
+    assert summary.task_metrics[
+        "a#occurrence_2"
+    ][
+        "forgetting"
+    ] == pytest.approx(
+        0.1
+    )
+    assert "forgetting" not in summary.task_metrics[
+        "b#occurrence_2"
+    ]
