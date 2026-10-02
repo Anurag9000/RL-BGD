@@ -86,6 +86,36 @@ _EXPECTED_EXPERIMENT_IDS = {
     "UCL",
 }
 
+_EXPERIMENT_SUITE_EVIDENCE = {
+    "A": "A",
+    "B": "B",
+    "C": "C",
+    "D": "D",
+    "E": "E",
+    "F": "F",
+    "G": "G",
+    "GB-T": "GB-T",
+    "H": "H",
+    "CW-CAN10": "CW-CAN10",
+    "CW-CAN20": "CW-CAN20",
+    "CW-TA10": "CW-TA10",
+    "CW-TA20": "CW-TA20",
+    "I": "I-J",
+    "J": "I-J",
+    "UCL": "UCL",
+}
+
+_SYNTHETIC_TEST_EVIDENCE = {
+    "SYN-Q1": (
+        "tests/math/test_bgd_quadratic.py",
+        "test_positive_quadratic_curvature_reduces_sigma",
+    ),
+    "SYN-Q2": (
+        "tests/math/test_bgd_quadratic.py",
+        "test_curvature_signal_approaches_h_sigma",
+    ),
+}
+
 
 @dataclass(frozen=True)
 class AuditFinding:
@@ -158,6 +188,11 @@ def audit_repository(
 
     validate_suite_registry()
     checks_run += 1
+    suite_hypothesis_ids = {
+        job.hypothesis_id
+        for suite in SUITES.values()
+        for job in suite.jobs
+    }
     for suite_name, suite in SUITES.items():
         job_ids = [job.job_id for job in suite.jobs]
         checks_run += 1
@@ -427,6 +462,45 @@ def audit_repository(
                 "missing required experiment IDs: " + ", ".join(missing_experiments),
             )
         )
+
+    for experiment_id, suite_hypothesis_id in _EXPERIMENT_SUITE_EVIDENCE.items():
+        checks_run += 1
+        if suite_hypothesis_id not in suite_hypothesis_ids:
+            findings.append(
+                AuditFinding(
+                    "experiment_suite_evidence",
+                    "src/rl_bgd/experiments/suites.py",
+                    (
+                        f"{experiment_id!r} is marked implemented but no suite job "
+                        f"carries hypothesis ID {suite_hypothesis_id!r}"
+                    ),
+                )
+            )
+
+    for experiment_id, (relative, marker) in _SYNTHETIC_TEST_EVIDENCE.items():
+        checks_run += 1
+        evidence_path = root / relative
+        if not evidence_path.is_file():
+            findings.append(
+                AuditFinding(
+                    "experiment_test_evidence",
+                    relative,
+                    f"{experiment_id!r} requires this math-test evidence file",
+                )
+            )
+            continue
+        evidence_text = evidence_path.read_text(encoding="utf-8")
+        if marker not in evidence_text:
+            findings.append(
+                AuditFinding(
+                    "experiment_test_evidence",
+                    relative,
+                    (
+                        f"{experiment_id!r} is missing required regression test "
+                        f"{marker!r}"
+                    ),
+                )
+            )
 
     return RepositoryAuditReport(
         root=str(root),
