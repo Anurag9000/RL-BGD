@@ -738,9 +738,18 @@ SUITES: dict[str, ExperimentSuite] = {
 
 
 def _git_head() -> str | None:
+    repository_root = Path(
+        __file__
+    ).resolve().parents[3]
     try:
         result = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
+            [
+                "git",
+                "-C",
+                str(repository_root),
+                "rev-parse",
+                "HEAD",
+            ],
             check=True,
             capture_output=True,
             text=True,
