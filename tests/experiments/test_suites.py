@@ -262,6 +262,170 @@ def test_carl_and_cw_metric_declarations_match_runner_contracts() -> None:
         )
 
 
+def test_hidden_and_bayesianization_metric_declarations_are_capability_matched() -> None:
+    hidden = {
+        str(
+            job.kwargs[
+                "variant"
+            ]
+        ): job
+        for job in SUITES[
+            "dev"
+        ].jobs
+        if job.job_id.startswith(
+            "hidden_context_"
+        )
+    }
+    assert hidden[
+        "feedforward_adam"
+    ].secondary_metrics == (
+        "training.mean_episode_return",
+    )
+    assert hidden[
+        "recurrent_adam"
+    ].secondary_metrics == (
+        "training.mean_episode_return",
+    )
+    for variant in (
+        "feedforward_bgd",
+        "recurrent_bgd",
+    ):
+        assert hidden[
+            variant
+        ].secondary_metrics == (
+            "training.mean_episode_return",
+            "training.last_update_metrics.critic1_sigma_mean",
+        )
+    assert hidden[
+        "recurrent_adaptive_bgd"
+    ].secondary_metrics == (
+        "training.mean_episode_return",
+        "training.last_update_metrics.critic1_sigma_mean",
+        "training.last_update_metrics.retention_lambda",
+    )
+
+    ablations = {
+        str(
+            job.kwargs[
+                "bayesianization"
+            ]
+        ): job
+        for job in SUITES[
+            "ablation_core"
+        ].jobs
+        if job.hypothesis_id == "G"
+    }
+    assert ablations[
+        "critic_only"
+    ].secondary_metrics == (
+        "improvement",
+        "training.last_update_metrics.critic1_sigma_mean",
+        "training.last_update_metrics.critic1_effective_lr_mean",
+    )
+    assert ablations[
+        "actor_only"
+    ].secondary_metrics == (
+        "improvement",
+        "training.last_update_metrics.actor_sigma_mean",
+        "training.last_update_metrics.actor_effective_lr_mean",
+    )
+    assert set(
+        ablations[
+            "actor_and_critic"
+        ].secondary_metrics
+    ) == {
+        "improvement",
+        "training.last_update_metrics.critic1_sigma_mean",
+        "training.last_update_metrics.critic1_effective_lr_mean",
+        "training.last_update_metrics.actor_sigma_mean",
+        "training.last_update_metrics.actor_effective_lr_mean",
+    }
+
+
+def test_compute_suite_has_matched_sac_budget_and_resources() -> None:
+    jobs = SUITES[
+        "compute_analysis"
+    ].jobs
+    assert {
+        job.job_id
+        for job in jobs
+    } == {
+        "compute_sac_adam",
+        "compute_bgd_critic_only",
+        "compute_bgd_actor_only",
+        "compute_bgd_actor_and_critic",
+    }
+    assert {
+        int(
+            job.kwargs[
+                "steps"
+            ]
+        )
+        for job in jobs
+    } == {
+        600
+    }
+    assert {
+        job.seeds
+        for job in jobs
+    } == {
+        (
+            0,
+            1,
+            2,
+        )
+    }
+    assert {
+        job.environment
+        for job in jobs
+    } == {
+        "synthetic_lqr"
+    }
+    assert {
+        job.protocol
+        for job in jobs
+    } == {
+        "stationary_compute"
+    }
+    assert {
+        job.primary_metric
+        for job in jobs
+    } == {
+        "duration_seconds"
+    }
+    assert all(
+        job.secondary_metrics
+        == (
+            "post_return",
+            "improvement",
+        )
+        for job in jobs
+    )
+
+
+def test_ucl_structured_outputs_are_not_declared_as_scalar_metrics() -> None:
+    ucl_jobs = [
+        job
+        for suite_name in (
+            "dev",
+            "baseline_core",
+        )
+        for job in SUITES[
+            suite_name
+        ].jobs
+        if (
+            "ucl_ppo_lqr"
+            in job.target
+        )
+    ]
+    assert ucl_jobs
+    assert all(
+        job.secondary_metrics
+        == ()
+        for job in ucl_jobs
+    )
+
+
 def _tiny_suite(
     primary_metric: str,
 ) -> ExperimentSuite:
