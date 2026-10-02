@@ -12,3 +12,18 @@
 10. Perturbation importance.
 11. Surprise -> lambda -> sigma -> update magnitude -> return recovery.
 12. Compute/performance tradeoff.
+
+
+## Generation status
+
+The Phase-15 builder now generates figures only from canonical raw run
+artifacts. Learning curves, stage-average adaptation/revisit curves, continual
+performance matrices, diagnostic surprise/retention/sigma/effective-LR
+timelines, final-performance intervals, and compute/performance tradeoffs are
+automatic when their required raw columns exist. Phase-13 produces the
+curvature, movement-vs-sigma, perturbation, freezing, and uncertainty-quality
+mechanistic figures.
+
+CW10/CW20, CARL, and other expensive final figures remain intentionally
+run-dependent: they are not considered empirical results until the declared
+multi-seed benchmark suites have produced complete canonical run directories.
