@@ -20,7 +20,11 @@ Registered suites:
 
 Each job records its hypothesis ID, callable target, exact kwargs, seeds,
 algorithm, environment, information protocol, source config where applicable,
-primary/secondary metrics, optional dependency extra, runtime class, and notes.
+primary/secondary metrics, explicit comparison group, optional dependency extra,
+runtime class, and notes. Suite revision 2 makes paired statistics opt-in:
+jobs are paired only when they deliberately share the same comparison group,
+protocol, benchmark, seed set, and primary outcome. Jobs without a declared
+comparison family remain aggregate-only and cannot be cross-paired implicitly.
 Hidden-context methods and evidence-temperature values are separate jobs, so
 seed-level uncertainty is computed per experimental condition rather than over
 a composite JSON blob.
@@ -71,15 +75,18 @@ is the primary resource metric and post-training return/improvement are the
 matched outcome metrics.
 
 
-The `cw20_final` suite is comparison-matched rather than method-only. The
-feed-forward strict task-agnostic family contains SAC-Adam and SAC-BGD with the
-same CW20 stream, one-million steps per task, five evaluation episodes per
-stage, and seeds 0-4. The recurrent 3RL-style family contains recurrent
-SAC-Adam, recurrent SAC-BGD, and recurrent SAC-adaptive-BGD with the same CW20
-stream, one-million steps per task, ten evaluation episodes per stage, recurrent
-architecture/config, and seeds 0-4. All task-agnostic CW20 jobs record the same
-revisit/reacquisition recurrence metrics; Bayesian jobs additionally expose
-posterior uncertainty, and the adaptive job additionally exposes retention.
+Both `cw10_core` and `cw20_final` are comparison-matched rather than
+method-only. Their feed-forward strict task-agnostic families contain SAC-Adam,
+SAC-BGD, SAC-EWC, SAC-Online-EWC, SAC-SI, and SAC-MAS with the same benchmark
+stream, one-million steps per task, five evaluation episodes per stage, and
+seeds 0-4. EWC/SI/MAS consolidation is driven by a fixed optimizer-update
+interval and receives no ground-truth task ID or boundary. The recurrent
+3RL-style families contain recurrent SAC-Adam, recurrent SAC-BGD, and recurrent
+SAC-adaptive-BGD with the same benchmark stream, one-million steps per task,
+ten evaluation episodes per stage, recurrent architecture/config, and seeds
+0-4. CW20 task-agnostic jobs additionally record the same occurrence-aware
+revisit/reacquisition metrics; Bayesian jobs expose posterior uncertainty and
+adaptive jobs additionally expose retention.
 
 
 The `uncertainty_analysis` retention-policy block is also explicitly matched.
