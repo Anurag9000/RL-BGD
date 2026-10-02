@@ -34,6 +34,7 @@ class ExperimentJob:
     config_path: str | None
     primary_metric: str
     secondary_metrics: tuple[str, ...]
+    comparison_group: str | None = None
     optional_extra: str | None = None
     runtime_class: str = "medium"
     seed_kwarg: str | None = "seed"
@@ -62,6 +63,7 @@ def _job(
     config_path: str | None,
     primary_metric: str,
     secondary_metrics: tuple[str, ...],
+    comparison_group: str | None = None,
     optional_extra: str | None = None,
     runtime_class: str = "medium",
     seed_kwarg: str | None = "seed",
@@ -80,6 +82,7 @@ def _job(
         config_path=config_path,
         primary_metric=primary_metric,
         secondary_metrics=secondary_metrics,
+        comparison_group=comparison_group,
         optional_extra=optional_extra,
         runtime_class=runtime_class,
         seed_kwarg=seed_kwarg,
@@ -122,6 +125,7 @@ def _hidden_context_jobs(
             protocol="strict_task_agnostic",
             config_path="configs/environments/lqr_recurring.yaml",
             primary_metric="final_10_mean_return",
+            comparison_group=f"{prefix}_hidden_context",
             secondary_metrics=(
                 ("training.mean_episode_return",)
                 + (
@@ -174,6 +178,7 @@ def _evidence_temperature_jobs(
                 "training.last_update_metrics.critic1_sigma_mean",
                 "training.last_update_metrics.critic1_effective_lr_mean",
             ),
+            comparison_group="evidence_temperature",
             runtime_class=runtime_class,
         )
         for temperature in (
@@ -220,6 +225,7 @@ def _replay_evidence_jobs(
                 "training.last_update_metrics.evidence_mean_usage_count",
                 "training.last_update_metrics.critic1_sigma_mean",
             ),
+            comparison_group="replay_evidence",
             runtime_class=runtime_class,
         )
         for mode in modes
@@ -274,6 +280,7 @@ def _late_plasticity_jobs(
                 "recovery_fraction",
             ),
             runtime_class=runtime_class,
+            comparison_group="late_plasticity",
             notes=(
                 "Tempering is applied only during pre-shift consolidation; "
                 "post-shift retention is fixed to 1.0 in both conditions."
@@ -317,6 +324,7 @@ def _fixed_tempering_jobs(
                 "training.last_update_metrics.critic1_sigma_mean",
                 "training.last_update_metrics.critic1_effective_lr_mean",
             ),
+            comparison_group="fixed_tempering",
             runtime_class=runtime_class,
         )
         for retention in retentions
@@ -361,6 +369,7 @@ def _regularized_baseline_jobs(
                 "training.mean_episode_return",
             ),
             runtime_class=runtime_class,
+            comparison_group="baseline_sac_regularization",
             notes=(
                 "Consolidation is driven by optimizer-update count; "
                 "no true task boundary is exposed."
@@ -386,6 +395,7 @@ SMOKE = ExperimentSuite(
             config_path="configs/environments/lqr_smoke.yaml",
             primary_metric="post_return",
             secondary_metrics=("improvement",),
+            comparison_group="smoke_sac",
             runtime_class="smoke",
         ),
         _job(
@@ -407,6 +417,7 @@ SMOKE = ExperimentSuite(
                 "improvement",
                 "training.last_update_metrics.critic1_sigma_mean",
             ),
+            comparison_group="smoke_sac",
             runtime_class="smoke",
         ),
         _job(
@@ -421,6 +432,7 @@ SMOKE = ExperimentSuite(
             config_path="configs/algorithms/ppo_adam.yaml",
             primary_metric="post_return",
             secondary_metrics=("improvement",),
+            comparison_group="smoke_ppo",
             runtime_class="smoke",
         ),
     ),
@@ -448,6 +460,7 @@ STATIONARY_CORE = ExperimentSuite(
                 "improvement",
                 "training.mean_episode_return",
             ),
+            comparison_group="stationary_sac",
             runtime_class="medium",
         ),
         _job(
@@ -469,6 +482,7 @@ STATIONARY_CORE = ExperimentSuite(
                 "improvement",
                 "training.last_update_metrics.critic1_sigma_mean",
             ),
+            comparison_group="stationary_sac",
             runtime_class="medium",
         ),
         _job(
@@ -489,6 +503,7 @@ STATIONARY_CORE = ExperimentSuite(
                 "improvement",
                 "training.mean_episode_return",
             ),
+            comparison_group="stationary_ppo",
             runtime_class="medium",
         ),
         _job(
@@ -511,6 +526,7 @@ STATIONARY_CORE = ExperimentSuite(
                 "training.last_update_metrics.actor_sigma_mean",
                 "training.last_update_metrics.value_sigma_mean",
             ),
+            comparison_group="stationary_ppo",
             runtime_class="medium",
         ),
     ),
@@ -590,6 +606,7 @@ BASELINE_CORE = ExperimentSuite(
             config_path=None,
             primary_metric="final_10_mean_return",
             secondary_metrics=("training.mean_episode_return",),
+            comparison_group="baseline_sac_regularization",
             runtime_class="medium",
             notes=(
                 "Unregularized SAC uses the same recurring-LQR profile, "
@@ -621,6 +638,7 @@ BASELINE_CORE = ExperimentSuite(
             config_path=None,
             primary_metric="final_phase_return",
             secondary_metrics=(),
+            comparison_group="baseline_ppo_ucl",
             runtime_class="medium",
             notes=(
                 "Adam PPO uses the same phase schedule, model widths, PPO "
@@ -645,6 +663,7 @@ BASELINE_CORE = ExperimentSuite(
             config_path=None,
             primary_metric="final_phase_return",
             secondary_metrics=(),
+            comparison_group="baseline_ppo_ucl",
             runtime_class="medium",
             notes=("UCL is an oracle-boundary comparator and is not labelled task-agnostic."),
         ),
@@ -687,6 +706,7 @@ CARL_CORE = ExperimentSuite(
                     else ()
                 )
             ),
+            comparison_group=f"carl_{mode}",
             optional_extra="carl",
             runtime_class="large",
         )
@@ -1046,6 +1066,7 @@ ABLATION_CORE = ExperimentSuite(
                     else ()
                 )
             ),
+            comparison_group="bayesianization",
             runtime_class="medium",
         )
         for mode in (
@@ -1169,6 +1190,7 @@ COMPUTE_ANALYSIS = ExperimentSuite(
                 "post_return",
                 "improvement",
             ),
+            comparison_group="compute_sac",
             runtime_class="compute",
         ),
         *tuple(
@@ -1191,6 +1213,7 @@ COMPUTE_ANALYSIS = ExperimentSuite(
                     "post_return",
                     "improvement",
                 ),
+                comparison_group="compute_sac",
                 runtime_class="compute",
             )
             for mode in (
@@ -1302,7 +1325,7 @@ def validate_suite_registry() -> None:
             raise RuntimeError(f"suite {suite.name} has no jobs")
 
         context_contracts: dict[
-            tuple[str, str],
+            str,
             tuple[tuple[int, ...], str],
         ] = {}
         for job in suite.jobs:
@@ -1312,8 +1335,8 @@ def validate_suite_registry() -> None:
                 raise RuntimeError(f"job {job.job_id} lacks a primary metric")
 
             context = (
-                job.protocol,
-                job.environment,
+                job.comparison_group
+                or f"{job.protocol}|{job.environment}"
             )
             contract = (
                 job.seeds,
