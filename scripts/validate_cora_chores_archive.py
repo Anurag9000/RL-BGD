@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from rl_bgd.compat.cora_chores import (
+    EXPECTED_CHORES_TRAJECTORY_COUNT,
     find_chores_archive_root,
     load_chores_trajectory_refs,
     validate_chores_archive,
@@ -35,8 +36,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--expected-trajectories",
         type=int,
-        default=None,
-        help="Optional exact number of trajectory references expected.",
+        default=EXPECTED_CHORES_TRAJECTORY_COUNT,
+        help=(
+            "Exact number of trajectory references expected; defaults to the "
+            "pinned CORA benchmark cardinality."
+        ),
     )
     parser.add_argument(
         "--root-only",
@@ -51,12 +55,7 @@ def main() -> None:
     refs = load_chores_trajectory_refs(
         args.metadata_root
     )
-    if (
-        args.expected_trajectories
-        is not None
-        and len(refs)
-        != args.expected_trajectories
-    ):
+    if len(refs) != args.expected_trajectories:
         raise ValueError(
             "CORA CHORES metadata trajectory count mismatch: "
             f"expected {args.expected_trajectories}, found {len(refs)}"
