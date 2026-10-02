@@ -629,8 +629,12 @@ def test_uncertainty_suite_has_matched_surprise_source_controls() -> None:
         for job in SUITES[
             "uncertainty_analysis"
         ].jobs
-        if job.target.endswith(
-            ":run_adaptive_bgd_lqr_stream"
+        if (
+            job.target.endswith(
+                ":run_adaptive_bgd_lqr_stream"
+            )
+            and job.job_id
+            != "fixed_retention_recurring_0p97"
         )
     ]
     by_source = {
@@ -715,6 +719,50 @@ def test_uncertainty_suite_has_matched_surprise_source_controls() -> None:
         in by_source[
             "predictive"
         ].secondary_metrics
+    )
+
+
+    for source in (
+        "td",
+        "ensemble",
+        "predictive",
+    ):
+        assert (
+            "surprise_auroc"
+            in by_source[
+                source
+            ].secondary_metrics
+        )
+
+    fixed = next(
+        job
+        for job in SUITES[
+            "uncertainty_analysis"
+        ].jobs
+        if job.job_id
+        == "fixed_retention_recurring_0p97"
+    )
+    assert fixed.hypothesis_id == "D"
+    assert fixed.kwargs[
+        "surprise_source"
+    ] == "none"
+    assert fixed.kwargs[
+        "fixed_retention"
+    ] == pytest.approx(
+        0.97
+    )
+    assert fixed.kwargs[
+        "total_steps"
+    ] == 900
+    assert fixed.kwargs[
+        "phase_steps"
+    ] == 300
+    assert fixed.seeds == (
+        0,
+        1,
+        2,
+        3,
+        4,
     )
 
 
