@@ -25,6 +25,7 @@ from rl_bgd.envs.continual_world.evaluation import (
     PerformanceMatrixRecorder,
     TaskEvaluation,
 )
+    repeated_sequence_recurrence_summary,
 from rl_bgd.envs.continual_world.metaworld import make_continual_world_protocol
 from rl_bgd.envs.continual_world.stream import ContinualWorldBenchmark
 from rl_bgd.envs.recurrent_context import PreviousTransitionContextEnv
@@ -283,6 +284,15 @@ def run_recurrent_ta_continual_world_sac(
             ),
             post_step_observer=stage_evaluator,
         )
+        recurrence_summary = (
+            repeated_sequence_recurrence_summary(
+                bundle.task_names,
+                success_matrix.matrix.tolist(),
+            )
+            if benchmark == "CW20"
+            else {}
+        )
+
         return {
             "benchmark": benchmark,
             "protocol": "task_agnostic",
@@ -299,6 +309,7 @@ def run_recurrent_ta_continual_world_sac(
             "success_matrix": success_matrix.matrix.tolist(),
             "return_summary": return_matrix.summary(),
             "success_summary": success_matrix.summary(),
+            "recurrence_summary": recurrence_summary,
             "information_access": {
                 "receives_task_id": False,
                 "receives_task_boundary": False,
