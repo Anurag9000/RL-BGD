@@ -867,3 +867,123 @@ def test_paper_builder_rejects_mismatched_nonseed_invocation_contract(
                 figure_formats=("png",),
             ),
         )
+
+
+def _write_paired_contract_run(
+    root: Path,
+    *,
+    method: str,
+    job_id: str,
+    primary_metric: str,
+    suite_revision: int,
+) -> None:
+    run_id = f"{job_id}_0"
+    write_run_artifacts(
+        root / run_id,
+        manifest=RunManifest(
+            run_id=run_id,
+            method=method,
+            setting="matched",
+            benchmark="toy",
+            seed=0,
+            git_commit="deadbeef",
+            information_access={
+                "receives_task_id": False,
+                "receives_task_boundary": False,
+                "receives_environment_context": False,
+            },
+            metadata={
+                "suite": "paired_contract_suite",
+                "suite_revision": suite_revision,
+                "job_id": job_id,
+                "hypothesis_id": "TEST",
+                "target": f"module:{job_id}",
+                "primary_metric": primary_metric,
+                "secondary_metrics": [],
+                "source_config_path": None,
+                "contract_kwargs": {},
+            },
+        ),
+        summary=RunSummary(
+            run_id=run_id,
+            metrics={
+                "score": 1.0,
+                "alternate_score": 2.0,
+            },
+        ),
+        resolved_config={},
+        metrics_rows=[
+            {
+                "series": "summary",
+                "row_index": 0,
+                "score": 1.0,
+                "alternate_score": 2.0,
+            }
+        ],
+    )
+
+
+def test_paper_builder_rejects_paired_primary_metric_mismatch(
+    tmp_path: Path,
+) -> None:
+    results = tmp_path / "results"
+    _write_paired_contract_run(
+        results,
+        method="A",
+        job_id="left",
+        primary_metric="score",
+        suite_revision=1,
+    )
+    _write_paired_contract_run(
+        results,
+        method="B",
+        job_id="right",
+        primary_metric="alternate_score",
+        suite_revision=1,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="different primary metrics",
+    ):
+        build_paper_artifacts(
+            results,
+            tmp_path / "paper",
+            config=PaperArtifactConfig(
+                bootstrap_resamples=20,
+                figure_formats=("png",),
+            ),
+        )
+
+
+def test_paper_builder_rejects_paired_suite_revision_mismatch(
+    tmp_path: Path,
+) -> None:
+    results = tmp_path / "results"
+    _write_paired_contract_run(
+        results,
+        method="A",
+        job_id="left",
+        primary_metric="score",
+        suite_revision=1,
+    )
+    _write_paired_contract_run(
+        results,
+        method="B",
+        job_id="right",
+        primary_metric="score",
+        suite_revision=2,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="different suite revisions",
+    ):
+        build_paper_artifacts(
+            results,
+            tmp_path / "paper",
+            config=PaperArtifactConfig(
+                bootstrap_resamples=20,
+                figure_formats=("png",),
+            ),
+        )
