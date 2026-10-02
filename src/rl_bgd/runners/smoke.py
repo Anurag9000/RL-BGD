@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 
 import torch
 from torch import nn
@@ -34,7 +35,7 @@ def run_smoke(*, steps: int = 25, seed: int = 0, device: str = "auto") -> dict[s
     updater = BGDUpdater(posterior, BGDConfig(eta=0.25, mc_samples=8, antithetic=True))
     target = torch.tensor([0.0], device=resolved)
 
-    def objective(params: dict[str, torch.Tensor]) -> torch.Tensor:
+    def objective(params: Mapping[str, torch.Tensor]) -> torch.Tensor:
         return 0.5 * (params["theta"] - target).square().sum()
 
     first_abs_mean = float(posterior.means["theta"].abs().item())
