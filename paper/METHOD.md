@@ -303,6 +303,15 @@ Benchmark-specific definitions remain separate from generic metrics; for
 example, generic forward transfer is not substituted for Continual World's
 canonical transfer metric.
 
+CW20 recurrence is also benchmark-specific. Because the published sequence is
+CW10 repeated twice, strict task-agnostic/recurrent runs use evaluator-only
+duplicate task names to identify revisits. Success on the same second-occurrence
+evaluation environment is measured after first learning, immediately before
+revisit training, and immediately after revisit training; the resulting
+reference/zero-shot/recovered success plus pre-revisit change and relearning
+gain are written as scalar paper metrics. Canonical occurrence-head CW20 does
+not reuse these task-agnostic recurrence scalars.
+
 Mechanistic analyses measure:
 
 - curvature versus BGD uncertainty signal;
