@@ -1,6 +1,6 @@
 # Capability Ledger
 
-Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires implementation, wiring, tests, and a runnable path where applicable.
+Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires implementation, wiring, tests, and a runnable path where applicable. Expensive experiment execution and scientific support are tracked separately in `EXPERIMENT_REGISTRY.md`; COMPLETE does not claim that long benchmark runs have been executed or that a hypothesis is confirmed.
 
 | Capability | Status | Evidence / next requirement |
 |---|---|---|
@@ -22,7 +22,7 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Gaussian tempering | COMPLETE | bayes/tempering.py + exact tests |
 | Posterior diagnostics | COMPLETE | sigma/precision/entropy/effective LR |
 | Posterior/updater checkpoint | COMPLETE | versioned round-trip test |
-| Generalized-Bayes RL | PARTIAL | evidence temperature is a real BGD power with matched SAC sweep + math tests; latest CI validation pending |
+| Generalized-Bayes RL | COMPLETE | evidence temperature is a real BGD power with matched SAC sweep, mathematical regression tests, CLI/suite wiring, and runnable stationary-control path; multi-seed scientific execution remains tracked in the experiment registry |
 | InformationAccessConfig | COMPLETE | central contract + leakage tests |
 | Device auto/CUDA/CPU | COMPLETE | utils/device.py + tests |
 | Deterministic seeding | COMPLETE | Python/NumPy/PyTorch CPU/CUDA |
@@ -76,8 +76,8 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Recurrent hidden-state task-leakage guard | COMPLETE | recurring LQR runner verifies resets only on episode end |
 | Recurrent SAC / sequence replay | COMPLETE | recurrent Adam SAC + burn-in/unroll sequence replay + hidden-state lifecycle + recurring LQR integration test |
 | Recurrent BGD-SAC | COMPLETE | actor/critic/all posterior modes + evidence accounting + checkpoint + recurring LQR integration + stationary learning acceptance |
-| Continual World canonical task-aware protocol | PARTIAL | modern Meta-World stream + task-ID multihead SAC + published replay/optimizer lifecycle + matrix runner/configs; full long benchmark runs pending |
-| Continual World strict task-agnostic CW10/CW20 | PARTIAL | hidden-ID stream + protocol bundles + SAC matrix runner; full long benchmark runs pending |
+| Continual World canonical task-aware protocol | COMPLETE | modern Meta-World stream + task-ID multihead SAC + published replay/optimizer lifecycle + configs + executable CW10 integration test building complete performance matrices; long benchmark execution remains pending in the experiment registry |
+| Continual World strict task-agnostic CW10/CW20 | COMPLETE | hidden-ID stream + protocol bundles + SAC matrix runner/configs + executable CW10 integration test building complete matrices without task identity; long CW10/CW20 execution remains pending in the experiment registry |
 | ContinualBench adapter | COMPLETE | strict reward/task stream + 4/5-step compatibility + asset repair + pinned-runtime debug/close compatibility shims + unit tests + live pinned-package smoke |
 | CORA metric/protocol compatibility | COMPLETE | canonical Atari/Procgen sequence metadata + isolated-forgetting/zero-shot-forward-transfer formulas + tests |
 | CORA legacy environment runtime | BLOCKED | upstream develop stack pins gym<=0.25.2/atari-py/setuptools versions incompatible with the modern base; keep isolated rather than downgrade primary runtime |
@@ -85,9 +85,9 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | UCL-PPO oracle-boundary baseline | COMPLETE | independent Bayesian hidden-layer PPO + UCL saved-posterior regularizer + explicit boundary snapshots + checkpoint/unit/integration tests; original task-ID dependence is not mislabelled task-agnostic |
 | FOO-VB diagonal baseline mapping | COMPLETE | exact eta=1 untempered diagonal BGD equivalence + regression test; generalized-Bayes RL scope explicitly distinguished from original likelihood objective |
 | External baseline phase | COMPLETE | EWC/Online-EWC/SI/MAS/UCL plus FOO-VB diagonal reference are implemented, documented, and information-access-labelled; structured matrix-variate FOO-VB remains an optional extension rather than a required duplicate |
-| 3RL-style recurrent Continual World | PARTIAL | strict hidden-ID recurrent Adam/BGD/adaptive-BGD CW10/CW20 runners + source-verified protocol/deviation docs; full long benchmark runs pending |
-| CARL SAC/BGD training path | PARTIAL | strict hidden-context Adam/BGD/adaptive-BGD runner + isolated live benchmark test; latest training-path CI execution pending |
-| Mechanistic experiments | PARTIAL | Phase-13 curvature/movement/perturbation/freezing/uncertainty-quality artifact engine + replay/surprise mechanisms implemented; full external comparative runs pending |
+| 3RL-style recurrent Continual World | COMPLETE | strict hidden-ID recurrent Adam/BGD/adaptive-BGD CW10/CW20 runners + source-verified protocol/deviation docs + executable matrix integration test; full long benchmark execution remains pending in the experiment registry |
+| CARL SAC/BGD training path | COMPLETE | strict hidden-context Adam/BGD/adaptive-BGD runner + isolated CARL dependency workflow + live adapter/training smoke on the pinned CARL stack |
+| Mechanistic experiments | COMPLETE | Phase-13 curvature/movement/perturbation/freezing/uncertainty-quality artifact engine + deterministic artifact integration test + replay/surprise mechanisms; larger comparative execution remains tracked in the experiment registry |
 | Curated paper suites | COMPLETE | smoke/dev/CARL/CW10/CW20/task-agnostic/ablation/uncertainty/mechanism/compute manifests + strict canonical run conversion + green end-to-end smoke covering execution, canonical artifacts, provenance hashes, tables, and figures |
 | Canonical raw-run artifact schema | COMPLETE | manifest/config/metrics/summary schema + strict loader/provenance hashes + failed-run status + converter tests |
-| Paper tables/figures | PARTIAL | canonical raw-run aggregation, scalar/task bootstrap statistics, matched-seed differences, provenance/information-access tables, multi-format figures/tables; final artifacts await full benchmark runs |
+| Paper tables/figures | COMPLETE | canonical raw-run aggregation, scalar/task bootstrap statistics, matched-seed differences, provenance/information-access tables, multi-format figures/tables, and end-to-end generated-artifact smoke; final scientific outputs await full benchmark runs |
