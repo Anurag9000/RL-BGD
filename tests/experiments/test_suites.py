@@ -249,11 +249,52 @@ def test_external_baseline_suite_has_full_method_coverage() -> None:
     assert len(
         sac_controls
     ) == 1
-    assert sac_controls[
-        0
-    ].protocol == (
+    sac_family = [
+        *sac_controls,
+        *regularized,
+    ]
+    assert {
+        job.environment
+        for job in sac_family
+    } == {
+        "recurring_lqr_matched_v1"
+    }
+    assert {
+        job.protocol
+        for job in sac_family
+    } == {
         "task_agnostic_fixed_update"
-    )
+    }
+    assert {
+        int(
+            job.kwargs[
+                "steps"
+            ]
+        )
+        for job in sac_family
+    } == {
+        600
+    }
+    assert {
+        int(
+            job.kwargs[
+                "phase_steps"
+            ]
+        )
+        for job in sac_family
+    } == {
+        120
+    }
+    assert {
+        int(
+            job.kwargs[
+                "horizon"
+            ]
+        )
+        for job in sac_family
+    } == {
+        32
+    }
 
     ucl = [
         job
@@ -275,34 +316,52 @@ def test_external_baseline_suite_has_full_method_coverage() -> None:
     assert len(
         ucl_controls
     ) == 1
-    assert ucl[
-        0
-    ].protocol == (
+    ppo_family = [
+        *ucl_controls,
+        *ucl,
+    ]
+    assert {
+        job.environment
+        for job in ppo_family
+    } == {
+        "recurring_lqr_matched_v1"
+    }
+    assert {
+        job.protocol
+        for job in ppo_family
+    } == {
         "oracle_boundary"
-    )
-    assert ucl_controls[
-        0
-    ].protocol == (
-        "oracle_boundary_control"
-    )
-    assert ucl[
-        0
-    ].kwargs[
-        "phase_steps"
-    ] == ucl_controls[
-        0
-    ].kwargs[
-        "phase_steps"
-    ]
-    assert ucl[
-        0
-    ].kwargs[
-        "phases"
-    ] == ucl_controls[
-        0
-    ].kwargs[
-        "phases"
-    ]
+    }
+    assert {
+        int(
+            job.kwargs[
+                "phase_steps"
+            ]
+        )
+        for job in ppo_family
+    } == {
+        120
+    }
+    assert {
+        int(
+            job.kwargs[
+                "phases"
+            ]
+        )
+        for job in ppo_family
+    } == {
+        5
+    }
+    assert {
+        int(
+            job.kwargs[
+                "horizon"
+            ]
+        )
+        for job in ppo_family
+    } == {
+        32
+    }
 
 
 def _tiny_suite(
