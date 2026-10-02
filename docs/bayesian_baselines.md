@@ -33,9 +33,12 @@ explicit task numbers, and task-specific RL heads. It is therefore an
 oracle/task-boundary baseline under this repository's information-access
 taxonomy.
 
-Any future UCL integration must preserve that label unless a distinct
-task-agnostic adaptation is implemented and named as an adaptation rather than
-the original algorithm.
+RL-BGD implements UCL-PPO as an explicitly oracle-boundary comparator. The
+synthetic runner does not provide a task ID or task-specific output head, making
+it stricter than the original policy-routing setup, but it still receives the
+true phase boundary to snapshot the previous posterior. It is therefore not
+reported as task-agnostic. Any future boundary-free UCL adaptation must use a
+different method label rather than silently changing the original baseline.
 
 Primary implementations consulted:
 
