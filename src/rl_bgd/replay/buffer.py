@@ -8,6 +8,19 @@ import torch
 from torch import Tensor
 
 
+
+def _checkpoint_int(
+    value: object,
+    *,
+    name: str,
+) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(
+            f"{name} must be an integer"
+        )
+    return value
+
+
 @dataclass(frozen=True)
 class ReplayBatch:
     observations: Tensor
@@ -158,9 +171,15 @@ class ReplayBuffer:
     def load_state_dict(self, state: dict[str, object]) -> None:
         if state.get("version") != 1:
             raise ValueError("unsupported replay checkpoint version")
-        if int(state["capacity"]) != self.capacity:
+        if _checkpoint_int(
+            state["capacity"],
+            name="replay capacity",
+        ) != self.capacity:
             raise ValueError("replay checkpoint capacity mismatch")
-        size = int(state["size"])
+        size = _checkpoint_int(
+            state["size"],
+            name="replay size",
+        )
         if not 0 <= size <= self.capacity:
             raise ValueError("invalid replay checkpoint size")
         tensor_fields = {
@@ -188,5 +207,11 @@ class ReplayBuffer:
                 )
             )
         self._size = size
-        self._position = int(state["position"])
-        self._next_transition_id = int(state["next_transition_id"])
+        self._position = _checkpoint_int(
+            state["position"],
+            name="replay position",
+        )
+        self._next_transition_id = _checkpoint_int(
+            state["next_transition_id"],
+            name="next transition id",
+        )
