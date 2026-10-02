@@ -34,8 +34,12 @@ The implementation supports lambda in [0,1]. Fixed/adaptive schedules call this 
 
 ## Generalized Bayesian RL
 
-RL surrogate objectives are not silently presented as literal negative log likelihoods. The intended generalized posterior objective is
+RL surrogate objectives are not silently presented as literal negative log likelihoods. The implemented interpretation is the generalized posterior objective
 
     q_u = argmin_q E_q[L_RL,u(theta)] + (1/beta_u) KL(q || q_prior,u)
 
-SAC/PPO-specific sampling, target-network, replay-evidence, and tempering semantics must be stated when those phases are implemented.
+with positive evidence temperature beta. In BGDUpdater, beta multiplies the mean-learning and uncertainty-evidence objectives before their gradients are formed. The reported unscaled RL loss is unchanged. Consequently, beta changes both the posterior-mean gradient and the curvature signal that controls sigma; it is not generally equivalent to changing eta. A matched quadratic mechanism test and SAC temperature sweep expose this distinction.
+
+SAC computes a fixed Bellman target from mean policy/target-critic parameters before sampled critic updates. Bayesian actor samples use the ordinary SAC policy surrogate against fixed current critics. Target critics track posterior means through Polyak averaging. PPO freezes behavior log probabilities/values at collection time and treats repeated rollout epochs as an explicit evidence-reuse dimension.
+
+Replay-evidence accounting and posterior tempering are separate from beta: replay weights can change only the uncertainty/evidence loss, while exact Gaussian tempering modifies the prior/posterior state before the next BGD evidence update.
