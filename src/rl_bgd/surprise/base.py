@@ -7,6 +7,37 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 
+
+def _checkpoint_int(
+    value: object,
+    *,
+    name: str,
+) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(
+            f"{name} must be an integer"
+        )
+    return value
+
+
+def _checkpoint_float(
+    value: object,
+    *,
+    name: str,
+) -> float:
+    if (
+        isinstance(value, bool)
+        or not isinstance(
+            value,
+            (int, float),
+        )
+    ):
+        raise TypeError(
+            f"{name} must be numeric"
+        )
+    return float(value)
+
+
 @dataclass(frozen=True)
 class EMANormalizerConfig:
     """Exponential running center/scale and surprise smoothing."""
@@ -93,10 +124,22 @@ class EMASurpriseNormalizer:
     def load_state_dict(self, state: Mapping[str, object]) -> None:
         if state.get("version") != 1:
             raise ValueError("unsupported surprise-normalizer checkpoint version")
-        count = int(state["count"])
-        center = float(state["center"])
-        variance = float(state["variance"])
-        smoothed = float(state["smoothed"])
+        count = _checkpoint_int(
+            state["count"],
+            name="surprise count",
+        )
+        center = _checkpoint_float(
+            state["center"],
+            name="surprise center",
+        )
+        variance = _checkpoint_float(
+            state["variance"],
+            name="surprise variance",
+        )
+        smoothed = _checkpoint_float(
+            state["smoothed"],
+            name="surprise smoothed",
+        )
         if count < 0 or variance <= 0:
             raise ValueError("invalid surprise-normalizer checkpoint state")
         if not all(math.isfinite(x) for x in (center, variance, smoothed)):
