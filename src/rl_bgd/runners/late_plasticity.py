@@ -354,7 +354,7 @@ def run_late_plasticity_quadratic(
         "information_access": {
             "task_identity_used_by_optimizer": False,
             "task_boundary_used_by_optimizer": False,
-            "shift_used_only_by_evaluator": True,
+            "task_shift_applied_externally": True,
         },
     }
 
