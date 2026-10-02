@@ -102,6 +102,33 @@ def parse_runner_stdout(
     return {str(key): value for key, value in payload.items()}
 
 
+def _resolve_primary_metric(
+    summary: RunSummary,
+    metric: str,
+) -> float:
+    if metric in summary.metrics:
+        return float(summary.metrics[metric])
+    if metric in summary.resources:
+        return float(summary.resources[metric])
+
+    suffix = f".{metric}"
+    matches = [
+        float(value)
+        for key, value in summary.metrics.items()
+        if key.endswith(suffix)
+    ]
+    if len(matches) == 1:
+        return matches[0]
+    if not matches:
+        raise ValueError(
+            f"declared primary metric {metric!r} is absent from run result"
+        )
+    raise ValueError(
+        f"declared primary metric {metric!r} is ambiguous across "
+        f"{len(matches)} result paths"
+    )
+
+
 def record_completed_suite_run(
     run_dir: str | Path,
     *,
@@ -148,6 +175,25 @@ def record_completed_suite_run(
         result,
         duration_seconds=duration_seconds,
     )
+    primary_metric = str(job["primary_metric"])
+    primary_value = _resolve_primary_metric(
+        summary,
+        primary_metric,
+    )
+    if (
+        primary_metric not in summary.metrics
+        and primary_metric not in summary.resources
+    ):
+        summary = RunSummary(
+            run_id=summary.run_id,
+            metrics={
+                **summary.metrics,
+                primary_metric: primary_value,
+            },
+            task_metrics=summary.task_metrics,
+            resources=summary.resources,
+            metadata=summary.metadata,
+        )
     resolved_config = {
         "suite": suite_name,
         "run_id": run_id,
