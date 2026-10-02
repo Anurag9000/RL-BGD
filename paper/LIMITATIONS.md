@@ -60,8 +60,11 @@ stationary, nor that the learner has no temporal cues: observations, rewards,
 previous actions, termination signals, replay statistics, and recurrent hidden
 state can all contain inferential information about latent context.
 
-Canonical Continual World and oracle-boundary UCL/EWC-style protocols use
-privileged information by design and are labelled separately.
+Canonical task-aware Continual World and oracle-boundary UCL protocols use
+privileged information by design and are labelled separately. The paper's
+EWC/Online-EWC/SI/MAS task-agnostic baselines instead consolidate on fixed
+optimizer-update intervals and do **not** receive true task IDs or task
+boundaries.
 
 ## Recurrence
 
