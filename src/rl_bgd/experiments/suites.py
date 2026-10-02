@@ -666,7 +666,20 @@ CARL_CORE = ExperimentSuite(
             protocol="strict_task_agnostic",
             config_path=f"configs/environments/carl_pendulum_{mode}.yaml",
             primary_metric="final_10_mean_return",
-            secondary_metrics=("sigma_mean", "retention_lambda"),
+            secondary_metrics=(
+                (
+                    "training.last_update_metrics.critic1_sigma_mean",
+                )
+                if optimizer == "bgd"
+                else (
+                    (
+                        "training.last_update_metrics.critic1_sigma_mean",
+                        "training.last_update_metrics.retention_lambda",
+                    )
+                    if optimizer == "adaptive_bgd"
+                    else ()
+                )
+            ),
             optional_extra="carl",
             runtime_class="large",
         )
@@ -737,7 +750,12 @@ CW10_CORE = ExperimentSuite(
             protocol="strict_task_agnostic",
             config_path="configs/benchmarks/continual_world_ta_cw10.yaml",
             primary_metric="final_average",
-            secondary_metrics=("forgetting", "bwt", "success_rate", "sigma_mean"),
+            secondary_metrics=(
+                "forgetting",
+                "bwt",
+                "success_rate",
+                "training.last_update_metrics.critic1_sigma_mean",
+            ),
             optional_extra="continual-world",
             runtime_class="very_large",
         ),
@@ -758,7 +776,13 @@ CW10_CORE = ExperimentSuite(
             protocol="3RL-style_task_agnostic",
             config_path="configs/benchmarks/three_rl_style_cw10.yaml",
             primary_metric="final_average",
-            secondary_metrics=("forgetting", "bwt", "recurrence", "success_rate"),
+            secondary_metrics=(
+                "forgetting",
+                "bwt",
+                "success_rate",
+                "training.last_update_metrics.critic1_sigma_mean",
+                "training.last_update_metrics.retention_lambda",
+            ),
             optional_extra="continual-world",
             runtime_class="very_large",
         ),
@@ -785,7 +809,11 @@ CW20_FINAL = ExperimentSuite(
             protocol="canonical_task_aware",
             config_path="configs/benchmarks/continual_world_canonical_cw20.yaml",
             primary_metric="final_average",
-            secondary_metrics=("forgetting", "bwt", "recurrence", "success_rate"),
+            secondary_metrics=(
+                "forgetting",
+                "bwt",
+                "success_rate",
+            ),
             optional_extra="continual-world",
             runtime_class="very_large",
         ),
@@ -806,7 +834,17 @@ CW20_FINAL = ExperimentSuite(
             protocol="strict_task_agnostic",
             config_path="configs/benchmarks/continual_world_ta_cw20.yaml",
             primary_metric="final_average",
-            secondary_metrics=("forgetting", "bwt", "recurrence", "success_rate"),
+            secondary_metrics=(
+                "forgetting",
+                "bwt",
+                "success_rate",
+                "training.last_update_metrics.critic1_sigma_mean",
+                "recurrence_summary.reference_success",
+                "recurrence_summary.zero_shot_success",
+                "recurrence_summary.recovered_success",
+                "recurrence_summary.pre_revisit_change",
+                "recurrence_summary.relearning_gain",
+            ),
             optional_extra="continual-world",
             runtime_class="very_large",
         ),
@@ -827,7 +865,18 @@ CW20_FINAL = ExperimentSuite(
             protocol="3RL-style_task_agnostic",
             config_path="configs/benchmarks/three_rl_style_cw20.yaml",
             primary_metric="final_average",
-            secondary_metrics=("forgetting", "bwt", "recurrence", "success_rate"),
+            secondary_metrics=(
+                "forgetting",
+                "bwt",
+                "success_rate",
+                "training.last_update_metrics.critic1_sigma_mean",
+                "training.last_update_metrics.retention_lambda",
+                "recurrence_summary.reference_success",
+                "recurrence_summary.zero_shot_success",
+                "recurrence_summary.recovered_success",
+                "recurrence_summary.pre_revisit_change",
+                "recurrence_summary.relearning_gain",
+            ),
             optional_extra="continual-world",
             runtime_class="very_large",
         ),
