@@ -67,6 +67,24 @@ def _compat_close(self: Any) -> Any:
         os.chdir(restore_dir)
 
 
+def _compat_seed(
+    self: Any,
+    core: Optional[int] = None,
+    disp: Optional[int] = None,
+    reseed: bool = False,
+) -> Any:
+    vardir = _find_vardir(self)
+    seed = getattr(self.env, "seed")
+    if vardir is None:
+        return seed(core, disp, reseed)
+    restore_dir = getattr(self, "basedir", os.getcwd())
+    os.chdir(vardir)
+    try:
+        return seed(core, disp, reseed)
+    finally:
+        os.chdir(restore_dir)
+
+
 def _install_vardir_compatibility() -> None:
     """Preserve CORA's chdir workaround only for NLE versions that expose it."""
 
