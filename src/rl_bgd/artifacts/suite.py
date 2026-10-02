@@ -158,6 +158,27 @@ def _resolve_primary_metric(
     )
 
 
+def _comparison_group(
+    job: Mapping[str, Any],
+) -> str | None:
+    raw = job.get(
+        "comparison_group"
+    )
+    if raw is None:
+        return None
+    if (
+        not isinstance(
+            raw,
+            str,
+        )
+        or not raw.strip()
+    ):
+        raise TypeError(
+            "suite comparison_group must be a non-empty string or None"
+        )
+    return raw.strip()
+
+
 def _contract_kwargs(
     job: Mapping[str, Any],
 ) -> dict[str, object]:
@@ -245,6 +266,7 @@ def record_completed_suite_run(
                 "comparison_group"
             ),
             "hypothesis_id": str(job["hypothesis_id"]),
+            "comparison_group": _comparison_group(job),
             "target": str(job["target"]),
             "primary_metric": str(job["primary_metric"]),
             "secondary_metrics": list(
@@ -283,6 +305,7 @@ def record_completed_suite_run(
     resolved_config = {
         "suite": suite_name,
         "suite_revision": job.get("suite_revision"),
+        "comparison_group": _comparison_group(job),
         "run_id": run_id,
         "git_commit": git_commit,
         "invocation": {
@@ -355,6 +378,7 @@ def record_failed_suite_run(
                 "comparison_group"
             ),
             "hypothesis_id": str(job["hypothesis_id"]),
+            "comparison_group": _comparison_group(job),
             "target": str(job["target"]),
             "contract_kwargs": _contract_kwargs(
                 job
