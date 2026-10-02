@@ -34,11 +34,22 @@ construct a different, explicitly documented results root before rebuilding.
 
 ## Automatic aggregation
 
+Canonical `summary.json` may retain additional finite numeric runner values for
+provenance/debugging, including configuration-like quantities. For suite-created
+runs, inferential paper tables **do not** treat every numeric leaf as a scientific
+metric. Phase 15 authorizes only the suite-declared primary metric, declared
+secondary metrics that resolve to finite scalars, and recorded resource metrics
+such as duration. Numeric configuration fields such as `steps`,
+`phase_steps`, `horizon`, or `phases` remain traceable in raw artifacts but
+are excluded from bootstrap and paired-difference tables unless a suite
+explicitly declares them as metrics. Non-suite canonical artifacts preserve the
+legacy all-scalar aggregation behavior.
+
 The canonical builder automatically:
 
 1. discovers strict run directories;
 2. validates run and information-access provenance;
-3. aggregates scalar metrics with seed-level bootstrap confidence intervals;
+3. aggregates authorized scalar metrics with seed-level bootstrap confidence intervals;
 4. hierarchically bootstraps task-level metrics;
 5. computes paired matched-seed method differences where available;
 6. writes run-index and information-access tables;
