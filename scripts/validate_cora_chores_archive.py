@@ -33,6 +33,12 @@ def _parser() -> argparse.ArgumentParser:
         help="Pinned CORA chores metadata directory.",
     )
     parser.add_argument(
+        "--expected-trajectories",
+        type=int,
+        default=None,
+        help="Optional exact number of trajectory references expected.",
+    )
+    parser.add_argument(
         "--root-only",
         action="store_true",
         help="Print only the validated ALFRED_DATA_DIR path.",
@@ -45,6 +51,16 @@ def main() -> None:
     refs = load_chores_trajectory_refs(
         args.metadata_root
     )
+    if (
+        args.expected_trajectories
+        is not None
+        and len(refs)
+        != args.expected_trajectories
+    ):
+        raise ValueError(
+            "CORA CHORES metadata trajectory count mismatch: "
+            f"expected {args.expected_trajectories}, found {len(refs)}"
+        )
     archive_root = find_chores_archive_root(
         args.search_root,
         refs,
