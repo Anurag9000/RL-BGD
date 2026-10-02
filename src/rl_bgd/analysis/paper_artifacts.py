@@ -515,13 +515,26 @@ def aggregate_task_metrics(
 
 def _comparison_group(
     run: LoadedRun,
-) -> str:
+) -> str | None:
+    """Return a declared suite comparison group or a legacy fallback."""
+
     raw = run.manifest.metadata.get(
         "comparison_group"
     )
+    suite = run.manifest.metadata.get(
+        "suite"
+    )
     if raw is None:
+        if (
+            isinstance(
+                suite,
+                str,
+            )
+            and suite.strip()
+        ):
+            return None
         return (
-            f"{run.manifest.setting}|"
+            f"legacy:{run.manifest.setting}|"
             f"{run.manifest.benchmark}"
         )
     if (
@@ -534,7 +547,37 @@ def _comparison_group(
         raise ValueError(
             f"{run.manifest.run_id}: comparison_group must be a non-empty string"
         )
-    return raw
+    return raw.strip()
+
+
+_PRIVILEGE_ACCESS_KEYS = (
+    "receives_task_id",
+    "receives_task_boundary",
+    "receives_environment_context",
+)
+
+
+def _privilege_access(
+    run: LoadedRun,
+) -> dict[str, bool]:
+    """Extract only evaluator-owned information privileges for fairness checks."""
+
+    privilege: dict[str, bool] = {}
+    for key in _PRIVILEGE_ACCESS_KEYS:
+        value = run.manifest.information_access.get(
+            key
+        )
+        if not isinstance(
+            value,
+            bool,
+        ):
+            raise ValueError(
+                f"{run.manifest.run_id}: information_access lacks boolean {key!r}"
+            )
+        privilege[
+            key
+        ] = value
+    return privilege
 
 
 def paired_method_differences(
@@ -544,30 +587,49 @@ def paired_method_differences(
 ) -> pd.DataFrame:
     """Create matched-seed differences only inside declared comparison groups."""
 
-    grouped = _group_runs(runs)
+    grouped = _group_runs(
+        runs
+    )
     by_context: dict[
-        tuple[str, str, str, str],
+        tuple[
+            str,
+            str,
+            str,
+            str,
+        ],
         list[
             tuple[
                 RunGroup,
                 list[LoadedRun],
             ]
         ],
-    ] = defaultdict(list)
+    ] = defaultdict(
+        list
+    )
     for group, group_runs in grouped.items():
+        suite_raw = group_runs[
+            0
+        ].manifest.metadata.get(
+            "suite"
+        )
         suite = (
-            group.experiment.split(
-                "/",
-                1,
-            )[0]
-            if "/" in group.experiment
+            suite_raw.strip()
+            if isinstance(
+                suite_raw,
+                str,
+            )
+            and suite_raw.strip()
             else ""
         )
-        comparison_group = _comparison_group(
-            group_runs[
-                0
-            ]
+        comparison_group = (
+            _comparison_group(
+                group_runs[
+                    0
+                ]
+            )
         )
+        if comparison_group is None:
+            continue
         by_context[
             (
                 suite,
@@ -582,50 +644,91 @@ def paired_method_differences(
             )
         )
 
-    rows: list[dict[str, object]] = []
+    rows: list[
+        dict[
+            str,
+            object,
+        ]
+    ] = []
     comparison_index = 0
     for (
         suite,
         comparison_group,
         setting,
         benchmark,
-    ), groups in sorted(by_context.items()):
+    ), groups in sorted(
+        by_context.items()
+    ):
         ordered = sorted(
             groups,
             key=lambda item: (
-                item[0].method,
-                item[0].experiment,
+                item[
+                    0
+                ].method,
+                item[
+                    0
+                ].experiment,
             ),
         )
-        for left_index in range(len(ordered)):
+        for left_index in range(
+            len(
+                ordered
+            )
+        ):
             for right_index in range(
                 left_index + 1,
-                len(ordered),
+                len(
+                    ordered
+                ),
             ):
                 (
                     left_group,
                     left_runs,
-                ) = ordered[left_index]
+                ) = ordered[
+                    left_index
+                ]
                 (
                     right_group,
                     right_runs,
-                ) = ordered[right_index]
-                left_by_seed = {run.manifest.seed: run for run in left_runs}
-                right_by_seed = {run.manifest.seed: run for run in right_runs}
-                left_seeds = set(left_by_seed)
-                right_seeds = set(right_by_seed)
+                ) = ordered[
+                    right_index
+                ]
+                left_by_seed = {
+                    run.manifest.seed: run
+                    for run in left_runs
+                }
+                right_by_seed = {
+                    run.manifest.seed: run
+                    for run in right_runs
+                }
+                left_seeds = set(
+                    left_by_seed
+                )
+                right_seeds = set(
+                    right_by_seed
+                )
                 if left_seeds != right_seeds:
                     raise ValueError(
                         "paired paper methods have different seed sets: "
                         f"{left_group.label} / {sorted(left_seeds)} versus "
                         f"{right_group.label} / {sorted(right_seeds)}"
                     )
-                matched_seeds = sorted(left_seeds)
+                matched_seeds = sorted(
+                    left_seeds
+                )
                 if not matched_seeds:
                     continue
 
-                left_primary = left_runs[0].manifest.metadata.get("primary_metric")
-                right_primary = right_runs[0].manifest.metadata.get("primary_metric")
+                left_primary = left_runs[
+                    0
+                ].manifest.metadata.get(
+                    "primary_metric"
+                )
+                right_primary = right_runs[
+                    0
+                ].manifest.metadata.get(
+                    "primary_metric"
+                )
                 if left_primary != right_primary:
                     raise ValueError(
                         "paired paper methods declare different primary metrics: "
@@ -633,8 +736,16 @@ def paired_method_differences(
                         f"{right_group.label}={right_primary!r}"
                     )
 
-                left_revision = left_runs[0].manifest.metadata.get("suite_revision")
-                right_revision = right_runs[0].manifest.metadata.get("suite_revision")
+                left_revision = left_runs[
+                    0
+                ].manifest.metadata.get(
+                    "suite_revision"
+                )
+                right_revision = right_runs[
+                    0
+                ].manifest.metadata.get(
+                    "suite_revision"
+                )
                 if left_revision != right_revision:
                     raise ValueError(
                         "paired paper methods use different suite revisions: "
@@ -643,9 +754,16 @@ def paired_method_differences(
                     )
 
                 for seed in matched_seeds:
-                    left_run = left_by_seed[seed]
-                    right_run = right_by_seed[seed]
-                    if left_run.manifest.git_commit != right_run.manifest.git_commit:
+                    left_run = left_by_seed[
+                        seed
+                    ]
+                    right_run = right_by_seed[
+                        seed
+                    ]
+                    if (
+                        left_run.manifest.git_commit
+                        != right_run.manifest.git_commit
+                    ):
                         raise ValueError(
                             "paired paper runs use different git commits: "
                             f"seed {seed} / {left_run.manifest.run_id}="
@@ -654,51 +772,121 @@ def paired_method_differences(
                             f"{right_run.manifest.git_commit!r}"
                         )
                     if (
-                        left_run.manifest.information_access
-                        != right_run.manifest.information_access
+                        _privilege_access(
+                            left_run
+                        )
+                        != _privilege_access(
+                            right_run
+                        )
                     ):
                         raise ValueError(
-                            "paired paper runs have different information access: "
+                            "paired paper runs have different privilege access: "
                             f"seed {seed} / {left_run.manifest.run_id} / "
                             f"{right_run.manifest.run_id}"
                         )
-                    if left_run.manifest.task_order != right_run.manifest.task_order:
+                    if (
+                        left_run.manifest.task_order
+                        != right_run.manifest.task_order
+                    ):
                         raise ValueError(
                             "paired paper runs have different task order: "
                             f"seed {seed} / {left_run.manifest.run_id} / "
                             f"{right_run.manifest.run_id}"
                         )
 
-                left_metrics = {metric for run in left_runs for metric in _metric_map(run)}
-                right_metrics = {metric for run in right_runs for metric in _metric_map(run)}
-                common_metrics = sorted(left_metrics & right_metrics)
-                for metric_index, metric in enumerate(common_metrics):
-                    left_values: list[float] = []
-                    right_values: list[float] = []
-                    run_pairs: list[tuple[str, str]] = []
+                left_metrics = {
+                    metric
+                    for run in left_runs
+                    for metric in _metric_map(
+                        run
+                    )
+                }
+                right_metrics = {
+                    metric
+                    for run in right_runs
+                    for metric in _metric_map(
+                        run
+                    )
+                }
+                common_metrics = sorted(
+                    left_metrics
+                    & right_metrics
+                )
+                for metric_index, metric in enumerate(
+                    common_metrics
+                ):
+                    left_values: list[
+                        float
+                    ] = []
+                    right_values: list[
+                        float
+                    ] = []
+                    run_pairs: list[
+                        tuple[
+                            str,
+                            str,
+                        ]
+                    ] = []
                     complete = True
                     for seed in matched_seeds:
-                        left_map = _metric_map(left_by_seed[seed])
-                        right_map = _metric_map(right_by_seed[seed])
-                        if metric not in left_map or metric not in right_map:
+                        left_map = _metric_map(
+                            left_by_seed[
+                                seed
+                            ]
+                        )
+                        right_map = _metric_map(
+                            right_by_seed[
+                                seed
+                            ]
+                        )
+                        if (
+                            metric
+                            not in left_map
+                            or metric
+                            not in right_map
+                        ):
                             complete = False
                             break
-                        left_values.append(left_map[metric])
-                        right_values.append(right_map[metric])
+                        left_values.append(
+                            left_map[
+                                metric
+                            ]
+                        )
+                        right_values.append(
+                            right_map[
+                                metric
+                            ]
+                        )
                         run_pairs.append(
                             (
-                                left_by_seed[seed].manifest.run_id,
-                                right_by_seed[seed].manifest.run_id,
+                                left_by_seed[
+                                    seed
+                                ].manifest.run_id,
+                                right_by_seed[
+                                    seed
+                                ].manifest.run_id,
                             )
                         )
                     if not complete:
                         continue
-                    estimate = paired_bootstrap_difference(
-                        left_values,
-                        right_values,
-                        confidence=(config.confidence),
-                        resamples=(config.bootstrap_resamples),
-                        seed=(config.seed + 2_000_000 + comparison_index * 100_000 + metric_index),
+                    estimate = (
+                        paired_bootstrap_difference(
+                            left_values,
+                            right_values,
+                            confidence=(
+                                config.confidence
+                            ),
+                            resamples=(
+                                config.bootstrap_resamples
+                            ),
+                            seed=(
+                                config.seed
+                                + 2_000_000
+                                + comparison_index
+                                * 100_000
+                                + metric_index
+                            ),
+                        )
                     )
                     rows.append(
                         {
@@ -708,20 +896,35 @@ def paired_method_differences(
                             ),
                             "setting": setting,
                             "benchmark": benchmark,
-                            "left_experiment": (left_group.experiment),
-                            "left_method": (left_group.method),
-                            "right_experiment": (right_group.experiment),
-                            "right_method": (right_group.method),
+                            "left_experiment": (
+                                left_group.experiment
+                            ),
+                            "left_method": (
+                                left_group.method
+                            ),
+                            "right_experiment": (
+                                right_group.experiment
+                            ),
+                            "right_method": (
+                                right_group.method
+                            ),
                             "metric": metric,
-                            "difference": ("left_minus_right"),
+                            "difference": (
+                                "left_minus_right"
+                            ),
                             **estimate.to_dict(),
-                            "matched_seeds": json.dumps(matched_seeds),
-                            "run_pairs": json.dumps(run_pairs),
+                            "matched_seeds": json.dumps(
+                                matched_seeds
+                            ),
+                            "run_pairs": json.dumps(
+                                run_pairs
+                            ),
                         }
                     )
                 comparison_index += 1
-    return pd.DataFrame(rows)
-
+    return pd.DataFrame(
+        rows
+    )
 
 def run_index(
     runs: Sequence[LoadedRun],
