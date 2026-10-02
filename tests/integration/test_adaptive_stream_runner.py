@@ -1,6 +1,7 @@
 import pytest
 
 from rl_bgd.runners.adaptive_bgd_lqr_stream import (
+    SurpriseSource,
     run_adaptive_bgd_lqr_stream,
 )
 
@@ -22,16 +23,22 @@ def test_adaptive_stream_runner_produces_surprise_timeline() -> None:
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    ("source", "expects_timeline"),
     (
-        ("none", False),
-        ("td", True),
-        ("ensemble", True),
-        ("predictive", True),
+        "source",
+        "fixed_retention",
+        "expects_timeline",
+    ),
+    (
+        ("none", 1.0, False),
+        ("none", 0.97, False),
+        ("td", 1.0, True),
+        ("ensemble", 1.0, True),
+        ("predictive", 1.0, True),
     ),
 )
-def test_adaptive_stream_runner_supports_all_surprise_sources(
-    source: str,
+def test_adaptive_stream_runner_supports_all_retention_policies(
+    source: SurpriseSource,
+    fixed_retention: float,
     expects_timeline: bool,
 ) -> None:
     result = run_adaptive_bgd_lqr_stream(
@@ -39,9 +46,13 @@ def test_adaptive_stream_runner_supports_all_surprise_sources(
         phase_steps=64,
         seed=4,
         device="cpu",
-        surprise_source=source,  # type: ignore[arg-type]
+        surprise_source=source,
+        fixed_retention=fixed_retention,
     )
     assert result["surprise_source"] == source
+    assert result["fixed_retention"] == pytest.approx(
+        fixed_retention
+    )
     assert bool(
         result["surprise_timeline"]
     ) is expects_timeline
@@ -58,3 +69,9 @@ def test_adaptive_stream_runner_supports_all_surprise_sources(
     if source == "none":
         assert result["detected_steps"] == []
         assert detection["recall"] == 0.0
+        assert result["surprise_auroc"] is None
+    else:
+        assert isinstance(
+            result["surprise_auroc"],
+            float,
+        )
