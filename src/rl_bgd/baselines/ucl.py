@@ -16,11 +16,20 @@ from torch import Tensor
 
 
 class UCLBayesianLayer(Protocol):
-    in_features: int
-    weight_mu: Tensor
-    weight_rho: Tensor
-    bias_mu: Tensor
-    bias_rho: Tensor
+    @property
+    def in_features(self) -> int: ...
+
+    @property
+    def weight_mu(self) -> Tensor: ...
+
+    @property
+    def weight_rho(self) -> Tensor: ...
+
+    @property
+    def bias_mu(self) -> Tensor: ...
+
+    @property
+    def bias_rho(self) -> Tensor: ...
 
 
 @dataclass(frozen=True)
