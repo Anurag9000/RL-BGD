@@ -248,13 +248,11 @@ def _resolve_declared_scalar_metric(
     run: LoadedRun,
     name: str,
 ) -> float | None:
-    metrics = (
-        run.summary.metrics
-    )
+    metrics = run.summary.metrics
     if name in metrics:
-        return metrics[
-            name
-        ]
+        return metrics[name]
+    if name in run.summary.resources:
+        return run.summary.resources[name]
 
     suffix = (
         "."
