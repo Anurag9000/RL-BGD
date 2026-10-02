@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 import torch
@@ -83,13 +84,12 @@ def run_quadratic(
     boundaries: list[dict[str, float | int]] = []
     result = None
     for step in range(total_steps):
-        task = stream.task_at(step)
+        active_task = stream.task_at(step)
 
         def objective(
-            params: dict[str, torch.Tensor],
-            active=task,
+            params: Mapping[str, torch.Tensor],
         ) -> torch.Tensor:
-            return active.loss(params["theta"])
+            return active_task.loss(params["theta"])
 
         result = updater.step(objective)
         losses.append(result.mean_loss)
