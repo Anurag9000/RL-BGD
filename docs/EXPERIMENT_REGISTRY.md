@@ -6,7 +6,7 @@ No expensive experiment is marked executed until raw run artifacts exist.
 |---|---|---|
 | SYN-Q1 | Positive curvature contracts posterior sigma | IMPLEMENTED / TESTED |
 | SYN-Q2 | E[g epsilon] approaches H sigma in small-sigma diagonal quadratic | IMPLEMENTED / TESTED |
-| A | Vanilla BGD can learn stationary RL tasks | IMPLEMENTED / TESTED on synthetic continuous control; large benchmark runs pending |
+| A | Vanilla BGD can learn stationary RL tasks | IMPLEMENTED / TESTED + five-seed SAC/PPO Adam-vs-BGD `stationary_core` jobs defined; execution pending |
 | B | BGD can reduce short-stream forgetting | EWC/Online-EWC/SI/MAS five-seed `baseline_core` jobs + bounded dev comparators IMPLEMENTED; multi-seed execution pending |
 | C | Vanilla BGD loses late-life plasticity under repeated evidence | CONTROLLED late-shift runner + causal regression test + matched vanilla/tempered five-seed ablation jobs IMPLEMENTED; multi-seed execution pending |
 | D | Fixed tempering prevents trivial sigma collapse | IMPLEMENTED / TESTED mechanism + explicit fixed-retention ablation jobs; multi-seed execution pending |
@@ -20,6 +20,6 @@ No expensive experiment is marked executed until raw run artifacts exist.
 | CW-TA10 | Task-agnostic BGD-SAC can retain/adapt across CW10 without task identity | IMPLEMENTED / NOT YET FULLY EXECUTED |
 | CW-TA20 | Recurrence in CW20 exposes retention and reacquisition behavior under hidden task identity | IMPLEMENTED / NOT YET FULLY EXECUTED |
 
-| I | Posterior uncertainty predicts perturbation importance | MECHANISTIC PIPELINE IMPLEMENTED / TESTED on deterministic controlled artifacts; larger multi-seed comparative validation pending |
-| J | Posterior sigma predicts future parameter movement | MECHANISTIC PIPELINE IMPLEMENTED / TESTED on deterministic controlled artifacts; larger multi-seed comparative validation pending |
+| I | Posterior uncertainty predicts perturbation importance | MECHANISTIC PIPELINE IMPLEMENTED / TESTED + five seeded artifact replicates defined; multi-seed execution pending |
+| J | Posterior sigma predicts future parameter movement | MECHANISTIC PIPELINE IMPLEMENTED / TESTED + five seeded artifact replicates defined; multi-seed execution pending |
 | UCL | Oracle-boundary UCL-PPO provides a documented Bayesian continual-RL comparator | IMPLEMENTED / TESTED + dedicated five-seed `baseline_core` job; multi-seed execution pending |
