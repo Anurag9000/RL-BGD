@@ -67,12 +67,14 @@ the same evaluator-owned phase segmentation but performs no Bayesian posterior
 snapshot or UCL penalty. This lets Phase-15 form matched-seed differences within
 each backbone family instead of comparing heterogeneous SAC and PPO conditions.
 
-The `compute_analysis` suite is a matched stationary SAC comparison rather
-than a reuse of heterogeneous smoke jobs: SAC-Adam and SAC-BGD
-critic-only/actor-only/actor-and-critic each run 600 environment steps on the
-same synthetic LQR protocol with seeds 0, 1, and 2. Launcher wall-clock duration
-is the primary resource metric and post-training return/improvement are the
-matched outcome metrics.
+The `compute_analysis` suite contains two separate matched factors. The
+bayesianization-cost family compares SAC-Adam with SAC-BGD critic-only,
+actor-only, and actor-and-critic at K=2. The Monte-Carlo-cost family holds
+critic-only Bayesianization fixed and compares K=1/2/4/8. Every arm runs 600
+environment steps on the same synthetic LQR protocol with seeds 0, 1, and 2.
+Launcher wall-clock duration is the primary resource metric and post-training
+return/improvement are matched secondary outcomes. Phase 15 never pairs methods
+across these two factors.
 
 
 Both `cw10_core` and `cw20_final` are comparison-matched rather than
