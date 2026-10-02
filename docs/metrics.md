@@ -16,7 +16,4 @@ detection delay, precision, recall, F1, false-positive rate, and false alarms
 per million environment steps. Per-step surprise traces can additionally be
 scored with AUROC using post-change windows as evaluation labels.
 
-The adaptive synthetic stream runner records the causal chain needed for later
-figures: surprise, retention lambda, posterior sigma, and effective learning
-rate. Return-recovery curves will be added to the same artifact pipeline rather
-than inferred from task labels during training.
+The adaptive synthetic stream runner records the causal chain used by the paper artifact pipeline: surprise, retention lambda, posterior sigma, effective learning rate, and available return/recovery traces. The Phase-15 builder creates diagnostic timelines and adaptation curves only from raw recorded columns; evaluator task/change labels are not injected into the learner to construct those plots.
