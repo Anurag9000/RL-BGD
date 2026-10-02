@@ -987,3 +987,168 @@ def test_paper_builder_rejects_paired_suite_revision_mismatch(
                 figure_formats=("png",),
             ),
         )
+
+
+
+def _write_grouped_comparison_run(
+    root: Path,
+    *,
+    run_id: str,
+    method: str,
+    job_id: str,
+    comparison_group: str,
+    seed: int,
+    score: float,
+) -> None:
+    write_run_artifacts(
+        root
+        / run_id,
+        manifest=RunManifest(
+            run_id=run_id,
+            method=method,
+            setting="stationary",
+            benchmark="shared_benchmark",
+            seed=seed,
+            git_commit="deadbeef",
+            information_access={
+                "receives_task_id": False,
+                "receives_task_boundary": False,
+                "receives_environment_context": False,
+            },
+            metadata={
+                "suite": "comparison_suite",
+                "suite_revision": 2,
+                "job_id": job_id,
+                "comparison_group": comparison_group,
+                "hypothesis_id": "TEST",
+                "target": (
+                    "rl_bgd.runners.example:run"
+                ),
+                "source_config_path": None,
+                "primary_metric": "score",
+                "secondary_metrics": [],
+                "contract_kwargs": {
+                    "steps": 10,
+                },
+            },
+        ),
+        summary=RunSummary(
+            run_id=run_id,
+            metrics={
+                "score": score,
+            },
+        ),
+        resolved_config={
+            "seed": seed,
+        },
+        metrics_rows=[
+            {
+                "series": "summary",
+                "row_index": 0,
+                "score": score,
+            }
+        ],
+    )
+
+
+def test_paired_statistics_respect_explicit_comparison_groups(
+    tmp_path: Path,
+) -> None:
+    results = (
+        tmp_path
+        / "results"
+    )
+    for seed in (
+        0,
+        1,
+    ):
+        _write_grouped_comparison_run(
+            results,
+            run_id=f"sac_adam_{seed}",
+            method="SAC-Adam",
+            job_id="sac_adam",
+            comparison_group="sac_family",
+            seed=seed,
+            score=1.0 + seed,
+        )
+        _write_grouped_comparison_run(
+            results,
+            run_id=f"sac_bgd_{seed}",
+            method="SAC-BGD",
+            job_id="sac_bgd",
+            comparison_group="sac_family",
+            seed=seed,
+            score=1.2 + seed,
+        )
+        _write_grouped_comparison_run(
+            results,
+            run_id=f"ppo_adam_{seed}",
+            method="PPO-Adam",
+            job_id="ppo_adam",
+            comparison_group="ppo_family",
+            seed=seed,
+            score=0.5 + seed,
+        )
+        _write_grouped_comparison_run(
+            results,
+            run_id=f"ppo_bgd_{seed}",
+            method="PPO-BGD",
+            job_id="ppo_bgd",
+            comparison_group="ppo_family",
+            seed=seed,
+            score=0.7 + seed,
+        )
+
+    output = (
+        tmp_path
+        / "paper"
+    )
+    build_paper_artifacts(
+        results,
+        output,
+        config=PaperArtifactConfig(
+            bootstrap_resamples=50,
+            seed=47,
+            figure_formats=(
+                "png",
+            ),
+        ),
+    )
+    paired = pd.read_csv(
+        output
+        / "tables"
+        / "paired_differences.csv"
+    )
+    assert set(
+        paired[
+            "comparison_group"
+        ]
+    ) == {
+        "sac_family",
+        "ppo_family",
+    }
+    method_pairs = {
+        frozenset(
+            (
+                row.left_method,
+                row.right_method,
+            )
+        )
+        for row in paired.itertuples()
+        if row.metric
+        == "score"
+    }
+    assert method_pairs == {
+        frozenset(
+            (
+                "SAC-Adam",
+                "SAC-BGD",
+            )
+        ),
+        frozenset(
+            (
+                "PPO-Adam",
+                "PPO-BGD",
+            )
+        ),
+    }
