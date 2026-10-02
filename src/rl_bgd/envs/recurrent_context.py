@@ -2,28 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Any
 
 import torch
 from torch import Tensor
 
+from rl_bgd.envs.protocols import ContinuousEnv
 from rl_bgd.envs.synthetic.lqr import TensorBox
-
-
-class ContinuousTensorEnv(Protocol):
-    action_space: TensorBox
-    observation_space: TensorBox
-
-    def reset(
-        self,
-        *,
-        seed: int | None = None,
-    ) -> tuple[Tensor, dict[str, object]]: ...
-
-    def step(
-        self,
-        action: Tensor,
-    ) -> tuple[Tensor, float, bool, bool, dict[str, object]]: ...
 
 
 class PreviousTransitionContextEnv:
@@ -37,7 +22,7 @@ class PreviousTransitionContextEnv:
 
     def __init__(
         self,
-        env: ContinuousTensorEnv,
+        env: ContinuousEnv,
         *,
         reward_bound: float = 1_000_000.0,
     ) -> None:
