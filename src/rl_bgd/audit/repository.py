@@ -504,6 +504,49 @@ def audit_repository(
                 )
             )
 
+    chores_workflow_relative = ".github/workflows/cora-chores.yml"
+    chores_workflow = (root / chores_workflow_relative).read_text(
+        encoding="utf-8"
+    )
+    required_chores_workflow_snippets = (
+        "workflow_dispatch:",
+        "chores_archive_url:",
+        "required: true",
+        "scripts/validate_cora_chores_archive.py",
+        "PYTHONPATH: src",
+        "--root-only",
+        'echo "root=$root" >> "$GITHUB_OUTPUT"',
+        "xvfb-run -a python scripts/cora_legacy_chores_smoke.py",
+    )
+    for snippet in required_chores_workflow_snippets:
+        checks_run += 1
+        if snippet not in chores_workflow:
+            findings.append(
+                AuditFinding(
+                    "chores_recovery_workflow",
+                    chores_workflow_relative,
+                    f"missing required recovery contract snippet {snippet!r}",
+                )
+            )
+
+    forbidden_chores_workflow_snippets = (
+        "\n  push:",
+        "\n  pull_request:",
+        "--expected-trajectories 27",
+        "\\ \\",
+        '--metadata-root "$metadata_root" \\\n          echo "root=$root"',
+    )
+    for snippet in forbidden_chores_workflow_snippets:
+        checks_run += 1
+        if snippet in chores_workflow:
+            findings.append(
+                AuditFinding(
+                    "chores_recovery_workflow",
+                    chores_workflow_relative,
+                    f"contains forbidden recovery workflow pattern {snippet!r}",
+                )
+            )
+
     return RepositoryAuditReport(
         root=str(root),
         checks_run=checks_run,
