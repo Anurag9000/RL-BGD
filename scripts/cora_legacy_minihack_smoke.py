@@ -5,14 +5,14 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from continual_rl.experiments.tasks.make_minihack_task import (
-    get_single_minihack_task,
-)
-from continual_rl.utils.utils import Utils
 import gym
 import minihack
 import nle
 import numpy as np
+from continual_rl.experiments.tasks.make_minihack_task import (
+    get_single_minihack_task,
+)
+from continual_rl.utils.utils import Utils
 
 
 def _reset(env: Any) -> Any:
