@@ -1424,19 +1424,28 @@ def _learning_curve_figures(
     runs: Sequence[LoadedRun],
     output_dir: Path,
     formats: Sequence[str],
+    *,
+    config: PaperArtifactConfig,
 ) -> tuple[
     list[str],
     list[str],
 ]:
+    """Plot learning curves with matched-seed bootstrap confidence bands."""
+
     artifacts: list[str] = []
     skipped: list[str] = []
-    for group, group_runs in sorted(
-        _group_runs(
-            runs
-        ).items(),
-        key=lambda item: item[
-            0
-        ].label,
+    for group_index, (
+        group,
+        group_runs,
+    ) in enumerate(
+        sorted(
+            _group_runs(
+                runs
+            ).items(),
+            key=lambda item: item[
+                0
+            ].label,
+        )
     ):
         available = [
             (
@@ -1470,10 +1479,10 @@ def _learning_curve_figures(
         x_column, y_column = (
             columns[0]
         )
-        by_x: dict[
-            float,
-            list[float],
-        ] = defaultdict(list)
+
+        seed_series: list[
+            dict[float, float]
+        ] = []
         for run in group_runs:
             frame = run.metrics[
                 [
@@ -1481,7 +1490,16 @@ def _learning_curve_figures(
                     y_column,
                 ]
             ].dropna()
-            for x_value, y_value in frame.itertuples(
+            grouped_values: dict[
+                float,
+                list[float],
+            ] = defaultdict(
+                list
+            )
+            for (
+                x_value,
+                y_value,
+            ) in frame.itertuples(
                 index=False,
                 name=None,
             ):
@@ -1499,28 +1517,45 @@ def _learning_curve_figures(
                         y_float
                     )
                 ):
-                    by_x[
+                    grouped_values[
                         x_float
                     ].append(
                         y_float
                     )
-        if not by_x:
+            seed_series.append(
+                {
+                    x_value: float(
+                        np.mean(
+                            values
+                        )
+                    )
+                    for (
+                        x_value,
+                        values,
+                    ) in grouped_values.items()
+                }
+            )
+
+        (
+            xs,
+            means,
+            lows,
+            highs,
+        ) = _pointwise_seed_statistics(
+            seed_series,
+            config=config,
+            seed_offset=(
+                3_000_000
+                + group_index
+                * 10_000
+            ),
+        )
+        if not xs:
             skipped.append(
-                f"{group.label}: no finite learning-curve points"
+                f"{group.label}: no aligned finite learning-curve points"
             )
             continue
 
-        xs = sorted(
-            by_x
-        )
-        means = [
-            float(
-                np.mean(
-                    by_x[x]
-                )
-            )
-            for x in xs
-        ]
         figure = plt.figure()
         axis = figure.add_subplot(
             111
@@ -1528,6 +1563,12 @@ def _learning_curve_figures(
         axis.plot(
             xs,
             means,
+        )
+        axis.fill_between(
+            xs,
+            lows,
+            highs,
+            alpha=0.2,
         )
         axis.set_xlabel(
             x_column
@@ -2426,6 +2467,7 @@ def build_paper_artifacts(
             runs,
             figures_dir,
             resolved.figure_formats,
+            config=resolved,
         )
     )
     figure_artifacts.extend(
