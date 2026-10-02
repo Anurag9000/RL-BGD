@@ -7,6 +7,7 @@ import torch
 from torch import Tensor
 
 from rl_bgd.agents.sac.regularized_agent import RegularizedSACAgent
+from rl_bgd.envs.protocols import ContinuousEnv
 from rl_bgd.envs.protocols import ContinuousTensorEnv
 from rl_bgd.replay.buffer import ReplayBuffer
 
