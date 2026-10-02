@@ -9,7 +9,6 @@ import torch
 from torch import Tensor
 
 from rl_bgd.agents.ppo.rollout import RolloutBuffer
-from rl_bgd.envs.protocols import ContinuousEnv
 from rl_bgd.envs.protocols import ContinuousTensorEnv
 
 
