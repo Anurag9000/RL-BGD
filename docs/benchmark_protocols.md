@@ -63,8 +63,9 @@ implements dependency-free representations of the canonical Atari and Procgen
 sequential schedules plus CORA-style isolated forgetting and isolated zero-shot
 forward-transfer calculations directly from numeric evaluation traces.
 
-The legacy CORA environment runtime itself remains intentionally isolated. Its
-develop branch is a 2022 stack pinned to gym<=0.25.2, atari-py==0.2.5 and
-setuptools==59.5.0, which is incompatible with the repository's modern
-Python/Gymnasium base. RL-BGD does not silently downgrade the primary runtime
-to claim environment compatibility.
+The legacy CORA environment runtime remains intentionally isolated from the
+modern Python/Gymnasium base. A dedicated Python 3.10/Gym 0.25 workflow now
+passes a real pinned-upstream Pong reset/step smoke with accepted Atari ROMs.
+This validates the isolated Atari path without silently downgrading the primary
+runtime. It does not imply full Procgen/NetHack/CHORES or historical
+dependency-matrix compatibility.
