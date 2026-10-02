@@ -10,7 +10,7 @@ import torch
 from torch import Tensor, nn
 from torch.distributions import Normal
 
-from rl_bgd.baselines.ucl import positive_sigma
+from rl_bgd.baselines.ucl import UCLBayesianLayer, positive_sigma
 
 
 class UCLBayesianLinear(nn.Module):
@@ -94,7 +94,8 @@ class UCLBayesianMLP(nn.Module):
         *,
         sample_weights: bool,
     ) -> Tensor:
-        for layer in self.hidden_layers:
+        for module in self.hidden_layers:
+            layer = cast(UCLBayesianLinear, module)
             x = torch.tanh(
                 layer(
                     x,
