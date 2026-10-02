@@ -10,6 +10,7 @@ from rl_bgd.envs.continual_world.canonical import (
 from rl_bgd.envs.continual_world.evaluation import (
     PerformanceMatrixRecorder,
     evaluate_task,
+    repeated_sequence_recurrence_summary,
 )
 from rl_bgd.envs.synthetic.lqr import TensorBox
 
@@ -161,3 +162,88 @@ def test_identity_wrapper_and_canonical_stream_propagate_close() -> None:
     env.close()
     assert first.close_count == 1
     assert second.close_count == 1
+
+
+
+def test_repeated_sequence_recurrence_summary() -> None:
+    summary = repeated_sequence_recurrence_summary(
+        (
+            "task-a",
+            "task-b",
+            "task-a",
+            "task-b",
+        ),
+        (
+            (
+                0.8,
+                0.1,
+                0.7,
+                0.2,
+            ),
+            (
+                0.7,
+                0.9,
+                0.6,
+                0.8,
+            ),
+            (
+                0.65,
+                0.85,
+                0.95,
+                0.75,
+            ),
+            (
+                0.6,
+                0.8,
+                0.9,
+                0.98,
+            ),
+        ),
+    )
+
+    assert summary[
+        "reference_success"
+    ] == pytest.approx(
+        0.75
+    )
+    assert summary[
+        "zero_shot_success"
+    ] == pytest.approx(
+        0.7
+    )
+    assert summary[
+        "recovered_success"
+    ] == pytest.approx(
+        0.965
+    )
+    assert summary[
+        "pre_revisit_change"
+    ] == pytest.approx(
+        -0.05
+    )
+    assert summary[
+        "relearning_gain"
+    ] == pytest.approx(
+        0.265
+    )
+
+
+def test_recurrence_summary_rejects_nonrepeated_sequence() -> None:
+    with pytest.raises(
+        ValueError,
+        match="repeat",
+    ):
+        repeated_sequence_recurrence_summary(
+            (
+                "task-a",
+                "task-b",
+                "task-c",
+                "task-d",
+            ),
+            (
+                (1.0, 0.0, 0.0, 0.0),
+                (1.0, 1.0, 0.0, 0.0),
+                (1.0, 1.0, 1.0, 0.0),
+                (1.0, 1.0, 1.0, 1.0),
+            ),
+        )
