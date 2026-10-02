@@ -241,6 +241,9 @@ def record_completed_suite_run(
             "suite": suite_name,
             "suite_revision": job.get("suite_revision"),
             "job_id": str(job["job_id"]),
+            "comparison_group": job.get(
+                "comparison_group"
+            ),
             "hypothesis_id": str(job["hypothesis_id"]),
             "target": str(job["target"]),
             "primary_metric": str(job["primary_metric"]),
@@ -323,7 +326,34 @@ def record_failed_suite_run(
         metadata={
             "suite": suite_name,
             "suite_revision": job.get("suite_revision"),
+def record_failed_suite_run(
+    run_dir: str | Path,
+    *,
+    suite_name: str,
+    git_commit: str,
+    job: Mapping[str, Any],
+    failure_reason: str,
+) -> RunManifest:
+    """Record failed/invalid suite jobs so aggregation cannot silently omit them."""
+
+    run_id = str(job["run_id"])
+    protocol = str(job["protocol"])
+    manifest = RunManifest(
+        run_id=run_id,
+        method=str(job["algorithm"]),
+        setting=protocol,
+        benchmark=str(job["environment"]),
+        seed=int(job["seed"]),
+        git_commit=(git_commit if git_commit.strip() else "unresolved"),
+        status="failed",
+        information_access=(information_access_for_protocol(protocol)),
+        metadata={
+            "suite": suite_name,
+            "suite_revision": job.get("suite_revision"),
             "job_id": str(job["job_id"]),
+            "comparison_group": job.get(
+                "comparison_group"
+            ),
             "hypothesis_id": str(job["hypothesis_id"]),
             "target": str(job["target"]),
             "contract_kwargs": _contract_kwargs(
