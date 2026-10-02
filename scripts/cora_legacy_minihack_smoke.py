@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any, Optional
+from typing import Any
 
 import gym
 import minihack
@@ -17,7 +17,7 @@ from continual_rl.experiments.tasks.make_minihack_task import (
 from continual_rl.utils.utils import Utils
 
 
-def _find_vardir(wrapper: Any) -> Optional[str]:
+def _find_vardir(wrapper: Any) -> str | None:
     """Find an old NLE runtime directory when that implementation detail exists."""
 
     current = getattr(wrapper, "env", None)
@@ -69,12 +69,12 @@ def _compat_close(self: Any) -> Any:
 
 def _compat_seed(
     self: Any,
-    core: Optional[int] = None,
-    disp: Optional[int] = None,
+    core: int | None = None,
+    disp: int | None = None,
     reseed: bool = False,
 ) -> Any:
     vardir = _find_vardir(self)
-    seed = getattr(self.env, "seed")
+    seed = self.env.seed
     if vardir is None:
         return seed(core)
     restore_dir = getattr(self, "basedir", os.getcwd())
