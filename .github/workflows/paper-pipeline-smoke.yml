@@ -7,9 +7,7 @@ on:
       - "src/rl_bgd/experiments/**"
       - "src/rl_bgd/artifacts/**"
       - "src/rl_bgd/analysis/**"
-      - "src/rl_bgd/runners/sac_lqr.py"
-      - "src/rl_bgd/runners/bgd_sac_lqr.py"
-      - "src/rl_bgd/runners/ppo_lqr.py"
+      - "src/rl_bgd/runners/**"
       - "tests/integration/test_paper_pipeline_smoke.py"
       - ".github/workflows/paper-pipeline-smoke.yml"
   pull_request:
@@ -17,9 +15,7 @@ on:
       - "src/rl_bgd/experiments/**"
       - "src/rl_bgd/artifacts/**"
       - "src/rl_bgd/analysis/**"
-      - "src/rl_bgd/runners/sac_lqr.py"
-      - "src/rl_bgd/runners/bgd_sac_lqr.py"
-      - "src/rl_bgd/runners/ppo_lqr.py"
+      - "src/rl_bgd/runners/**"
       - "tests/integration/test_paper_pipeline_smoke.py"
       - ".github/workflows/paper-pipeline-smoke.yml"
 
