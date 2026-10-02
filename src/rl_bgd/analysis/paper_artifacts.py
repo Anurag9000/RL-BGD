@@ -92,14 +92,28 @@ class RunGroup:
 def _experiment_id(
     run: LoadedRun,
 ) -> str:
-    value = run.manifest.metadata.get(
+    job = run.manifest.metadata.get(
         "job_id"
     )
-    if isinstance(
-        value,
-        str,
-    ) and value.strip():
-        return value
+    suite = run.manifest.metadata.get(
+        "suite"
+    )
+    if (
+        isinstance(
+            job,
+            str,
+        )
+        and job.strip()
+    ):
+        if (
+            isinstance(
+                suite,
+                str,
+            )
+            and suite.strip()
+        ):
+            return f"{suite}/{job}"
+        return job
     return run.manifest.method
 
 
@@ -473,13 +487,13 @@ def paired_method_differences(
     *,
     config: PaperArtifactConfig,
 ) -> pd.DataFrame:
-    """Create all matched-seed method differences within setting/benchmark."""
+    """Create matched-seed method differences within suite/setting/benchmark."""
 
     grouped = _group_runs(
         runs
     )
     by_context: dict[
-        tuple[str, str],
+        tuple[str, str, str],
         list[
             tuple[
                 RunGroup,
@@ -488,8 +502,17 @@ def paired_method_differences(
         ],
     ] = defaultdict(list)
     for group, group_runs in grouped.items():
+        suite = (
+            group.experiment.split(
+                "/",
+                1,
+            )[0]
+            if "/" in group.experiment
+            else ""
+        )
         by_context[
             (
+                suite,
                 group.setting,
                 group.benchmark,
             )
@@ -505,6 +528,7 @@ def paired_method_differences(
     ] = []
     comparison_index = 0
     for (
+        suite,
         setting,
         benchmark,
     ), groups in sorted(
@@ -643,6 +667,7 @@ def paired_method_differences(
                     )
                     rows.append(
                         {
+                            "suite": suite,
                             "setting": setting,
                             "benchmark": benchmark,
                             "left_experiment": (
