@@ -569,10 +569,69 @@ BASELINE_CORE = ExperimentSuite(
         "Five-seed external continual-learning baseline confirmation on recurring LQR."
     ),
     jobs=(
+        _job(
+            "baseline_sac_adam_control",
+            "B",
+            (
+                "rl_bgd.runners.regularized_sac_continual_lqr:"
+                "run_sac_recurring_lqr_control"
+            ),
+            kwargs={
+                "steps": 600,
+                "device": "auto",
+                "phase_steps": 40,
+                "horizon": 24,
+            },
+            seeds=(0, 1, 2, 3, 4),
+            algorithm="SAC-Adam-Control",
+            environment="recurring_lqr",
+            protocol="task_agnostic_fixed_update",
+            config_path=None,
+            primary_metric="final_10_mean_return",
+            secondary_metrics=(
+                "training.mean_episode_return",
+            ),
+            runtime_class="medium",
+            notes=(
+                "Unregularized SAC uses the same recurring-LQR profile, "
+                "network width, optimizer settings, replay budget, and seeds "
+                "as the parameter-regularization baselines."
+            ),
+        ),
         *_regularized_baseline_jobs(
             steps=600,
             seeds=(0, 1, 2, 3, 4),
             runtime_class="medium",
+        ),
+        _job(
+            "baseline_ppo_adam_oracle_control",
+            "UCL",
+            (
+                "rl_bgd.runners.ucl_ppo_lqr:"
+                "run_adam_ppo_oracle_recurring_lqr_control"
+            ),
+            kwargs={
+                "phase_steps": 120,
+                "phases": 5,
+                "device": "auto",
+                "horizon": 32,
+            },
+            seeds=(0, 1, 2, 3, 4),
+            algorithm="PPO-Adam-Oracle-Control",
+            environment="recurring_lqr",
+            protocol="oracle_boundary_control",
+            config_path=None,
+            primary_metric="final_phase_return",
+            secondary_metrics=(
+                "phase_summaries",
+                "boundaries",
+            ),
+            runtime_class="medium",
+            notes=(
+                "Adam PPO uses the same phase schedule, model widths, PPO "
+                "hyperparameters, and seeds as UCL but no Bayesian layers "
+                "or UCL regularization."
+            ),
         ),
         _job(
             "baseline_ucl_oracle",
