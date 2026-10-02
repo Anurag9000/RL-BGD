@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import Any
 
 import gym
@@ -10,6 +11,7 @@ import minihack
 import nle
 import numpy as np
 from continual_rl.experiments.tasks.make_minihack_task import (
+    MiniHackMakeVecSafeWrapper,
     get_single_minihack_task,
 )
 from continual_rl.utils.utils import Utils
@@ -41,6 +43,55 @@ def _repair_cora_minihack_wrapper_shape(env: Any) -> None:
         current = next_env
 
     raise RuntimeError("CORA MiniHack safety wrapper was not found")
+
+def _find_vardir(wrapper: Any) -> str:
+    current = wrapper.env
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        vardir = getattr(current, "_vardir", None)
+        if vardir is not None:
+            return str(vardir)
+        current = getattr(current, "env", None)
+    raise AttributeError(
+        "MiniHack wrapper chain does not expose _vardir"
+    )
+
+
+def _compat_reset(self: Any) -> Any:
+    restore_dir = getattr(self, "basedir", os.getcwd())
+    os.chdir(_find_vardir(self))
+    try:
+        return self.env.reset()
+    finally:
+        os.chdir(restore_dir)
+
+
+def _compat_step(self: Any, action: Any) -> Any:
+    restore_dir = getattr(self, "basedir", os.getcwd())
+    os.chdir(_find_vardir(self))
+    try:
+        return self.env.step(action)
+    finally:
+        os.chdir(restore_dir)
+
+
+def _compat_close(self: Any) -> Any:
+    restore_dir = getattr(self, "basedir", os.getcwd())
+    os.chdir(_find_vardir(self))
+    try:
+        return self.env.close()
+    finally:
+        os.chdir(restore_dir)
+
+
+def _install_vardir_compatibility() -> None:
+    """Repair only CORA's stale assumption about MiniHack wrapper depth."""
+
+    MiniHackMakeVecSafeWrapper.reset = _compat_reset
+    MiniHackMakeVecSafeWrapper.step = _compat_step
+    MiniHackMakeVecSafeWrapper.close = _compat_close
+
 
 def _reset(env: Any) -> Any:
     output = env.reset()
@@ -80,6 +131,7 @@ def main() -> None:
         eval_mode=False,
     )
     task_spec = task._task_spec  # CORA exposes no public TaskSpec accessor.
+    _install_vardir_compatibility()
     env, _ = Utils.make_env(
         task_spec.env_spec,
         seed_to_set=31,
@@ -101,6 +153,7 @@ def main() -> None:
                     "gym_version": gym.__version__,
                     "minihack_version": getattr(minihack, "__version__", "unknown"),
                     "nle_version": getattr(nle, "__version__", "unknown"),
+                    "compatibility_shim": "cora_minihack_vardir_wrapper_depth",
                     "action_space": str(env.action_space),
                     "reward": reward,
                     "done": done,
