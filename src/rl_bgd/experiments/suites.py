@@ -1005,7 +1005,8 @@ UNCERTAINTY_ANALYSIS = ExperimentSuite(
             config_path="configs/environments/lqr_recurring.yaml",
             primary_metric="change_detection.f1",
             secondary_metrics=(
-                "change_detection.mean_detection_delay",
+                "change_detection.precision",
+                "change_detection.recall",
                 "change_detection.false_alarms_per_million_steps",
                 "training.last_update_metrics.retention_lambda",
                 "training.last_update_metrics.critic1_sigma_mean",
