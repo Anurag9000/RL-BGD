@@ -123,9 +123,22 @@ def _hidden_context_jobs(
             config_path="configs/environments/lqr_recurring.yaml",
             primary_metric="final_10_mean_return",
             secondary_metrics=(
-                "training.mean_episode_return",
-                "training.last_update_metrics.critic1_sigma_mean",
-                "training.last_update_metrics.retention_lambda",
+                ("training.mean_episode_return",)
+                + (
+                    ("training.last_update_metrics.critic1_sigma_mean",)
+                    if variant
+                    in {
+                        "feedforward_bgd",
+                        "recurrent_bgd",
+                        "recurrent_adaptive_bgd",
+                    }
+                    else ()
+                )
+                + (
+                    ("training.last_update_metrics.retention_lambda",)
+                    if variant == "recurrent_adaptive_bgd"
+                    else ()
+                )
             ),
             runtime_class=runtime_class,
         )
@@ -390,7 +403,10 @@ SMOKE = ExperimentSuite(
             protocol="stationary",
             config_path="configs/algorithms/sac_bgd.yaml",
             primary_metric="post_return",
-            secondary_metrics=("improvement", "critic_sigma_mean"),
+            secondary_metrics=(
+                "improvement",
+                "training.last_update_metrics.critic1_sigma_mean",
+            ),
             runtime_class="smoke",
         ),
         _job(
@@ -546,10 +562,7 @@ DEV = ExperimentSuite(
             protocol="oracle_boundary",
             config_path=None,
             primary_metric="final_phase_return",
-            secondary_metrics=(
-                "phase_summaries",
-                "boundaries",
-            ),
+            secondary_metrics=(),
             runtime_class="dev",
         ),
     ),
@@ -607,10 +620,7 @@ BASELINE_CORE = ExperimentSuite(
             protocol="oracle_boundary",
             config_path=None,
             primary_metric="final_phase_return",
-            secondary_metrics=(
-                "phase_summaries",
-                "boundaries",
-            ),
+            secondary_metrics=(),
             runtime_class="medium",
             notes=(
                 "Adam PPO uses the same phase schedule, model widths, PPO "
@@ -634,10 +644,7 @@ BASELINE_CORE = ExperimentSuite(
             protocol="oracle_boundary",
             config_path=None,
             primary_metric="final_phase_return",
-            secondary_metrics=(
-                "phase_summaries",
-                "boundaries",
-            ),
+            secondary_metrics=(),
             runtime_class="medium",
             notes=("UCL is an oracle-boundary comparator and is not labelled task-agnostic."),
         ),
@@ -922,9 +929,31 @@ ABLATION_CORE = ExperimentSuite(
             config_path="configs/algorithms/sac_bgd.yaml",
             primary_metric="post_return",
             secondary_metrics=(
-                "improvement",
-                "training.last_update_metrics.critic1_sigma_mean",
-                "training.last_update_metrics.critic1_effective_lr_mean",
+                ("improvement",)
+                + (
+                    (
+                        "training.last_update_metrics.critic1_sigma_mean",
+                        "training.last_update_metrics.critic1_effective_lr_mean",
+                    )
+                    if mode
+                    in {
+                        "critic_only",
+                        "actor_and_critic",
+                    }
+                    else ()
+                )
+                + (
+                    (
+                        "training.last_update_metrics.actor_sigma_mean",
+                        "training.last_update_metrics.actor_effective_lr_mean",
+                    )
+                    if mode
+                    in {
+                        "actor_only",
+                        "actor_and_critic",
+                    }
+                    else ()
+                )
             ),
             runtime_class="medium",
         )
@@ -1023,30 +1052,62 @@ MECHANISM_ANALYSIS = ExperimentSuite(
 
 COMPUTE_ANALYSIS = ExperimentSuite(
     name="compute_analysis",
-    description="Matched stationary methods with launcher-recorded wall-clock metadata.",
-    jobs=SMOKE.jobs
-    + tuple(
+    description=(
+        "Matched 600-step stationary SAC compute/performance comparison "
+        "with launcher-recorded wall-clock metadata."
+    ),
+    jobs=(
         _job(
-            f"compute_bgd_{mode}",
+            "compute_sac_adam",
             "COMPUTE",
-            "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
+            "rl_bgd.runners.sac_lqr:run_sac_lqr",
             kwargs={
                 "steps": 600,
                 "device": "auto",
-                "bayesianization": mode,
             },
             seeds=(0, 1, 2),
-            algorithm=f"SAC-BGD-{mode}",
+            algorithm="SAC-Adam",
             environment="synthetic_lqr",
             protocol="stationary_compute",
-            config_path="configs/algorithms/sac_bgd.yaml",
+            config_path="configs/algorithms/sac_adam.yaml",
             primary_metric="duration_seconds",
-            secondary_metrics=("post_return", "improvement"),
+            secondary_metrics=(
+                "post_return",
+                "improvement",
+            ),
             runtime_class="compute",
-        )
-        for mode in ("critic_only", "actor_only", "actor_and_critic")
+        ),
+        *tuple(
+            _job(
+                f"compute_bgd_{mode}",
+                "COMPUTE",
+                "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
+                kwargs={
+                    "steps": 600,
+                    "device": "auto",
+                    "bayesianization": mode,
+                },
+                seeds=(0, 1, 2),
+                algorithm=f"SAC-BGD-{mode}",
+                environment="synthetic_lqr",
+                protocol="stationary_compute",
+                config_path="configs/algorithms/sac_bgd.yaml",
+                primary_metric="duration_seconds",
+                secondary_metrics=(
+                    "post_return",
+                    "improvement",
+                ),
+                runtime_class="compute",
+            )
+            for mode in (
+                "critic_only",
+                "actor_only",
+                "actor_and_critic",
+            )
+        ),
     ),
 )
+
 
 SUITES: dict[str, ExperimentSuite] = {
     suite.name: suite
