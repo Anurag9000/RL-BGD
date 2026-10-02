@@ -78,6 +78,28 @@ Both canonical and strict TA runners record evaluator-known stage-by-task:
 CW20 keeps the two CW10 passes as separate occurrences, allowing recurrence and
 reacquisition analyses without silently merging them.
 
+## Matched strict task-agnostic method families
+
+Both `cw10_core` and `cw20_final` define the same six feed-forward
+task-agnostic SAC families on the same stream/budget/seed set:
+
+- Adam;
+- BGD;
+- EWC;
+- Online-EWC;
+- Synaptic Intelligence;
+- MAS.
+
+The four parameter-importance methods consolidate on a fixed optimizer-update
+interval. They receive no true task ID, stage index, context, or boundary
+callback. Their consolidation cadence is algorithm state, not evaluator
+information.
+
+Both benchmarks also define recurrent Adam, recurrent BGD, and recurrent
+adaptive-BGD controls under the same 3RL-style hidden-context protocol. CW20
+adds occurrence-aware recurrence/reacquisition metrics because its task
+sequence repeats CW10 twice.
+
 ## Commands
 
 Install the optional benchmark stack:
@@ -103,6 +125,12 @@ Run strict TA-CW20 with BGD-SAC:
 ```bash
 python scripts/run_ta_continual_world_sac.py --benchmark CW20 --optimizer bgd
 ```
+
+The same runner accepts `ewc`, `online_ewc`, `si`, and `mas` optimizer
+families for fixed-update task-agnostic regularization. Recurrent
+Adam/BGD/adaptive-BGD benchmark jobs are launched through the curated paper
+suite so their architecture, seed set, evaluation cadence, and provenance stay
+matched.
 
 The default benchmark budget is one million environment steps per task
 occurrence. These are expensive experiments. Runnable implementation, unit or
