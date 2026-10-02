@@ -17,6 +17,42 @@ RUN_SCHEMA_VERSION = 1
 RunStatus = Literal["completed", "failed", "partial"]
 
 
+
+def _require_int(
+    value: object,
+    *,
+    name: str,
+) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(
+            f"{name} must be an integer"
+        )
+    return value
+
+
+def _require_float(
+    value: object,
+    *,
+    name: str,
+) -> float:
+    if (
+        isinstance(value, bool)
+        or not isinstance(
+            value,
+            (int, float),
+        )
+    ):
+        raise TypeError(
+            f"{name} must be numeric"
+        )
+    converted = float(value)
+    if not math.isfinite(converted):
+        raise ValueError(
+            f"{name} must be finite"
+        )
+    return converted
+
+
 def _finite_mapping(
     values: Mapping[str, float],
     *,
@@ -135,7 +171,10 @@ class RunManifest:
                 method=str(payload["method"]),
                 setting=str(payload["setting"]),
                 benchmark=str(payload["benchmark"]),
-                seed=int(payload["seed"]),
+                seed=_require_int(
+                    payload["seed"],
+                    name="run manifest seed",
+                ),
                 git_commit=str(payload["git_commit"]),
                 status=str(
                     payload.get(
@@ -165,11 +204,12 @@ class RunManifest:
                         "summary.json",
                     )
                 ),
-                schema_version=int(
+                schema_version=_require_int(
                     payload.get(
                         "schema_version",
                         RUN_SCHEMA_VERSION,
-                    )
+                    ),
+                    name="run manifest schema version",
                 ),
                 metadata=dict(metadata),
             )
@@ -277,27 +317,46 @@ class RunSummary:
                 ):
                     raise TypeError("per-task metrics must be mappings")
                 task_metrics[str(task)] = _finite_mapping(
-                    {str(key): float(value) for key, value in values.items()},
+                    {
+                        str(key): _require_float(
+                            value,
+                            name=f"task metric {task}/{key}",
+                        )
+                        for key, value in values.items()
+                    },
                     name=f"task metrics for {task}",
                 )
 
             summary = cls(
                 run_id=str(payload["run_id"]),
                 metrics=_finite_mapping(
-                    {str(key): float(value) for key, value in raw_metrics.items()},
+                    {
+                        str(key): _require_float(
+                            value,
+                            name=f"summary metric {key}",
+                        )
+                        for key, value in raw_metrics.items()
+                    },
                     name="summary metrics",
                 ),
                 task_metrics=task_metrics,
                 resources=_finite_mapping(
-                    {str(key): float(value) for key, value in raw_resources.items()},
+                    {
+                        str(key): _require_float(
+                            value,
+                            name=f"summary resource {key}",
+                        )
+                        for key, value in raw_resources.items()
+                    },
                     name="summary resources",
                 ),
                 metadata=dict(raw_metadata),
-                schema_version=int(
+                schema_version=_require_int(
                     payload.get(
                         "schema_version",
                         RUN_SCHEMA_VERSION,
-                    )
+                    ),
+                    name="run summary schema version",
                 ),
             )
         except (
