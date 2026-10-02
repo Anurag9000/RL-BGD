@@ -91,49 +91,6 @@ def _job(
     )
 
 
-def _hidden_context_jobs(
-    *,
-    steps: int,
-    seeds: tuple[int, ...],
-    runtime_class: str,
-) -> tuple[ExperimentJob, ...]:
-    variants = (
-        "feedforward_adam",
-        "feedforward_bgd",
-        "recurrent_adam",
-        "recurrent_bgd",
-        "recurrent_adaptive_bgd",
-    )
-    return tuple(
-        _job(
-            f"hidden_context_{variant}",
-            "H",
-            (
-                "rl_bgd.runners.hidden_context_sac_comparison:"
-                "run_hidden_context_sac_variant"
-            ),
-            kwargs={
-                "variant": variant,
-                "steps": steps,
-                "device": "auto",
-            },
-            seeds=seeds,
-            algorithm=variant,
-            environment="hidden_recurring_lqr",
-            protocol="strict_task_agnostic",
-            config_path="configs/environments/lqr_recurring.yaml",
-            primary_metric="final_10_mean_return",
-            secondary_metrics=(
-                "training.mean_episode_return",
-                "training.last_update_metrics.critic1_sigma_mean",
-                "training.last_update_metrics.retention_lambda",
-            ),
-            runtime_class=runtime_class,
-        )
-        for variant in variants
-    )
-
-
 def _evidence_temperature_jobs(
     *,
     steps: int,
@@ -231,8 +188,10 @@ DEV = ExperimentSuite(
     description="Bounded multi-method development comparison before expensive benchmarks.",
     jobs=(
         *_hidden_context_jobs(
+            prefix="dev_hidden",
             steps=96,
             seeds=(0, 1),
+            device="cpu",
             runtime_class="dev",
         ),
         _job(
@@ -473,8 +432,10 @@ TASK_AGNOSTIC_FINAL = ExperimentSuite(
     description="Cross-environment strict task-agnostic confirmation suite.",
     jobs=(
         *_hidden_context_jobs(
+            prefix="ta_hidden",
             steps=512,
             seeds=(0, 1, 2, 3, 4),
+            device="auto",
             runtime_class="medium",
         ),
         *CARL_CORE.jobs,
