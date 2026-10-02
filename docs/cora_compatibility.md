@@ -47,8 +47,13 @@ construction, reset, action sampling, step, finite reward, and close behavior.
   Benchmarks") independently reports the same broken archive link and requests
   a replacement. RL-BGD therefore does not substitute older ALFRED trajectories
   or fabricated images. The recovery workflow is manual and requires an
-  authoritative archive URL, optionally a SHA-256, then verifies the exact
-  published CORA trajectory before running under Xvfb.
+  authoritative archive URL, optionally a SHA-256. Before launching AI2-THOR it
+  loads all four CHORES metadata files from the pinned CORA revision, requires
+  the expected 27 unique train/valid_seen trajectory references, validates every
+  referenced `traj_data.json`, validates the low-action/image indices consumed
+  by `crl_alfred`, and requires every raw goal image named by those trajectories.
+  Only after that complete archive gate passes does the workflow run the exact
+  published CORA trajectory under Xvfb.
 
 These live smokes establish runtime compatibility; they do not reproduce
 published CORA learning curves or make the legacy stack a dependency of the
