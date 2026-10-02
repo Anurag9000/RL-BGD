@@ -41,10 +41,16 @@ level; exact cross-hardware floating-point identity is not claimed.
 ## Paper statistics
 
 Paper aggregation uses matched seed groups. Scalar metrics receive percentile
-bootstrap confidence intervals; paired method comparisons resample matched
-seed differences; task-within-seed measurements use hierarchical seed-then-task
-bootstrap instead of pretending correlated task scores are independent. Raw
-run IDs remain traceable through all generated CSV/Markdown/LaTeX tables.
+bootstrap confidence intervals; paired method comparisons resample matched seed
+differences; task-within-seed measurements use hierarchical seed-then-task
+bootstrap instead of pretending correlated task scores are independent.
+
+Suite revision 2 makes pairwise comparison opt-in through a declared
+`comparison_group`. Before pairing, Phase 15 requires the same suite,
+comparison group, protocol, benchmark, seed set, primary outcome, suite
+revision, git revision, evaluator-owned information privileges, and task order.
+Jobs without a comparison group are aggregate-only. Raw run IDs, comparison
+groups, and suite revisions remain traceable through generated tables.
 
 ## Experiment execution policy
 
