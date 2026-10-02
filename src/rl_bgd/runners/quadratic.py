@@ -16,6 +16,7 @@ from rl_bgd.bayes.diagonal_gaussian import (
 )
 from rl_bgd.envs.synthetic.quadratic import (
     QuadraticStream,
+    QuadraticTask,
     diagonal_quadratic,
 )
 from rl_bgd.utils.device import resolve_device
@@ -88,8 +89,9 @@ def run_quadratic(
 
         def objective(
             params: Mapping[str, torch.Tensor],
+            task: QuadraticTask = active_task,
         ) -> torch.Tensor:
-            return active_task.loss(params["theta"])
+            return task.loss(params["theta"])
 
         result = updater.step(objective)
         losses.append(result.mean_loss)
