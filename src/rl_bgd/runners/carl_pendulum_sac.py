@@ -27,6 +27,10 @@ def _schedule(
     phase_steps: int,
     seed: int,
 ) -> ContextSchedule:
+    anchors: tuple[
+        dict[str, float],
+        ...,
+    ]
     if mode == "smooth":
         anchors = (
             {"g": 10.0, "m": 1.0, "l": 1.0, "dt": 0.05},
