@@ -276,6 +276,19 @@ def run_late_plasticity_quadratic(
             loss_curve
         )
     )
+    post_shift_loss_timeline = [
+        {
+            "step": step,
+            "target_loss": loss,
+            "normalized_target_loss": (
+                loss
+                / initial_target_loss
+            ),
+        }
+        for step, loss in enumerate(
+            loss_curve
+        )
+    ]
     recovery_fraction = (
         (
             initial_target_loss
@@ -334,6 +347,9 @@ def run_late_plasticity_quadratic(
         ),
         "post_shift_loss_curve": (
             loss_curve
+        ),
+        "post_shift_loss_timeline": (
+            post_shift_loss_timeline
         ),
         "information_access": {
             "task_identity_used_by_optimizer": False,
