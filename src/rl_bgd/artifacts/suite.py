@@ -38,6 +38,43 @@ def information_access_for_protocol(
     }
 
 
+def information_access_for_result(
+    result: Mapping[str, object],
+    *,
+    protocol: str,
+) -> dict[str, bool]:
+    """Merge runner-emitted access facts with protocol invariants.
+
+    Explicit runner fields may add detail, but they may not contradict the
+    information-access guarantees encoded by the registered protocol.
+    """
+
+    derived = information_access_for_protocol(protocol)
+    raw = result.get(
+        "information_access",
+        {},
+    )
+    if not isinstance(raw, Mapping):
+        raise TypeError(
+            "runner information_access must be a mapping when present"
+        )
+    explicit = {
+        str(key): value
+        for key, value in raw.items()
+        if isinstance(value, bool)
+    }
+    for key, expected in derived.items():
+        if key in explicit and explicit[key] != expected:
+            raise ValueError(
+                "runner information-access metadata contradicts "
+                f"protocol {protocol!r}: {key}"
+            )
+    return {
+        **derived,
+        **explicit,
+    }
+
+
 def _source_config(
     config_path: object,
 ) -> tuple[
@@ -154,7 +191,10 @@ def record_completed_suite_run(
         git_commit=git_commit,
         status="completed",
         task_order=_task_order(result),
-        information_access=(information_access_for_protocol(protocol)),
+        information_access=information_access_for_result(
+            result,
+            protocol=protocol,
+        ),
         metadata={
             "suite": suite_name,
             "job_id": str(job["job_id"]),
