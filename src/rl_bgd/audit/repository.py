@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ast
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -19,10 +21,13 @@ _REQUIRED_PATHS = (
     "src/rl_bgd/artifacts/suite.py",
     "src/rl_bgd/analysis/mechanistic.py",
     "src/rl_bgd/analysis/artifacts.py",
+    "src/rl_bgd/analysis/paper_artifacts.py",
     "src/rl_bgd/experiments/suites.py",
     "scripts/run_paper_suite.py",
     "scripts/build_paper_artifacts.py",
     "scripts/run_mechanistic_analysis.py",
+    ".github/workflows/typecheck.yml",
+    ".github/workflows/paper-pipeline-smoke.yml",
 )
 
 _FORBIDDEN_SOURCE_MARKERS = (
@@ -161,42 +166,108 @@ def audit_repository(
     for path in _python_files(root):
         relative = str(path.relative_to(root))
         text = path.read_text(encoding="utf-8")
-        if relative == "src/rl_bgd/audit/repository.py":
-            continue
-        for marker in _FORBIDDEN_SOURCE_MARKERS:
-            checks_run += 1
-            if marker in text:
-                findings.append(
-                    AuditFinding(
-                        "forbidden_source_marker",
-                        relative,
-                        f"contains {marker!r}",
+        if relative != "src/rl_bgd/audit/repository.py":
+            for marker in _FORBIDDEN_SOURCE_MARKERS:
+                checks_run += 1
+                if marker in text:
+                    findings.append(
+                        AuditFinding(
+                            "forbidden_source_marker",
+                            relative,
+                            f"contains {marker!r}",
+                        )
                     )
-                )
 
-    aggregator = (
+        checks_run += 1
+        try:
+            module = ast.parse(
+                text,
+                filename=relative,
+            )
+        except SyntaxError as exc:
+            findings.append(
+                AuditFinding(
+                    "python_syntax",
+                    relative,
+                    str(exc),
+                )
+            )
+            continue
+        top_level_names = [
+            node.name
+            for node in module.body
+            if isinstance(
+                node,
+                (
+                    ast.FunctionDef,
+                    ast.AsyncFunctionDef,
+                    ast.ClassDef,
+                ),
+            )
+        ]
+        duplicates = sorted(
+            name
+            for name, count in Counter(
+                top_level_names
+            ).items()
+            if count > 1
+        )
+        if duplicates:
+            findings.append(
+                AuditFinding(
+                    "duplicate_top_level_definition",
+                    relative,
+                    "duplicate definitions: "
+                    + ", ".join(
+                        duplicates
+                    ),
+                )
+            )
+
+    compatibility_artifacts = (
         root
         / "src"
         / "rl_bgd"
         / "analysis"
         / "artifacts.py"
     ).read_text(encoding="utf-8")
+    paper_artifacts = (
+        root
+        / "src"
+        / "rl_bgd"
+        / "analysis"
+        / "paper_artifacts.py"
+    ).read_text(encoding="utf-8")
     checks_run += 1
-    if "run_metadata.json" in aggregator or "stdout.json" in aggregator:
+    if (
+        "run_metadata.json" in compatibility_artifacts
+        or "stdout.json" in compatibility_artifacts
+        or "run_metadata.json" in paper_artifacts
+        or "stdout.json" in paper_artifacts
+    ):
         findings.append(
             AuditFinding(
                 "canonical_artifact_authority",
-                "src/rl_bgd/analysis/artifacts.py",
-                "paper aggregation still consumes legacy execution logs",
+                "src/rl_bgd/analysis",
+                "paper aggregation consumes legacy execution logs",
             )
         )
     checks_run += 1
-    if "load_run_directory" not in aggregator:
+    if "load_run_directory" not in paper_artifacts:
+        findings.append(
+            AuditFinding(
+                "canonical_artifact_authority",
+                "src/rl_bgd/analysis/paper_artifacts.py",
+                "canonical paper aggregation does not use strict run loader",
+            )
+        )
+    checks_run += 1
+    if "paper_artifacts" not in compatibility_artifacts:
         findings.append(
             AuditFinding(
                 "canonical_artifact_authority",
                 "src/rl_bgd/analysis/artifacts.py",
-                "paper aggregation does not use strict run loader",
+                "compatibility API is not delegating to canonical paper artifacts",
             )
         )
 
