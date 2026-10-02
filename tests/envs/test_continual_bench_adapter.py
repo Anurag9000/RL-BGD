@@ -258,3 +258,79 @@ def test_asset_repair_collapses_duplicated_legacy_root(
     restored = destination_root / "objects" / "objects" / "meshes" / "assembly_peg" / "handle.stl"
     assert repaired == ("objects/objects/meshes/assembly_peg/handle.stl",)
     assert restored.read_bytes() == b"canonical-mesh"
+
+
+def test_asset_repair_ignores_unreachable_stale_xml(
+    tmp_path: Path,
+) -> None:
+    continual_package = tmp_path / "continual_bench" / "envs"
+    metaworld_package = tmp_path / "metaworld"
+    destination_root = continual_package / "assets"
+    source_root = metaworld_package / "assets"
+
+    root_xml = (
+        destination_root
+        / "sawyer_xyz"
+        / "sawyer_bench.xml"
+    )
+    root_xml.parent.mkdir(parents=True)
+    root_xml.write_text(
+        '<mujoco><include file="../objects/assets/buttonbox_dependencies.xml"/></mujoco>',
+        encoding="utf-8",
+    )
+
+    dependency = (
+        destination_root
+        / "objects"
+        / "assets"
+        / "buttonbox_dependencies.xml"
+    )
+    dependency.parent.mkdir(parents=True)
+    dependency.write_text(
+        '<mujoco><asset><texture file="../textures/metal1.png"/></asset></mujoco>',
+        encoding="utf-8",
+    )
+
+    stale = (
+        destination_root
+        / "objects"
+        / "assets"
+        / "xyz_base.xml"
+    )
+    stale.write_text(
+        '<mujoco><include file="shared_config.xml"/></mujoco>',
+        encoding="utf-8",
+    )
+
+    canonical = (
+        source_root
+        / "textures"
+        / "metal1.png"
+    )
+    canonical.parent.mkdir(parents=True)
+    canonical.write_bytes(
+        b"canonical-metal"
+    )
+
+    repaired = _repair_missing_metaworld_assets(
+        SimpleNamespace(
+            __file__=str(
+                continual_package
+                / "__init__.py"
+            )
+        ),
+        SimpleNamespace(
+            __file__=str(
+                metaworld_package
+                / "__init__.py"
+            )
+        ),
+    )
+
+    assert repaired == (
+        "objects/textures/metal1.png",
+    )
+    assert not (
+        dependency.parent
+        / "shared_config.xml"
+    ).exists()
