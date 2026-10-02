@@ -118,6 +118,7 @@ def run_ucl_ppo_recurring_lqr(
         "information_access": {
             "receives_task_id": False,
             "receives_task_boundary": True,
+            "receives_environment_context": False,
             "task_specific_heads": False,
             "posterior_snapshot_trigger": "oracle_phase_boundary",
         },
@@ -132,79 +133,6 @@ def run_ucl_ppo_recurring_lqr(
     }
 
 
-def run_adam_ppo_oracle_recurring_lqr_control(
-    *,
-    phase_steps: int = 128,
-    phases: int = 4,
-    seed: int = 140,
-    device: str = "auto",
-    horizon: int = 32,
-) -> dict[str, object]:
-    """Run a phase-matched Adam PPO control for the oracle UCL comparator."""
-
-    if phase_steps < 32 or phases < 2:
-        raise ValueError("oracle PPO control requires nontrivial phases")
-    seed_everything(
-        seed,
-        deterministic=True,
-    )
-    resolved = resolve_device(device)
-    env = make_baseline_recurring_lqr(
-        seed=seed,
-        device=resolved,
-        phase_steps=phase_steps,
-        horizon=horizon,
-    )
-    agent = PPOAgent(
-        1,
-        1,
-        action_low=env.action_space.low,
-        action_high=env.action_space.high,
-        hidden_dims=(32, 32),
-        config=_matched_ppo_config(),
-        device=resolved,
-    )
-
-    phase_summaries: list[dict[str, object]] = []
-    boundary_log: list[dict[str, object]] = []
-    for phase_index in range(phases):
-        phase_summaries.append(
-            train_ppo(
-                env,
-                agent,
-                config=PPOTrainConfig(
-                    total_steps=phase_steps,
-                    rollout_steps=min(
-                        64,
-                        phase_steps,
-                    ),
-                    seed=seed + phase_index,
-                ),
-            )
-        )
-        if phase_index < phases - 1:
-            boundary_log.append(
-                {
-                    "after_phase": phase_index + 1,
-                    "environment_step": (env.environment_step),
-                }
-            )
-
-    return {
-        "algorithm": "ppo_adam_oracle_phase_control",
-        "final_phase_return": (_final_phase_return(phase_summaries)),
-        "protocol": "oracle_boundary",
-        "steps": phase_steps * phases,
-        "phase_steps": phase_steps,
-        "phases": phases,
-        "benchmark_profile": (BASELINE_RECURRING_LQR_PROFILE),
-        "horizon": horizon,
-        "phase_summaries": (phase_summaries),
-        "boundaries": boundary_log,
-        "final_evaluation_context": (env.evaluation_context),
-        "information_access": {
-            "receives_task_id": False,
-            "receives_task_boundary": True,
 def run_adam_ppo_oracle_recurring_lqr_control(
     *,
     phase_steps: int = 128,
