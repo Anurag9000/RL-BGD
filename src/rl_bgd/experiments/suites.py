@@ -316,6 +316,52 @@ def _fixed_tempering_jobs(
     )
 
 
+def _regularized_baseline_jobs(
+    *,
+    steps: int,
+    seeds: tuple[int, ...],
+    runtime_class: str,
+) -> tuple[ExperimentJob, ...]:
+    specs = (
+        ("ewc", "SAC-EWC"),
+        ("online_ewc", "SAC-Online-EWC"),
+        ("si", "SAC-SI"),
+        ("mas", "SAC-MAS"),
+    )
+    return tuple(
+        _job(
+            f"baseline_{method}",
+            "B",
+            (
+                "rl_bgd.runners.regularized_sac_continual_lqr:"
+                "run_regularized_sac_recurring_lqr"
+            ),
+            kwargs={
+                "method": method,
+                "steps": steps,
+                "device": "auto",
+                "consolidation_interval_updates": 8,
+            },
+            seeds=seeds,
+            algorithm=algorithm,
+            environment="recurring_lqr",
+            protocol="task_agnostic_fixed_update",
+            config_path=None,
+            primary_metric="final_10_mean_return",
+            secondary_metrics=(
+                "consolidation_count",
+                "training.mean_episode_return",
+            ),
+            runtime_class=runtime_class,
+            notes=(
+                "Consolidation is driven by optimizer-update count; "
+                "no true task boundary is exposed."
+            ),
+        )
+        for method, algorithm in specs
+    )
+
+
 SMOKE = ExperimentSuite(
     name="smoke",
     description="Dependency-light stationary and hidden-context execution gates.",
@@ -419,6 +465,46 @@ DEV = ExperimentSuite(
                 "boundaries",
             ),
             runtime_class="dev",
+        ),
+    ),
+)
+
+
+BASELINE_CORE = ExperimentSuite(
+    name="baseline_core",
+    description=(
+        "Five-seed external continual-learning baseline confirmation on recurring LQR."
+    ),
+    jobs=(
+        *_regularized_baseline_jobs(
+            steps=600,
+            seeds=(0, 1, 2, 3, 4),
+            runtime_class="medium",
+        ),
+        _job(
+            "baseline_ucl_oracle",
+            "UCL",
+            "rl_bgd.runners.ucl_ppo_lqr:run_ucl_ppo_recurring_lqr",
+            kwargs={
+                "phase_steps": 120,
+                "phases": 5,
+                "device": "auto",
+            },
+            seeds=(0, 1, 2, 3, 4),
+            algorithm="PPO-UCL",
+            environment="recurring_lqr",
+            protocol="oracle_boundary",
+            config_path=None,
+            primary_metric="final_phase_return",
+            secondary_metrics=(
+                "phase_summaries",
+                "boundaries",
+            ),
+            runtime_class="medium",
+            notes=(
+                "UCL is an oracle-boundary comparator and is not labelled "
+                "task-agnostic."
+            ),
         ),
     ),
 )
@@ -789,6 +875,7 @@ SUITES: dict[str, ExperimentSuite] = {
     for suite in (
         SMOKE,
         DEV,
+        BASELINE_CORE,
         CARL_CORE,
         CW10_CORE,
         CW20_FINAL,
@@ -865,6 +952,7 @@ def validate_suite_registry() -> None:
     required = {
         "smoke",
         "dev",
+        "baseline_core",
         "carl_core",
         "cw10_core",
         "cw20_final",
