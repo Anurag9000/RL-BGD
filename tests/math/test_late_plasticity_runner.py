@@ -1,3 +1,4 @@
+from rl_bgd.artifacts.run import metrics_rows_from_result
 from rl_bgd.runners.late_plasticity import (
     run_late_plasticity_quadratic,
 )
@@ -109,3 +110,45 @@ def test_plasticity_runner_holds_post_shift_update_rule_fixed() -> None:
         )
         for value in curve
     )
+    timeline = result[
+        "post_shift_loss_timeline"
+    ]
+    assert isinstance(
+        timeline,
+        list,
+    )
+    assert len(
+        timeline
+    ) == len(
+        curve
+    )
+    assert timeline[
+        0
+    ] == {
+        "step": 0,
+        "target_loss": curve[
+            0
+        ],
+        "normalized_target_loss": 1.0,
+    }
+
+    rows = metrics_rows_from_result(
+        result
+    )
+    assert len(
+        rows
+    ) == len(
+        curve
+    )
+    assert all(
+        row[
+            "series"
+        ]
+        == "post_shift_loss_timeline"
+        for row in rows
+    )
+    assert rows[
+        0
+    ][
+        "normalized_target_loss"
+    ] == 1.0
