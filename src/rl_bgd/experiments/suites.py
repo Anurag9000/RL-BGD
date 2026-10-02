@@ -47,7 +47,7 @@ class ExperimentSuite:
     name: str
     description: str
     jobs: tuple[ExperimentJob, ...]
-    revision: int = 1
+    revision: int = 2
 
 
 def _job(
@@ -1478,6 +1478,9 @@ def execute_suite(
             "schema_version": 2,
             "run_id": job["run_id"],
             "job_id": job["job_id"],
+            "comparison_group": job[
+                "comparison_group"
+            ],
             "suite": suite_name,
             "git_commit": git_commit,
             "target": job["target"],
