@@ -7,7 +7,7 @@ No expensive experiment is marked executed until raw run artifacts exist.
 | SYN-Q1 | Positive curvature contracts posterior sigma | IMPLEMENTED / TESTED |
 | SYN-Q2 | E[g epsilon] approaches H sigma in small-sigma diagonal quadratic | IMPLEMENTED / TESTED |
 | A | Vanilla BGD can learn stationary RL tasks | IMPLEMENTED / TESTED on synthetic continuous control; large benchmark runs pending |
-| B | BGD can reduce short-stream forgetting | matched dev-suite comparators IMPLEMENTED; multi-seed execution pending |
+| B | BGD can reduce short-stream forgetting | EWC/Online-EWC/SI/MAS five-seed `baseline_core` jobs + bounded dev comparators IMPLEMENTED; multi-seed execution pending |
 | C | Vanilla BGD loses late-life plasticity under repeated evidence | CONTROLLED late-shift runner + causal regression test + matched vanilla/tempered five-seed ablation jobs IMPLEMENTED; multi-seed execution pending |
 | D | Fixed tempering prevents trivial sigma collapse | IMPLEMENTED / TESTED mechanism + explicit fixed-retention ablation jobs; multi-seed execution pending |
 | E | Surprise-driven tempering adapts without boundary callbacks | IMPLEMENTED / TESTED on recurring LQR + CARL/uncertainty suites defined; external multi-seed execution pending |
@@ -22,4 +22,4 @@ No expensive experiment is marked executed until raw run artifacts exist.
 
 | I | Posterior uncertainty predicts perturbation importance | MECHANISTIC PIPELINE IMPLEMENTED / TESTED on deterministic controlled artifacts; larger multi-seed comparative validation pending |
 | J | Posterior sigma predicts future parameter movement | MECHANISTIC PIPELINE IMPLEMENTED / TESTED on deterministic controlled artifacts; larger multi-seed comparative validation pending |
-| UCL | Oracle-boundary UCL-PPO provides a documented Bayesian continual-RL comparator | IMPLEMENTED / TESTED; multi-seed comparison pending |
+| UCL | Oracle-boundary UCL-PPO provides a documented Bayesian continual-RL comparator | IMPLEMENTED / TESTED + dedicated five-seed `baseline_core` job; multi-seed execution pending |
