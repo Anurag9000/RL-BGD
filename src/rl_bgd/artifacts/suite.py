@@ -83,9 +83,22 @@ def _source_config(
 ]:
     if config_path is None:
         return None, {}
-    path = Path(str(config_path))
+    declared_path = Path(
+        str(config_path)
+    )
+    path = (
+        declared_path
+        if declared_path.is_absolute()
+        else (
+            Path(__file__).resolve().parents[3]
+            / declared_path
+        )
+    )
     if not path.is_file():
-        raise FileNotFoundError(f"suite source config does not exist: {path}")
+        raise FileNotFoundError(
+            "suite source config does not exist: "
+            f"{declared_path}"
+        )
     try:
         payload = yaml.safe_load(path.read_text(encoding="utf-8"))
     except (
@@ -99,7 +112,7 @@ def _source_config(
     ):
         raise ValueError("suite source config must contain a mapping")
     return (
-        str(path),
+        str(declared_path),
         {str(key): value for key, value in payload.items()},
     )
 
