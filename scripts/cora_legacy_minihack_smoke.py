@@ -93,6 +93,72 @@ def _install_vardir_compatibility() -> None:
     MiniHackMakeVecSafeWrapper.close = _compat_close
 
 
+T = TypeVar("T")
+
+
+def _find_vardir(env: Any) -> str:
+    current = env
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        vardir = getattr(current, "_vardir", None)
+        if isinstance(vardir, str):
+            return vardir
+        current = getattr(current, "env", None)
+    raise AttributeError("MiniHack environment wrapper chain does not expose _vardir")
+
+
+def _in_vardir(wrapper: Any, operation: Callable[[], T]) -> T:
+    previous = os.getcwd()
+    try:
+        os.chdir(_find_vardir(wrapper.env))
+        return operation()
+    finally:
+        os.chdir(getattr(wrapper, "basedir", previous))
+
+
+def _install_minihack_vardir_compatibility() -> None:
+    wrapper = make_minihack_task.MiniHackMakeVecSafeWrapper
+
+    def step(self: Any, action: int) -> Any:
+        return _in_vardir(
+            self,
+            lambda: self.env.step(action),
+        )
+
+    def reset(self: Any) -> Any:
+        return _in_vardir(
+            self,
+            self.env.reset,
+        )
+
+    def close(self: Any) -> Any:
+        return _in_vardir(
+            self,
+            self.env.close,
+        )
+
+    def seed(
+        self: Any,
+        core: Any = None,
+        disp: Any = None,
+        reseed: bool = False,
+    ) -> Any:
+        return _in_vardir(
+            self,
+            lambda: self.env.seed(
+                core,
+                disp,
+                reseed,
+            ),
+        )
+
+    wrapper.step = step
+    wrapper.reset = reset
+    wrapper.close = close
+    wrapper.seed = seed
+
+
 def _reset(env: Any) -> Any:
     output = env.reset()
     if isinstance(output, tuple):
@@ -123,7 +189,8 @@ def _step(
 
 
 def main() -> None:
-    task = get_single_minihack_task(
+    _install_minihack_vardir_compatibility()
+    task = make_minihack_task.get_single_minihack_task(
         "rl_bgd_cora_minihack_smoke",
         0,
         "Room-Random-5x5-v0",
