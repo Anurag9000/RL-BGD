@@ -86,12 +86,12 @@ computation, and the upstream no-op close stub is tolerated. The pinned live
 reset/step workflow now passes, but the integration remains dependent on
 legacy Gym/MuJoCo internals and third-party benchmark behavior.
 
-CORA metric/protocol compatibility is implemented, and the legacy Atari runtime is
-validated in a separate Python 3.10 workflow pinned to CORA revision
+CORA metric/protocol compatibility is implemented, and the legacy **Atari**
+runtime is validated in a separate Python 3.10 workflow pinned to CORA revision
 `f2754bb282757829765beb4703f24b87efa13ff9`, NumPy 1.23.5, Gym 0.25.2,
-ALE 0.7.5, and AutoROM. This is deliberately not a dependency of the modern
-RL-BGD environment, and it validates runtime compatibility rather than claiming
-that the historical dependency stack or published CORA results were reproduced.
+ALE, and AutoROM. This is deliberately not a dependency of the modern RL-BGD
+environment. The smoke does not validate CORA's other historical environment
+families or reproduce published CORA results.
 
 ## External validity
 
