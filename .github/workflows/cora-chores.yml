@@ -93,13 +93,20 @@ jobs:
           fi
           unzip -q /tmp/cora_trajs.zip -d /tmp/cora_data
 
-      - name: Locate exact published CHORES trajectory
+      - name: Validate complete published CHORES archive
         id: chores-data
         run: |
-          demo="pick_and_place_simple-ToiletPaper-None-ToiletPaperHanger-402/trial_T20210817_071626_357261"
-          root="$(find /tmp/cora_data -type f -path "*/train/$demo/traj_data.json" -print -quit | sed "s#/train/$demo/traj_data.json##")"
+          metadata_root="/tmp/continual_rl/continual_rl/experiments/tasks/metadata/chores"
+          root="$(python scripts/validate_cora_chores_archive.py \
+            --search-root /tmp/cora_data \
+            --metadata-root "$metadata_root" \
+            --expected-trajectories 27 \
+            --root-only)"
           test -n "$root"
-          test -d "$root/train/$demo/raw_images"
+          python scripts/validate_cora_chores_archive.py \
+            --search-root /tmp/cora_data \
+            --metadata-root "$metadata_root" \
+            --expected-trajectories 27
           echo "root=$root" >> "$GITHUB_OUTPUT"
 
       - name: Run real CORA CHORES task smoke
