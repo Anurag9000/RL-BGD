@@ -100,11 +100,32 @@ def test_comparison_and_ablation_jobs_are_atomic() -> None:
         job.hypothesis_id
         for job in ablations
     } >= {
+        "C",
         "D",
         "F",
         "G",
         "GB-T",
     }
+
+    plasticity_jobs = [
+        job
+        for job in ablations
+        if job.hypothesis_id == "C"
+    ]
+    assert {
+        job.kwargs[
+            "consolidation_retention"
+        ]
+        for job in plasticity_jobs
+    } == {
+        1.0,
+        0.97,
+    }
+    assert all(
+        job.primary_metric
+        == "post_shift_normalized_auc"
+        for job in plasticity_jobs
+    )
 
 
 def _tiny_suite(
