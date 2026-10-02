@@ -14,6 +14,7 @@ CHORES_METADATA_FILES: tuple[str, ...] = (
     "vary_objects.json",
     "vary_tasks.json",
 )
+EXPECTED_CHORES_TRAJECTORY_COUNT = 27
 
 
 @dataclass(frozen=True)
