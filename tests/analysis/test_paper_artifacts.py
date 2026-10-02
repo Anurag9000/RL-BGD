@@ -1021,6 +1021,10 @@ def _write_grouped_comparison_run(
                 "receives_task_id": False,
                 "receives_task_boundary": False,
                 "receives_environment_context": False,
+                **(
+                    extra_information_access
+                    or {}
+                ),
             },
             metadata={
                 "suite": "comparison_suite",
