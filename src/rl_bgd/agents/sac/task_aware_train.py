@@ -4,33 +4,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Protocol
-
 import torch
 from torch import Tensor
 
 from rl_bgd.agents.sac.task_aware_agent import TaskAwareSACAgent
+from rl_bgd.envs.protocols import TaskAwareTensorEnv
 from rl_bgd.replay.buffer import ReplayBuffer
 
 StageObserver = Callable[[int, TaskAwareSACAgent], None]
 UpdateObserver = Callable[[int, dict[str, float]], None]
-
-
-class TaskAwareContinuousEnv(Protocol):
-    action_space: object
-    observation_space: object
-    cur_seq_idx: int
-
-    def reset(
-        self,
-        *,
-        seed: int | None = None,
-    ) -> tuple[Tensor, dict[str, object]]: ...
-
-    def step(
-        self,
-        action: Tensor,
-    ) -> tuple[Tensor, float, bool, bool, dict[str, object]]: ...
 
 
 @dataclass(frozen=True)
@@ -60,7 +42,7 @@ class CanonicalSACTrainConfig:
 
 
 def train_canonical_task_aware_sac(
-    env: TaskAwareContinuousEnv,
+    env: TaskAwareTensorEnv,
     agent: TaskAwareSACAgent,
     *,
     config: CanonicalSACTrainConfig,
