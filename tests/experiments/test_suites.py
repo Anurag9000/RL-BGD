@@ -157,6 +157,7 @@ def test_comparison_and_ablation_jobs_are_atomic() -> None:
         "F",
         "G",
         "GB-T",
+        "MC-K",
     }
 
     plasticity_jobs = [job for job in ablations if job.hypothesis_id == "C"]
@@ -179,6 +180,7 @@ def test_paper_suites_cover_every_execution_hypothesis() -> None:
         "G",
         "GB-T",
         "H",
+        "MC-K",
         "CW-CAN10",
         "CW-CAN20",
         "CW-TA10",
@@ -773,6 +775,66 @@ def test_hidden_and_bayesianization_metric_declarations_are_capability_matched()
     }
 
 
+def test_mc_sample_ablation_has_matched_k_support() -> None:
+    jobs = [
+        job
+        for job in SUITES[
+            "ablation_core"
+        ].jobs
+        if job.hypothesis_id
+        == "MC-K"
+    ]
+    assert {
+        int(
+            job.kwargs[
+                "mc_samples"
+            ]
+        )
+        for job in jobs
+    } == {
+        1,
+        2,
+        4,
+        8,
+    }
+    assert {
+        int(
+            job.kwargs[
+                "steps"
+            ]
+        )
+        for job in jobs
+    } == {
+        600
+    }
+    assert {
+        job.seeds
+        for job in jobs
+    } == {
+        (
+            0,
+            1,
+            2,
+            3,
+            4,
+        )
+    }
+    assert {
+        job.kwargs[
+            "bayesianization"
+        ]
+        for job in jobs
+    } == {
+        "critic_only"
+    }
+    assert {
+        job.comparison_group
+        for job in jobs
+    } == {
+        "mc_samples"
+    }
+
+
 def test_compute_suite_has_matched_sac_budget_and_resources() -> None:
     jobs = SUITES[
         "compute_analysis"
@@ -785,6 +847,9 @@ def test_compute_suite_has_matched_sac_budget_and_resources() -> None:
         "compute_bgd_critic_only",
         "compute_bgd_actor_only",
         "compute_bgd_actor_and_critic",
+        "compute_bgd_k1",
+        "compute_bgd_k4",
+        "compute_bgd_k8",
     }
     assert {
         int(
@@ -831,6 +896,36 @@ def test_compute_suite_has_matched_sac_budget_and_resources() -> None:
             "improvement",
         )
         for job in jobs
+    )
+    compute_mc_jobs = {
+        int(
+            job.kwargs[
+                "mc_samples"
+            ]
+        ): job
+        for job in jobs
+        if (
+            job.job_id
+            == "compute_bgd_critic_only"
+            or job.job_id.startswith(
+                "compute_bgd_k"
+            )
+        )
+    }
+    assert set(
+        compute_mc_jobs
+    ) == {
+        1,
+        2,
+        4,
+        8,
+    }
+    assert all(
+        job.kwargs[
+            "bayesianization"
+        ]
+        == "critic_only"
+        for job in compute_mc_jobs.values()
     )
 
 
