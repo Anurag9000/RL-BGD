@@ -1041,7 +1041,9 @@ MECHANISM_ANALYSIS = ExperimentSuite(
             secondary_metrics=(
                 "perturbation_precision_spearman",
                 "curvature_signal_mean_relative_error",
-                "freezing_target_loss",
+                "freezing_target_loss.none",
+                "freezing_target_loss.freeze_low_sigma",
+                "freezing_target_loss.freeze_high_sigma",
             ),
             runtime_class="analysis",
             seed_kwarg="seed",
