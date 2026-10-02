@@ -39,6 +39,7 @@ def test_ucl_and_adam_control_share_exact_oracle_profile() -> None:
     )
 
     assert control["benchmark_profile"] == ucl["benchmark_profile"] == "recurring_lqr_matched_v1"
+    assert control["protocol"] == ucl["protocol"] == "oracle_boundary"
     assert control["phase_steps"] == ucl["phase_steps"] == 32
     assert control["phases"] == ucl["phases"] == 3
     assert control["horizon"] == ucl["horizon"] == 24
