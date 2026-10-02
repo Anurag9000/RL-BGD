@@ -127,6 +127,7 @@ def _group_runs(
         reference_suite = reference.manifest.metadata.get("suite")
         reference_contract = {
             "git_commit": reference.manifest.git_commit,
+            "suite_revision": reference.manifest.metadata.get("suite_revision"),
             "information_access": reference.manifest.information_access,
             "hypothesis_id": reference.manifest.metadata.get("hypothesis_id"),
             "target": reference.manifest.metadata.get("target"),
@@ -137,6 +138,7 @@ def _group_runs(
         for run in values[1:]:
             contract = {
                 "git_commit": run.manifest.git_commit,
+                "suite_revision": run.manifest.metadata.get("suite_revision"),
                 "information_access": run.manifest.information_access,
                 "hypothesis_id": run.manifest.metadata.get("hypothesis_id"),
                 "target": run.manifest.metadata.get("target"),
@@ -586,6 +588,25 @@ def paired_method_differences(
                 matched_seeds = sorted(left_seeds)
                 if not matched_seeds:
                     continue
+
+                left_primary = left_runs[0].manifest.metadata.get("primary_metric")
+                right_primary = right_runs[0].manifest.metadata.get("primary_metric")
+                if left_primary != right_primary:
+                    raise ValueError(
+                        "paired paper methods declare different primary metrics: "
+                        f"{left_group.label}={left_primary!r} versus "
+                        f"{right_group.label}={right_primary!r}"
+                    )
+
+                left_revision = left_runs[0].manifest.metadata.get("suite_revision")
+                right_revision = right_runs[0].manifest.metadata.get("suite_revision")
+                if left_revision != right_revision:
+                    raise ValueError(
+                        "paired paper methods use different suite revisions: "
+                        f"{left_group.label}={left_revision!r} versus "
+                        f"{right_group.label}={right_revision!r}"
+                    )
+
                 for seed in matched_seeds:
                     left_run = left_by_seed[seed]
                     right_run = right_by_seed[seed]
