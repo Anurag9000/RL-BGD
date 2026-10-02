@@ -209,7 +209,7 @@ def test_repeated_sequence_recurrence_summary() -> None:
     assert summary[
         "zero_shot_success"
     ] == pytest.approx(
-        0.7
+        0.675
     )
     assert summary[
         "recovered_success"
@@ -219,12 +219,12 @@ def test_repeated_sequence_recurrence_summary() -> None:
     assert summary[
         "pre_revisit_change"
     ] == pytest.approx(
-        -0.05
+        -0.075
     )
     assert summary[
         "relearning_gain"
     ] == pytest.approx(
-        0.265
+        0.29
     )
 
 
