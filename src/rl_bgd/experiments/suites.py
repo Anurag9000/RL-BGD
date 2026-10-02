@@ -8,7 +8,6 @@ import os
 import subprocess
 import sys
 import time
-from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -101,7 +100,7 @@ def _evidence_temperature_jobs(
     return tuple(
         _job(
             f"evidence_temperature_{temperature:g}",
-            "F",
+            "GB-T",
             "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
             kwargs={
                 "steps": steps,
@@ -112,7 +111,7 @@ def _evidence_temperature_jobs(
             seeds=seeds,
             algorithm=f"SAC-BGD-beta-{temperature:g}",
             environment="synthetic_lqr",
-            protocol="stationary_temperature_control",
+            protocol="stationary_generalized_bayes_temperature",
             config_path="configs/sweeps/evidence_temperature_lqr.yaml",
             primary_metric="post_return",
             secondary_metrics=(
@@ -128,6 +127,87 @@ def _evidence_temperature_jobs(
             1.0,
             2.0,
         )
+    )
+
+
+def _replay_evidence_jobs(
+    *,
+    steps: int,
+    seeds: tuple[int, ...],
+    runtime_class: str,
+) -> tuple[ExperimentJob, ...]:
+    modes = (
+        "all_replay",
+        "fresh_only_uncertainty",
+        "inverse_reuse_weight",
+        "normalized_batch_evidence",
+    )
+    return tuple(
+        _job(
+            f"replay_evidence_{mode}",
+            "F",
+            "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
+            kwargs={
+                "steps": steps,
+                "device": "auto",
+                "bayesianization": "critic_only",
+                "replay_evidence_mode": mode,
+            },
+            seeds=seeds,
+            algorithm=f"SAC-BGD-replay-{mode}",
+            environment="synthetic_lqr",
+            protocol="stationary_replay_evidence_ablation",
+            config_path="configs/algorithms/sac_bgd.yaml",
+            primary_metric="post_return",
+            secondary_metrics=(
+                "improvement",
+                "training.last_update_metrics.evidence_weight_mean",
+                "training.last_update_metrics.evidence_mean_usage_count",
+                "training.last_update_metrics.critic1_sigma_mean",
+            ),
+            runtime_class=runtime_class,
+        )
+        for mode in modes
+    )
+
+
+def _fixed_tempering_jobs(
+    *,
+    steps: int,
+    seeds: tuple[int, ...],
+    runtime_class: str,
+) -> tuple[ExperimentJob, ...]:
+    retentions = (
+        1.0,
+        0.999,
+        0.99,
+        0.95,
+    )
+    return tuple(
+        _job(
+            f"fixed_tempering_{str(retention).replace('.', 'p')}",
+            "D",
+            "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
+            kwargs={
+                "steps": steps,
+                "device": "auto",
+                "bayesianization": "critic_only",
+                "temper_retention": retention,
+            },
+            seeds=seeds,
+            algorithm=f"SAC-BGD-retention-{retention}",
+            environment="synthetic_lqr",
+            protocol="stationary_fixed_tempering_ablation",
+            config_path="configs/algorithms/sac_bgd.yaml",
+            primary_metric="post_return",
+            secondary_metrics=(
+                "improvement",
+                "training.last_update_metrics.critic1_sigma_mean",
+                "training.last_update_metrics.critic1_effective_lr_mean",
+            ),
+            runtime_class=runtime_class,
+        )
+        for retention in retentions
     )
 
 
@@ -487,6 +567,16 @@ ABLATION_CORE = ExperimentSuite(
             "actor_and_critic",
         )
     )
+    + _replay_evidence_jobs(
+        steps=600,
+        seeds=(0, 1, 2, 3, 4),
+        runtime_class="medium",
+    )
+    + _fixed_tempering_jobs(
+        steps=1200,
+        seeds=(0, 1, 2, 3, 4),
+        runtime_class="medium",
+    )
     + _evidence_temperature_jobs(
         steps=600,
         seeds=(0, 1, 2, 3, 4),
@@ -714,393 +804,6 @@ def materialize_suite(
     return manifest
 
 
-def _result_information_access(
-    result: Mapping[str, object],
-    *,
-    protocol: str,
-) -> dict[str, bool]:
-    derived = information_access_for_protocol(
-        protocol
-    )
-    raw = result.get(
-        "information_access",
-        {},
-    )
-    if not isinstance(
-        raw,
-        Mapping,
-    ):
-        raise TypeError(
-            "runner information_access must be a mapping when present"
-        )
-    explicit = {
-        str(key): value
-        for key, value in raw.items()
-        if isinstance(
-            value,
-            bool,
-        )
-    }
-    for key, expected in derived.items():
-        if (
-            key in explicit
-            and explicit[key] != expected
-        ):
-            raise ValueError(
-                "runner information-access metadata contradicts "
-                f"registered protocol {protocol!r}: {key}"
-            )
-    return {
-        **derived,
-        **explicit,
-    }
-
-def _result_task_order(
-    result: Mapping[str, object],
-) -> tuple[str, ...]:
-    raw = result.get(
-        "task_names",
-        (),
-    )
-    if (
-        isinstance(
-            raw,
-            (str, bytes),
-        )
-        or not isinstance(
-            raw,
-            Sequence,
-        )
-    ):
-        return ()
-    return tuple(
-        str(value)
-        for value in raw
-    )
-
-
-def _resolve_primary_metric(
-    summary: RunSummary,
-    metric: str,
-) -> float:
-    if metric in summary.metrics:
-        return float(
-            summary.metrics[
-                metric
-            ]
-        )
-    if metric in summary.resources:
-        return float(
-            summary.resources[
-                metric
-            ]
-        )
-    matches = [
-        float(value)
-        for key, value in summary.metrics.items()
-        if key.endswith(
-            f".{metric}"
-        )
-    ]
-    if len(
-        matches
-    ) == 1:
-        return matches[
-            0
-        ]
-    if not matches:
-        raise ValueError(
-            f"declared primary metric {metric!r} is absent from run result"
-        )
-    raise ValueError(
-        f"declared primary metric {metric!r} is ambiguous across "
-        f"{len(matches)} numeric result paths"
-    )
-
-
-def _write_strict_suite_artifacts(
-    *,
-    suite_name: str,
-    suite_manifest: Mapping[str, object],
-    job: Mapping[str, object],
-    run_dir: Path,
-    result: Mapping[str, object],
-    duration_seconds: float,
-) -> None:
-    git_commit = suite_manifest.get(
-        "git_commit"
-    )
-    if (
-        not isinstance(
-            git_commit,
-            str,
-        )
-        or not git_commit
-    ):
-        raise ValueError(
-            "strict run provenance requires a concrete git commit"
-        )
-    run_id = str(
-        job[
-            "run_id"
-        ]
-    )
-    summary = summarize_runner_result(
-        run_id,
-        result,
-        duration_seconds=duration_seconds,
-    )
-    primary_metric = str(
-        job[
-            "primary_metric"
-        ]
-    )
-    primary_value = _resolve_primary_metric(
-        summary,
-        primary_metric,
-    )
-    if (
-        primary_metric
-        not in summary.metrics
-        and primary_metric
-        not in summary.resources
-    ):
-        summary = RunSummary(
-            run_id=summary.run_id,
-            metrics={
-                **summary.metrics,
-                primary_metric: primary_value,
-            },
-            task_metrics=summary.task_metrics,
-            resources=summary.resources,
-            metadata=summary.metadata,
-        )
-
-    manifest = RunManifest(
-        run_id=run_id,
-        method=str(
-            job[
-                "algorithm"
-            ]
-        ),
-        setting=str(
-            job[
-                "protocol"
-            ]
-        ),
-        benchmark=str(
-            job[
-                "environment"
-            ]
-        ),
-        seed=int(
-            job[
-                "seed"
-            ]
-        ),
-        git_commit=git_commit,
-        status="completed",
-        task_order=_result_task_order(
-            result
-        ),
-        information_access=_result_information_access(
-            result,
-            protocol=str(
-                job[
-                    "protocol"
-                ]
-            ),
-        ),
-        metadata={
-            "suite": suite_name,
-            "job_id": str(
-                job[
-                    "job_id"
-                ]
-            ),
-            "hypothesis_id": str(
-                job[
-                    "hypothesis_id"
-                ]
-            ),
-            "target": str(
-                job[
-                    "target"
-                ]
-            ),
-            "primary_metric": primary_metric,
-            "secondary_metrics": list(
-                job[
-                    "secondary_metrics"
-                ]
-            ),
-            "runtime_class": str(
-                job[
-                    "runtime_class"
-                ]
-            ),
-            "config_path": job[
-                "config_path"
-            ],
-            "optional_extra": job[
-                "optional_extra"
-            ],
-        },
-    )
-    write_run_artifacts(
-        run_dir,
-        manifest=manifest,
-        summary=summary,
-        resolved_config={
-            "suite": suite_name,
-            "job_id": job[
-                "job_id"
-            ],
-            "target": job[
-                "target"
-            ],
-            "kwargs": job[
-                "kwargs"
-            ],
-            "seed": job[
-                "seed"
-            ],
-            "algorithm": job[
-                "algorithm"
-            ],
-            "environment": job[
-                "environment"
-            ],
-            "protocol": job[
-                "protocol"
-            ],
-            "config_path": job[
-                "config_path"
-            ],
-            "primary_metric": primary_metric,
-            "secondary_metrics": list(
-                job[
-                    "secondary_metrics"
-                ]
-            ),
-        },
-        metrics_rows=metrics_rows_from_result(
-            result
-        ),
-    )
-
-
-def _write_failed_suite_manifest(
-    *,
-    suite_name: str,
-    suite_manifest: Mapping[str, object],
-    job: Mapping[str, object],
-    run_dir: Path,
-    reason: str,
-) -> None:
-    git_commit = suite_manifest.get(
-        "git_commit"
-    )
-    if (
-        not isinstance(
-            git_commit,
-            str,
-        )
-        or not git_commit
-    ):
-        raise ValueError(
-            "strict failed-run provenance requires a concrete git commit"
-        )
-    manifest = RunManifest(
-        run_id=str(
-            job[
-                "run_id"
-            ]
-        ),
-        method=str(
-            job[
-                "algorithm"
-            ]
-        ),
-        setting=str(
-            job[
-                "protocol"
-            ]
-        ),
-        benchmark=str(
-            job[
-                "environment"
-            ]
-        ),
-        seed=int(
-            job[
-                "seed"
-            ]
-        ),
-        git_commit=git_commit,
-        status="failed",
-        information_access=information_access_for_protocol(
-            str(
-                job[
-                    "protocol"
-                ]
-            )
-        ),
-        metadata={
-            "suite": suite_name,
-            "job_id": str(
-                job[
-                    "job_id"
-                ]
-            ),
-            "hypothesis_id": str(
-                job[
-                    "hypothesis_id"
-                ]
-            ),
-            "target": str(
-                job[
-                    "target"
-                ]
-            ),
-            "primary_metric": str(
-                job[
-                    "primary_metric"
-                ]
-            ),
-            "secondary_metrics": list(
-                job[
-                    "secondary_metrics"
-                ]
-            ),
-            "runtime_class": str(
-                job[
-                    "runtime_class"
-                ]
-            ),
-            "config_path": job[
-                "config_path"
-            ],
-            "optional_extra": job[
-                "optional_extra"
-            ],
-            "failure_reason": reason,
-        },
-    )
-    (
-        run_dir
-        / "manifest.json"
-    ).write_text(
-        json.dumps(
-            manifest.to_dict(),
-            indent=2,
-            sort_keys=True,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-
-
 def execute_suite(
     suite_name: str,
     output_root: str | Path,
@@ -1111,58 +814,31 @@ def execute_suite(
         suite_name,
         output_root,
     )
-    git_commit = manifest.get(
-        "git_commit"
-    )
-    if (
-        not isinstance(
-            git_commit,
-            str,
-        )
-        or not git_commit
-    ):
+    git_commit = manifest.get("git_commit")
+    if not isinstance(git_commit, str) or not git_commit:
         raise RuntimeError(
             "suite execution requires a concrete git commit for provenance"
         )
+
     failures: list[str] = []
     for job in manifest["jobs"]:
-        run_dir = Path(
-            job[
-                "run_dir"
-            ]
-        )
+        run_dir = Path(job["run_dir"])
         run_dir.mkdir(
             parents=True,
             exist_ok=True,
         )
-        metadata_path = (
-            run_dir
-            / "run_metadata.json"
-        )
-        stdout_path = (
-            run_dir
-            / "stdout.json"
-        )
-        stderr_path = (
-            run_dir
-            / "stderr.log"
-        )
-        started = datetime.now(
-            UTC
-        )
+        metadata_path = run_dir / "run_metadata.json"
+        stdout_path = run_dir / "stdout.json"
+        stderr_path = run_dir / "stderr.log"
+        started = datetime.now(UTC)
         start_clock = time.perf_counter()
         completed = subprocess.run(
-            job[
-                "command"
-            ],
+            job["command"],
             capture_output=True,
             text=True,
             check=False,
         )
-        duration = (
-            time.perf_counter()
-            - start_clock
-        )
+        duration = time.perf_counter() - start_clock
         stdout_path.write_text(
             completed.stdout,
             encoding="utf-8",
@@ -1172,40 +848,25 @@ def execute_suite(
             encoding="utf-8",
         )
 
-        status = (
-            "success"
-            if completed.returncode == 0
-            else "failed"
-        )
+        status = "success" if completed.returncode == 0 else "failed"
         artifact_error: str | None = None
         if status == "success":
             try:
-                parsed = json.loads(
+                result = parse_runner_stdout(
                     completed.stdout
                 )
-                if not isinstance(
-                    parsed,
-                    Mapping,
-                ):
-                    raise TypeError(
-                        "runner stdout JSON must contain an object"
-                    )
-                _write_strict_suite_artifacts(
+                record_completed_suite_run(
+                    run_dir,
                     suite_name=suite_name,
-                    suite_manifest=manifest,
+                    git_commit=git_commit,
                     job=job,
-                    run_dir=run_dir,
-                    result={
-                        str(key): value
-                        for key, value in parsed.items()
-                    },
+                    result=result,
                     duration_seconds=duration,
                 )
             except (
                 KeyError,
                 TypeError,
                 ValueError,
-                json.JSONDecodeError,
             ) as exc:
                 status = "failed"
                 artifact_error = (
@@ -1230,79 +891,41 @@ def execute_suite(
                     f"code {completed.returncode}"
                 )
             )
-            _write_failed_suite_manifest(
+            record_failed_suite_run(
+                run_dir,
                 suite_name=suite_name,
-                suite_manifest=manifest,
+                git_commit=git_commit,
                 job=job,
-                run_dir=run_dir,
-                reason=failure_reason,
+                failure_reason=failure_reason,
             )
 
         metadata = {
             "schema_version": 2,
-            "run_id": job[
-                "run_id"
-            ],
-            "job_id": job[
-                "job_id"
-            ],
+            "run_id": job["run_id"],
+            "job_id": job["job_id"],
             "suite": suite_name,
-            "git_commit": manifest[
-                "git_commit"
-            ],
-            "target": job[
-                "target"
-            ],
-            "kwargs": job[
-                "kwargs"
-            ],
-            "seed": job[
-                "seed"
-            ],
-            "algorithm": job[
-                "algorithm"
-            ],
-            "environment": job[
-                "environment"
-            ],
-            "protocol": job[
-                "protocol"
-            ],
-            "hypothesis_id": job[
-                "hypothesis_id"
-            ],
-            "config_path": job[
-                "config_path"
-            ],
-            "primary_metric": job[
-                "primary_metric"
-            ],
-            "secondary_metrics": job[
-                "secondary_metrics"
-            ],
-            "optional_extra": job[
-                "optional_extra"
-            ],
-            "runtime_class": job[
-                "runtime_class"
-            ],
+            "git_commit": git_commit,
+            "target": job["target"],
+            "kwargs": job["kwargs"],
+            "seed": job["seed"],
+            "algorithm": job["algorithm"],
+            "environment": job["environment"],
+            "protocol": job["protocol"],
+            "hypothesis_id": job["hypothesis_id"],
+            "config_path": job["config_path"],
+            "primary_metric": job["primary_metric"],
+            "secondary_metrics": job["secondary_metrics"],
+            "optional_extra": job["optional_extra"],
+            "runtime_class": job["runtime_class"],
             "started_at_utc": started.isoformat(),
-            "finished_at_utc": datetime.now(
-                UTC
-            ).isoformat(),
+            "finished_at_utc": datetime.now(UTC).isoformat(),
             "duration_seconds": duration,
             "returncode": completed.returncode,
             "status": status,
             "artifact_error": artifact_error,
-            "stdout_path": str(
-                stdout_path
-            ),
-            "stderr_path": str(
-                stderr_path
-            ),
-            "strict_artifacts": (
-                status == "success"
-            ),
+            "stdout_path": str(stdout_path),
+            "stderr_path": str(stderr_path),
+            "strict_artifacts": status == "success",
         }
         metadata_path.write_text(
             json.dumps(
@@ -1314,36 +937,20 @@ def execute_suite(
         )
         if status != "success":
             failures.append(
-                str(
-                    job[
-                        "run_id"
-                    ]
-                )
+                str(job["run_id"])
             )
             if not continue_on_error:
                 break
 
     summary = {
         "suite": suite_name,
-        "manifest_path": manifest[
-            "manifest_path"
-        ],
-        "jobs_declared": len(
-            manifest[
-                "jobs"
-            ]
-        ),
+        "manifest_path": manifest["manifest_path"],
+        "jobs_declared": len(manifest["jobs"]),
         "failures": failures,
-        "status": (
-            "success"
-            if not failures
-            else "failed"
-        ),
+        "status": "success" if not failures else "failed",
     }
     summary_path = (
-        Path(
-            output_root
-        )
+        Path(output_root)
         / suite_name
         / "suite_execution_summary.json"
     )
