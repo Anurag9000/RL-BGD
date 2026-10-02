@@ -54,6 +54,38 @@ _FORBIDDEN_SOURCE_MARKERS = (
     ".cu" + "da(",
 )
 
+_ALLOWED_BLOCKED_CAPABILITIES = {
+    "CORA CHORES/ALFRED runtime": (
+        "archive",
+        "authoritative",
+    ),
+    "CORA complete four-family runtime including CHORES": (
+        "CHORES",
+        "archive",
+    ),
+}
+
+_EXPECTED_EXPERIMENT_IDS = {
+    "SYN-Q1",
+    "SYN-Q2",
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "GB-T",
+    "H",
+    "CW-CAN10",
+    "CW-CAN20",
+    "CW-TA10",
+    "CW-TA20",
+    "I",
+    "J",
+    "UCL",
+}
+
 
 @dataclass(frozen=True)
 class AuditFinding:
@@ -321,14 +353,80 @@ def audit_repository(
                     (f"{cells[0]!r} still has non-closure status {status!r}"),
                 )
             )
-        elif status == "BLOCKED" and not cells[2]:
+        elif status == "BLOCKED":
+            rationale = cells[2]
+            if not rationale:
+                findings.append(
+                    AuditFinding(
+                        "ledger_blocked_rationale",
+                        "docs/CAPABILITY_LEDGER.md",
+                        f"{cells[0]!r} is BLOCKED without a rationale",
+                    )
+                )
+                continue
+            required_terms = _ALLOWED_BLOCKED_CAPABILITIES.get(cells[0])
+            if required_terms is None:
+                findings.append(
+                    AuditFinding(
+                        "ledger_unapproved_blocker",
+                        "docs/CAPABILITY_LEDGER.md",
+                        f"{cells[0]!r} is BLOCKED but is not an approved external prerequisite",
+                    )
+                )
+                continue
+            missing_terms = [
+                term
+                for term in required_terms
+                if term.lower() not in rationale.lower()
+            ]
+            if missing_terms:
+                findings.append(
+                    AuditFinding(
+                        "ledger_blocked_rationale",
+                        "docs/CAPABILITY_LEDGER.md",
+                        (
+                            f"{cells[0]!r} blocker rationale is missing required "
+                            f"evidence terms: {', '.join(missing_terms)}"
+                        ),
+                    )
+                )
+
+    registry = (root / "docs" / "EXPERIMENT_REGISTRY.md").read_text(
+        encoding="utf-8"
+    )
+    registry_ids: set[str] = set()
+    for line in registry.splitlines():
+        if not line.startswith("|"):
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) < 3 or cells[0] == "ID" or set(cells[0]) <= {"-"}:
+            continue
+        experiment_id = cells[0]
+        status = cells[2]
+        registry_ids.add(experiment_id)
+        checks_run += 1
+        if "IMPLEMENTED" not in status.upper():
             findings.append(
                 AuditFinding(
-                    "ledger_blocked_rationale",
-                    "docs/CAPABILITY_LEDGER.md",
-                    f"{cells[0]!r} is BLOCKED without a rationale",
+                    "experiment_registry_implementation",
+                    "docs/EXPERIMENT_REGISTRY.md",
+                    (
+                        f"{experiment_id!r} lacks an IMPLEMENTED status; "
+                        "expensive execution may be pending, but software must be closed"
+                    ),
                 )
             )
+
+    checks_run += 1
+    missing_experiments = sorted(_EXPECTED_EXPERIMENT_IDS - registry_ids)
+    if missing_experiments:
+        findings.append(
+            AuditFinding(
+                "experiment_registry_coverage",
+                "docs/EXPERIMENT_REGISTRY.md",
+                "missing required experiment IDs: " + ", ".join(missing_experiments),
+            )
+        )
 
     return RepositoryAuditReport(
         root=str(root),
