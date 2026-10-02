@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -334,7 +335,7 @@ class BGDSACAgent(SACAgent):
             raise RuntimeError("actor BGD is not configured")
         actor_buffers = dict(self.actor.named_buffers())
 
-        def objective(params: dict[str, Tensor]) -> BGDLoss:
+        def objective(params: Mapping[str, Tensor]) -> BGDLoss:
             sampled_action, log_prob, _ = functional_call(
                 self.actor,
                 (dict(params), actor_buffers),
