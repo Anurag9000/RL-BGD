@@ -15,10 +15,8 @@ build/
 .vscode/
 results/*
 !results/.gitkeep
-artifacts/*.png
-artifacts/*.pdf
-artifacts/*.svg
-artifacts/*.csv
+artifacts/**
+!artifacts/.gitkeep
 checkpoints/
 wandb/
 runs/
