@@ -739,6 +739,16 @@ def run_index(
             {
                 "run_id": run.manifest.run_id,
                 "experiment": _experiment_id(run),
+                "comparison_group": (
+                    _comparison_group(
+                        run
+                    )
+                ),
+                "suite_revision": (
+                    run.manifest.metadata.get(
+                        "suite_revision"
+                    )
+                ),
                 "method": run.manifest.method,
                 "setting": run.manifest.setting,
                 "benchmark": run.manifest.benchmark,
