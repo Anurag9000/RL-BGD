@@ -1099,7 +1099,10 @@ ABLATION_CORE = ExperimentSuite(
 
 UNCERTAINTY_ANALYSIS = ExperimentSuite(
     name="uncertainty_analysis",
-    description="Posterior uncertainty, surprise, and evidence-temperature diagnostics.",
+    description=(
+        "Posterior uncertainty, matched surprise-source ablations, "
+        "and evidence-temperature diagnostics."
+    ),
     jobs=(
         _job(
             "adaptive_timeline",
@@ -1109,9 +1112,10 @@ UNCERTAINTY_ANALYSIS = ExperimentSuite(
                 "total_steps": 900,
                 "phase_steps": 300,
                 "device": "auto",
+                "surprise_source": "td",
             },
             seeds=(0, 1, 2, 3, 4),
-            algorithm="SAC-Adaptive-BGD",
+            algorithm="SAC-Adaptive-BGD-TD",
             environment="recurring_lqr",
             protocol="strict_task_agnostic",
             config_path="configs/environments/lqr_recurring.yaml",
@@ -1124,6 +1128,53 @@ UNCERTAINTY_ANALYSIS = ExperimentSuite(
                 "training.last_update_metrics.critic1_sigma_mean",
             ),
             runtime_class="medium",
+        ),
+        *tuple(
+            _job(
+                f"surprise_source_{source}",
+                "E",
+                "rl_bgd.runners.adaptive_bgd_lqr_stream:run_adaptive_bgd_lqr_stream",
+                kwargs={
+                    "total_steps": 900,
+                    "phase_steps": 300,
+                    "device": "auto",
+                    "surprise_source": source,
+                },
+                seeds=(0, 1, 2, 3, 4),
+                algorithm=(
+                    "SAC-BGD-No-Adaptive"
+                    if source == "none"
+                    else f"SAC-Adaptive-BGD-{source.title()}"
+                ),
+                environment="recurring_lqr",
+                protocol="strict_task_agnostic",
+                config_path="configs/environments/lqr_recurring.yaml",
+                primary_metric="change_detection.f1",
+                secondary_metrics=(
+                    (
+                        "change_detection.precision",
+                        "change_detection.recall",
+                        "change_detection.false_alarms_per_million_steps",
+                        "training.last_update_metrics.critic1_sigma_mean",
+                    )
+                    + (
+                        ("training.last_update_metrics.retention_lambda",)
+                        if source != "none"
+                        else ()
+                    )
+                    + (
+                        ("training.last_update_metrics.predictive_model_loss",)
+                        if source == "predictive"
+                        else ()
+                    )
+                ),
+                runtime_class="medium",
+            )
+            for source in (
+                "none",
+                "ensemble",
+                "predictive",
+            )
         ),
         *_evidence_temperature_jobs(
             steps=600,
