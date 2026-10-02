@@ -41,6 +41,8 @@ class SquashedGaussianActor(nn.Module):
         self.log_std_head = nn.Linear(feature_dim, action_dim)
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
+        self.action_scale: Tensor
+        self.action_bias: Tensor
         action_scale = (action_high - action_low) / 2.0
         action_bias = (action_high + action_low) / 2.0
         self.register_buffer("action_scale", action_scale.float())
