@@ -165,41 +165,6 @@ def _repair_missing_metaworld_assets(
     return tuple(repaired)
 
 
-def _apply_upstream_runtime_compatibility() -> tuple[str, ...]:
-    """Patch pinned upstream defects without changing benchmark dynamics.
-
-    The pinned ContinualBench source references debug_grasp_reward_pad in
-    block_compute_reward even though its diagnostic-only computation is
-    commented out. Defining the missing module global prevents that NameError;
-    the value affects only an upstream debug-difference field that this adapter
-    never exposes or uses for reward calculation.
-    """
-
-    patched: list[str] = []
-    try:
-        sawyer_bench = import_module(
-            "continual_bench.envs.mujoco.sawyer_bench"
-        )
-    except ImportError as exc:
-        raise ContinualBenchImportError(
-            "cannot import pinned ContinualBench Sawyer environment"
-        ) from exc
-
-    if not hasattr(
-        sawyer_bench,
-        "debug_grasp_reward_pad",
-    ):
-        setattr(
-            sawyer_bench,
-            "debug_grasp_reward_pad",
-            0.0,
-        )
-        patched.append(
-            "sawyer_bench.debug_grasp_reward_pad"
-        )
-    return tuple(patched)
-
-
 @dataclass(frozen=True)
 class ContinualBenchStreamConfig:
     """Task-stream controls for the unified ContinualBench world."""
@@ -478,7 +443,9 @@ def make_continual_bench_stream(
         envs,
         metaworld,
     )
-    _apply_upstream_runtime_compatibility()
+    _install_pinned_runtime_compatibility(
+        sawyer_bench
+    )
     env_class = getattr(envs, "ContinualBenchEnv", None)
     if env_class is None:
         raise ContinualBenchImportError("installed package does not expose ContinualBenchEnv")
