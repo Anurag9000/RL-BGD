@@ -239,6 +239,7 @@ def record_completed_suite_run(
         ),
         metadata={
             "suite": suite_name,
+            "suite_revision": job.get("suite_revision"),
             "job_id": str(job["job_id"]),
             "hypothesis_id": str(job["hypothesis_id"]),
             "target": str(job["target"]),
@@ -278,6 +279,7 @@ def record_completed_suite_run(
         )
     resolved_config = {
         "suite": suite_name,
+        "suite_revision": job.get("suite_revision"),
         "run_id": run_id,
         "git_commit": git_commit,
         "invocation": {
@@ -320,6 +322,7 @@ def record_failed_suite_run(
         information_access=(information_access_for_protocol(protocol)),
         metadata={
             "suite": suite_name,
+            "suite_revision": job.get("suite_revision"),
             "job_id": str(job["job_id"]),
             "hypothesis_id": str(job["hypothesis_id"]),
             "target": str(job["target"]),
