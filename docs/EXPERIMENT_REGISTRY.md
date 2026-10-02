@@ -20,6 +20,6 @@ No expensive experiment is marked executed until raw run artifacts exist.
 | CW-TA10 | Task-agnostic BGD-SAC can retain/adapt across CW10 without task identity | IMPLEMENTED / NOT YET FULLY EXECUTED |
 | CW-TA20 | Recurrence in CW20 exposes retention and reacquisition behavior under hidden task identity | IMPLEMENTED / NOT YET FULLY EXECUTED |
 
-| I | Posterior uncertainty predicts perturbation importance | MECHANISTIC PIPELINE IMPLEMENTED; CI/result validation pending |
-| J | Posterior sigma predicts future parameter movement | MECHANISTIC PIPELINE IMPLEMENTED; CI/result validation pending |
+| I | Posterior uncertainty predicts perturbation importance | MECHANISTIC PIPELINE IMPLEMENTED / TESTED on deterministic controlled artifacts; larger multi-seed comparative validation pending |
+| J | Posterior sigma predicts future parameter movement | MECHANISTIC PIPELINE IMPLEMENTED / TESTED on deterministic controlled artifacts; larger multi-seed comparative validation pending |
 | UCL | Oracle-boundary UCL-PPO provides a documented Bayesian continual-RL comparator | IMPLEMENTED / TESTED; multi-seed comparison pending |
