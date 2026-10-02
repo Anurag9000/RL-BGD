@@ -298,13 +298,29 @@ def test_carl_and_cw_metric_declarations_match_runner_contracts() -> None:
             "cw10_core"
         ].jobs
     }
-    assert "recurrence" not in cw10_jobs[
-        "cw10_recurrent_adaptive"
-    ].secondary_metrics
+    for job_id in (
+        "cw10_recurrent_adam",
+        "cw10_recurrent_bgd",
+        "cw10_recurrent_adaptive_bgd",
+    ):
+        assert not any(
+            metric.startswith(
+                "recurrence_summary."
+            )
+            for metric in cw10_jobs[
+                job_id
+            ].secondary_metrics
+        )
     assert (
         "training.last_update_metrics.critic1_sigma_mean"
         in cw10_jobs[
             "cw10_ta_bgd"
+        ].secondary_metrics
+    )
+    assert (
+        "training.last_update_metrics.critic1_sigma_mean"
+        in cw10_jobs[
+            "cw10_recurrent_bgd"
         ].secondary_metrics
     )
 
@@ -332,6 +348,10 @@ def test_carl_and_cw_metric_declarations_match_runner_contracts() -> None:
     for job_id in (
         "cw20_ta_adam",
         "cw20_ta_bgd",
+        "cw20_ta_ewc",
+        "cw20_ta_online_ewc",
+        "cw20_ta_si",
+        "cw20_ta_mas",
         "cw20_recurrent_adam",
         "cw20_recurrent_bgd",
         "cw20_recurrent_adaptive",
@@ -424,13 +444,121 @@ def test_cw10_regularization_baselines_are_matched_and_boundary_free() -> None:
         job.protocol
         for job in jobs
     } == {
-        "strict_task_agnostic_fixed_update"
+        "strict_task_agnostic"
+    }
+    assert {
+        job.comparison_group
+        for job in jobs
+    } == {
+        "cw10_task_agnostic_feedforward"
     }
     assert all(
         "no ground-truth task boundary"
         in job.notes
         for job in jobs
     )
+
+
+def test_cw10_has_matched_feedforward_and_recurrent_families() -> None:
+    jobs = SUITES[
+        "cw10_core"
+    ].jobs
+    feedforward = [
+        job
+        for job in jobs
+        if job.target.endswith(
+            ":run_ta_continual_world_sac"
+        )
+    ]
+    assert {
+        job.kwargs[
+            "optimizer"
+        ]
+        for job in feedforward
+    } == {
+        "adam",
+        "bgd",
+        "ewc",
+        "online_ewc",
+        "si",
+        "mas",
+    }
+    assert {
+        job.protocol
+        for job in feedforward
+    } == {
+        "strict_task_agnostic"
+    }
+    assert {
+        job.comparison_group
+        for job in feedforward
+    } == {
+        "cw10_task_agnostic_feedforward"
+    }
+    assert {
+        job.seeds
+        for job in feedforward
+    } == {
+        (
+            0,
+            1,
+            2,
+            3,
+            4,
+        )
+    }
+    assert {
+        int(
+            job.kwargs[
+                "steps_per_task"
+            ]
+        )
+        for job in feedforward
+    } == {
+        1_000_000
+    }
+
+    recurrent = [
+        job
+        for job in jobs
+        if job.target.endswith(
+            ":run_recurrent_ta_continual_world_sac"
+        )
+    ]
+    assert {
+        job.kwargs[
+            "optimizer"
+        ]
+        for job in recurrent
+    } == {
+        "adam",
+        "bgd",
+        "adaptive_bgd",
+    }
+    assert {
+        job.protocol
+        for job in recurrent
+    } == {
+        "3RL-style_task_agnostic"
+    }
+    assert {
+        job.comparison_group
+        for job in recurrent
+    } == {
+        "cw10_recurrent"
+    }
+    assert {
+        job.seeds
+        for job in recurrent
+    } == {
+        (
+            0,
+            1,
+            2,
+            3,
+            4,
+        )
+    }
 
 
 def test_cw20_final_has_matched_task_agnostic_and_recurrent_controls() -> None:
@@ -452,6 +580,10 @@ def test_cw20_final_has_matched_task_agnostic_and_recurrent_controls() -> None:
     } == {
         "adam",
         "bgd",
+        "ewc",
+        "online_ewc",
+        "si",
+        "mas",
     }
     assert {
         int(
@@ -490,6 +622,12 @@ def test_cw20_final_has_matched_task_agnostic_and_recurrent_controls() -> None:
         for job in task_agnostic
     } == {
         "strict_task_agnostic"
+    }
+    assert {
+        job.comparison_group
+        for job in task_agnostic
+    } == {
+        "cw20_task_agnostic_feedforward"
     }
 
     recurrent = [
@@ -546,6 +684,12 @@ def test_cw20_final_has_matched_task_agnostic_and_recurrent_controls() -> None:
         for job in recurrent
     } == {
         "3RL-style_task_agnostic"
+    }
+    assert {
+        job.comparison_group
+        for job in recurrent
+    } == {
+        "cw20_recurrent"
     }
 
 
