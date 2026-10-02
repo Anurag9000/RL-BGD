@@ -80,3 +80,13 @@ stream, one-million steps per task, ten evaluation episodes per stage, recurrent
 architecture/config, and seeds 0-4. All task-agnostic CW20 jobs record the same
 revisit/reacquisition recurrence metrics; Bayesian jobs additionally expose
 posterior uncertainty, and the adaptive job additionally exposes retention.
+
+
+The `uncertainty_analysis` surprise-source block is also explicitly matched.
+A no-adaptation BGD control, TD-residual surprise, twin-critic ensemble
+disagreement, and predictive transition/reward NLL all use the same recurring
+LQR stream, 900 environment steps, phase length 300, critic-only BGD settings,
+EMA normalization hyperparameters, retention mapping, and seeds 0-4. The
+no-adaptation arm emits no surprise/retention signal; the adaptive arms share
+change-detection metrics, while predictive NLL additionally records its online
+model loss.
