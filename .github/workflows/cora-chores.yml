@@ -2,15 +2,16 @@ name: cora-chores-smoke
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "scripts/cora_legacy_chores_smoke.py"
-      - ".github/workflows/cora-chores.yml"
-  pull_request:
-    paths:
-      - "scripts/cora_legacy_chores_smoke.py"
-      - ".github/workflows/cora-chores.yml"
+    inputs:
+      chores_archive_url:
+        description: "Authoritative CORA CHORES trajectory archive URL"
+        required: true
+        type: string
+      chores_archive_sha256:
+        description: "Optional expected SHA-256 for the archive"
+        required: false
+        default: ""
+        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -41,7 +42,7 @@ jobs:
             libxrender1 \
             libxtst6
 
-      - name: Install isolated CORA and CHORES runtime
+      - name: Install isolated historical runtime
         run: |
           python -m pip install --upgrade "pip<25" "setuptools==59.5.0" wheel
           python -m pip install --index-url https://download.pytorch.org/whl/cpu \
@@ -49,30 +50,56 @@ jobs:
           python -m pip install \
             "numpy==1.23.5" \
             "gym==0.25.2" \
-            "opencv-python-headless==4.8.1.78"
+            "opencv-python-headless==4.8.1.78" \
+            "pandas==1.5.3" \
+            "networkx==2.8.8" \
+            "h5py==3.10.0" \
+            "tqdm==4.66.5" \
+            "vocab==0.0.5" \
+            "revtok==0.0.3" \
+            "Pillow==10.4.0" \
+            "ai2thor==3.3.5"
 
           git clone https://github.com/etaoxing/crl_alfred.git /tmp/crl_alfred
           git -C /tmp/crl_alfred checkout 9539acc290f7a8cd70099e04df94cec2a5452e71
-          python -m pip install -r /tmp/crl_alfred/alfred/requirements.txt
           python -m pip install --no-deps -e /tmp/crl_alfred
 
           git clone https://github.com/AGI-Labs/continual_rl.git /tmp/continual_rl
           git -C /tmp/continual_rl checkout f2754bb282757829765beb4703f24b87efa13ff9
           python -m pip install --no-deps -e /tmp/continual_rl
 
-      - name: Download official CORA CHORES trajectories
-        run: |
-          wget -q --show-progress -O /tmp/cora_trajs.zip \
-            "https://onedrive.live.com/download?cid=601D311D0FC404D4&resid=601D311D0FC404D4%2155915&authkey=APSnA-AKY4Yw_vA"
-          unzip -q /tmp/cora_trajs.zip -d /tmp/cora_data
-          find /tmp/cora_data -maxdepth 3 -type d | head -50
+          python - <<'PY'
+          import gym
+          import numpy
+          import torch
+          import ai2thor
+          print("numpy", numpy.__version__)
+          print("gym", gym.__version__)
+          print("torch", torch.__version__)
+          print("ai2thor", getattr(ai2thor, "__version__", "unknown"))
+          assert numpy.__version__ == "1.23.5"
+          assert gym.__version__ == "0.25.2"
+          PY
 
-      - name: Locate CHORES data root
+      - name: Download supplied CORA CHORES trajectories
+        env:
+          CHORES_ARCHIVE_URL: ${{ inputs.chores_archive_url }}
+          CHORES_ARCHIVE_SHA256: ${{ inputs.chores_archive_sha256 }}
+        run: |
+          test -n "$CHORES_ARCHIVE_URL"
+          curl --fail --location --retry 3 --output /tmp/cora_trajs.zip "$CHORES_ARCHIVE_URL"
+          if [ -n "$CHORES_ARCHIVE_SHA256" ]; then
+            echo "$CHORES_ARCHIVE_SHA256  /tmp/cora_trajs.zip" | sha256sum --check -
+          fi
+          unzip -q /tmp/cora_trajs.zip -d /tmp/cora_data
+
+      - name: Locate exact published CHORES trajectory
         id: chores-data
         run: |
           demo="pick_and_place_simple-ToiletPaper-None-ToiletPaperHanger-402/trial_T20210817_071626_357261"
           root="$(find /tmp/cora_data -type f -path "*/train/$demo/traj_data.json" -print -quit | sed "s#/train/$demo/traj_data.json##")"
           test -n "$root"
+          test -d "$root/train/$demo/raw_images"
           echo "root=$root" >> "$GITHUB_OUTPUT"
 
       - name: Run real CORA CHORES task smoke
