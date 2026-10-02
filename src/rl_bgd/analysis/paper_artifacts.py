@@ -1534,6 +1534,722 @@ def _learning_curve_figures(
     )
 
 
+def _pointwise_seed_statistics(
+    seed_series: Sequence[
+        Mapping[float, float]
+    ],
+    *,
+    config: PaperArtifactConfig,
+    seed_offset: int,
+) -> tuple[
+    list[float],
+    list[float],
+    list[float],
+    list[float],
+]:
+    """Return aligned x, mean, lower, and upper bootstrap bands across seeds."""
+
+    if not seed_series:
+        return (
+            [],
+            [],
+            [],
+            [],
+        )
+    common_x = set(
+        seed_series[
+            0
+        ]
+    )
+    for series in seed_series[
+        1:
+    ]:
+        common_x &= set(
+            series
+        )
+    xs = sorted(
+        common_x
+    )
+    means: list[
+        float
+    ] = []
+    lows: list[
+        float
+    ] = []
+    highs: list[
+        float
+    ] = []
+    for index, x_value in enumerate(
+        xs
+    ):
+        values = [
+            series[
+                x_value
+            ]
+            for series in seed_series
+        ]
+        estimate = bootstrap_mean_ci(
+            values,
+            confidence=config.confidence,
+            resamples=config.bootstrap_resamples,
+            seed=(
+                config.seed
+                + seed_offset
+                + index
+            ),
+        )
+        means.append(
+            estimate.mean
+        )
+        lows.append(
+            estimate.ci_low
+        )
+        highs.append(
+            estimate.ci_high
+        )
+    return (
+        xs,
+        means,
+        lows,
+        highs,
+    )
+
+
+def _matrix_figures(
+    runs: Sequence[LoadedRun],
+    output_dir: Path,
+    formats: Sequence[str],
+    *,
+    config: PaperArtifactConfig,
+) -> tuple[
+    list[str],
+    list[str],
+]:
+    """Plot seed-mean continual matrices and stage-average bootstrap bands."""
+
+    artifacts: list[
+        str
+    ] = []
+    skipped: list[
+        str
+    ] = []
+    for group_index, (
+        group,
+        group_runs,
+    ) in enumerate(
+        sorted(
+            _group_runs(
+                runs
+            ).items(),
+            key=lambda item: item[
+                0
+            ].label,
+        )
+    ):
+        for series_index, series_name in enumerate(
+            (
+                "return_matrix",
+                "success_matrix",
+            )
+        ):
+            run_matrices: list[
+                np.ndarray
+            ] = []
+            stage_labels: tuple[
+                str,
+                ...,
+            ] | None = None
+            task_labels: tuple[
+                str,
+                ...,
+            ] | None = None
+            missing = False
+
+            for run in group_runs:
+                if (
+                    "series"
+                    not in run.metrics.columns
+                ):
+                    missing = True
+                    break
+                frame = run.metrics[
+                    run.metrics[
+                        "series"
+                    ]
+                    == series_name
+                ]
+                if frame.empty:
+                    missing = True
+                    break
+                required = {
+                    "stage_index",
+                    "task_index",
+                    "stage_label",
+                    "task_name",
+                    "value",
+                }
+                if not required.issubset(
+                    frame.columns
+                ):
+                    raise ValueError(
+                        f"{group.label}: {series_name} rows are missing required columns"
+                    )
+
+                stages = tuple(
+                    str(value)
+                    for value in (
+                        frame[
+                            [
+                                "stage_index",
+                                "stage_label",
+                            ]
+                        ]
+                        .drop_duplicates()
+                        .sort_values(
+                            "stage_index"
+                        )[
+                            "stage_label"
+                        ]
+                    )
+                )
+                tasks = tuple(
+                    str(value)
+                    for value in (
+                        frame[
+                            [
+                                "task_index",
+                                "task_name",
+                            ]
+                        ]
+                        .drop_duplicates()
+                        .sort_values(
+                            "task_index"
+                        )[
+                            "task_name"
+                        ]
+                    )
+                )
+                pivot = (
+                    frame.pivot(
+                        index="stage_index",
+                        columns="task_index",
+                        values="value",
+                    )
+                    .sort_index()
+                    .sort_index(
+                        axis=1
+                    )
+                )
+                matrix = pivot.to_numpy(
+                    dtype=float
+                )
+                if (
+                    not np.isfinite(
+                        matrix
+                    ).all()
+                    or matrix.shape
+                    != (
+                        len(stages),
+                        len(tasks),
+                    )
+                ):
+                    raise ValueError(
+                        f"{group.label}: invalid {series_name} matrix"
+                    )
+                if stage_labels is None:
+                    stage_labels = stages
+                    task_labels = tasks
+                elif (
+                    stages
+                    != stage_labels
+                    or tasks
+                    != task_labels
+                    or matrix.shape
+                    != run_matrices[
+                        0
+                    ].shape
+                ):
+                    raise ValueError(
+                        f"{group.label}: {series_name} stage/task schema differs across seeds"
+                    )
+                run_matrices.append(
+                    matrix
+                )
+
+            if (
+                missing
+                or not run_matrices
+                or stage_labels is None
+                or task_labels is None
+            ):
+                skipped.append(
+                    f"{group.label}: no complete {series_name} across seeds"
+                )
+                continue
+
+            stacked = np.stack(
+                run_matrices,
+                axis=0,
+            )
+            mean_matrix = stacked.mean(
+                axis=0
+            )
+
+            figure = plt.figure(
+                figsize=(
+                    max(
+                        5.5,
+                        0.55
+                        * len(
+                            task_labels
+                        ),
+                    ),
+                    max(
+                        4.5,
+                        0.45
+                        * len(
+                            stage_labels
+                        ),
+                    ),
+                )
+            )
+            axis = figure.add_subplot(
+                111
+            )
+            image = axis.imshow(
+                mean_matrix,
+                aspect="auto",
+            )
+            figure.colorbar(
+                image,
+                ax=axis,
+                label=(
+                    "mean return"
+                    if series_name
+                    == "return_matrix"
+                    else "mean success rate"
+                ),
+            )
+            axis.set_xticks(
+                np.arange(
+                    len(
+                        task_labels
+                    )
+                ),
+                task_labels,
+                rotation=45,
+                ha="right",
+            )
+            axis.set_yticks(
+                np.arange(
+                    len(
+                        stage_labels
+                    )
+                ),
+                stage_labels,
+            )
+            axis.set_xlabel(
+                "evaluation task"
+            )
+            axis.set_ylabel(
+                "training stage"
+            )
+            axis.set_title(
+                f"{group.label}\n{series_name}"
+            )
+            figure.tight_layout()
+            stem = (
+                "continual_matrix_"
+                + _safe_name(
+                    series_name
+                    + "_"
+                    + group.label
+                )
+            )
+            artifacts.extend(
+                _save_figure(
+                    figure,
+                    output_dir,
+                    stem,
+                    formats,
+                )
+            )
+
+            seed_stage_series: list[
+                dict[float, float]
+            ] = []
+            for matrix in run_matrices:
+                seed_stage_series.append(
+                    {
+                        float(stage): float(
+                            matrix[
+                                stage
+                            ].mean()
+                        )
+                        for stage in range(
+                            matrix.shape[
+                                0
+                            ]
+                        )
+                    }
+                )
+            (
+                xs,
+                means,
+                lows,
+                highs,
+            ) = _pointwise_seed_statistics(
+                seed_stage_series,
+                config=config,
+                seed_offset=(
+                    4_000_000
+                    + group_index
+                    * 10_000
+                    + series_index
+                    * 1_000
+                ),
+            )
+            if xs:
+                figure = plt.figure()
+                axis = figure.add_subplot(
+                    111
+                )
+                axis.plot(
+                    xs,
+                    means,
+                )
+                axis.fill_between(
+                    xs,
+                    lows,
+                    highs,
+                    alpha=0.2,
+                )
+                axis.set_xticks(
+                    xs,
+                    [
+                        stage_labels[
+                            int(value)
+                        ]
+                        for value in xs
+                    ],
+                    rotation=45,
+                    ha="right",
+                )
+                axis.set_xlabel(
+                    "training stage"
+                )
+                axis.set_ylabel(
+                    (
+                        "mean return across tasks"
+                        if series_name
+                        == "return_matrix"
+                        else "mean success across tasks"
+                    )
+                )
+                axis.set_title(
+                    f"{group.label}\n{series_name} stage-average"
+                )
+                figure.tight_layout()
+                stem = (
+                    "adaptation_curve_"
+                    + _safe_name(
+                        series_name
+                        + "_"
+                        + group.label
+                    )
+                )
+                artifacts.extend(
+                    _save_figure(
+                        figure,
+                        output_dir,
+                        stem,
+                        formats,
+                    )
+                )
+    return (
+        artifacts,
+        skipped,
+    )
+
+
+_TIMELINE_VALUE_CANDIDATES: tuple[
+    str,
+    ...,
+] = (
+    "surprise",
+    "surprise_raw",
+    "surprise_smoothed",
+    "retention_lambda",
+    "sigma_mean",
+    "critic1_sigma_mean",
+    "critic2_sigma_mean",
+    "actor_sigma_mean",
+    "effective_lr_mean",
+    "critic1_effective_lr_mean",
+    "critic2_effective_lr_mean",
+    "actor_effective_lr_mean",
+    "evaluation_return",
+    "episode_return",
+    "return",
+    "mean_return",
+)
+
+
+def _timeline_figures(
+    runs: Sequence[LoadedRun],
+    output_dir: Path,
+    formats: Sequence[str],
+    *,
+    config: PaperArtifactConfig,
+) -> tuple[
+    list[str],
+    list[str],
+]:
+    """Plot pointwise bootstrap bands for diagnostic timeline series."""
+
+    artifacts: list[
+        str
+    ] = []
+    skipped: list[
+        str
+    ] = []
+    for group_index, (
+        group,
+        group_runs,
+    ) in enumerate(
+        sorted(
+            _group_runs(
+                runs
+            ).items(),
+            key=lambda item: item[
+                0
+            ].label,
+        )
+    ):
+        if any(
+            "series"
+            not in run.metrics.columns
+            for run in group_runs
+        ):
+            skipped.append(
+                f"{group.label}: no raw timeline series column"
+            )
+            continue
+        common_series = set(
+            str(value)
+            for value in group_runs[
+                0
+            ].metrics[
+                "series"
+            ].dropna()
+        )
+        for run in group_runs[
+            1:
+        ]:
+            common_series &= set(
+                str(value)
+                for value in run.metrics[
+                    "series"
+                ].dropna()
+            )
+        common_series -= {
+            "summary",
+            "return_matrix",
+            "success_matrix",
+        }
+        if not common_series:
+            skipped.append(
+                f"{group.label}: no shared diagnostic timeline across seeds"
+            )
+            continue
+
+        for series_index, series_name in enumerate(
+            sorted(
+                common_series
+            )
+        ):
+            frames = [
+                run.metrics[
+                    run.metrics[
+                        "series"
+                    ]
+                    == series_name
+                ].copy()
+                for run in group_runs
+            ]
+            x_column = next(
+                (
+                    candidate
+                    for candidate in (
+                        "environment_step",
+                        "step",
+                        "row_index",
+                    )
+                    if all(
+                        candidate
+                        in frame.columns
+                        for frame in frames
+                    )
+                ),
+                None,
+            )
+            if x_column is None:
+                skipped.append(
+                    f"{group.label} / {series_name}: no shared x-axis column"
+                )
+                continue
+            value_columns = [
+                candidate
+                for candidate in _TIMELINE_VALUE_CANDIDATES
+                if all(
+                    candidate
+                    in frame.columns
+                    for frame in frames
+                )
+            ]
+            if not value_columns:
+                skipped.append(
+                    f"{group.label} / {series_name}: no supported diagnostic value column"
+                )
+                continue
+
+            plotted = 0
+            figure = plt.figure()
+            axis = figure.add_subplot(
+                111
+            )
+            for value_index, value_column in enumerate(
+                value_columns
+            ):
+                seed_series: list[
+                    dict[float, float]
+                ] = []
+                for frame in frames:
+                    subset = frame[
+                        [
+                            x_column,
+                            value_column,
+                        ]
+                    ].dropna()
+                    grouped_values: dict[
+                        float,
+                        list[float],
+                    ] = defaultdict(
+                        list
+                    )
+                    for (
+                        x_value,
+                        y_value,
+                    ) in subset.itertuples(
+                        index=False,
+                        name=None,
+                    ):
+                        x_float = float(
+                            x_value
+                        )
+                        y_float = float(
+                            y_value
+                        )
+                        if (
+                            math.isfinite(
+                                x_float
+                            )
+                            and math.isfinite(
+                                y_float
+                            )
+                        ):
+                            grouped_values[
+                                x_float
+                            ].append(
+                                y_float
+                            )
+                    seed_series.append(
+                        {
+                            x_value: float(
+                                np.mean(
+                                    values
+                                )
+                            )
+                            for (
+                                x_value,
+                                values,
+                            ) in grouped_values.items()
+                        }
+                    )
+                (
+                    xs,
+                    means,
+                    lows,
+                    highs,
+                ) = _pointwise_seed_statistics(
+                    seed_series,
+                    config=config,
+                    seed_offset=(
+                        5_000_000
+                        + group_index
+                        * 100_000
+                        + series_index
+                        * 10_000
+                        + value_index
+                        * 1_000
+                    ),
+                )
+                if not xs:
+                    continue
+                axis.plot(
+                    xs,
+                    means,
+                    label=value_column,
+                )
+                axis.fill_between(
+                    xs,
+                    lows,
+                    highs,
+                    alpha=0.15,
+                )
+                plotted += 1
+
+            if plotted == 0:
+                plt.close(
+                    figure
+                )
+                skipped.append(
+                    f"{group.label} / {series_name}: no aligned finite timeline points"
+                )
+                continue
+            axis.set_xlabel(
+                x_column
+            )
+            axis.set_ylabel(
+                "diagnostic value"
+            )
+            axis.set_title(
+                f"{group.label}\n{series_name}"
+            )
+            axis.legend()
+            figure.tight_layout()
+            stem = (
+                "timeline_"
+                + _safe_name(
+                    series_name
+                    + "_"
+                    + group.label
+                )
+            )
+            artifacts.extend(
+                _save_figure(
+                    figure,
+                    output_dir,
+                    stem,
+                    formats,
+                )
+            )
+    return (
+        artifacts,
+        skipped,
+    )
+
+
 def build_paper_artifacts(
     results_root: str | Path,
     output_dir: str | Path,
