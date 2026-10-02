@@ -623,19 +623,16 @@ def test_ucl_structured_outputs_are_not_declared_as_scalar_metrics() -> None:
     )
 
 
-def test_uncertainty_suite_has_matched_surprise_source_controls() -> None:
-    jobs = [
+def test_uncertainty_suite_separates_detection_and_retention_comparisons() -> None:
+    all_jobs = SUITES[
+        "uncertainty_analysis"
+    ].jobs
+
+    detection_jobs = [
         job
-        for job in SUITES[
-            "uncertainty_analysis"
-        ].jobs
-        if (
-            job.target.endswith(
-                ":run_adaptive_bgd_lqr_stream"
-            )
-            and job.job_id
-            != "fixed_retention_recurring_0p97"
-        )
+        for job in all_jobs
+        if job.comparison_group
+        == "surprise_source_detection"
     ]
     by_source = {
         str(
@@ -643,7 +640,7 @@ def test_uncertainty_suite_has_matched_surprise_source_controls() -> None:
                 "surprise_source"
             ]
         ): job
-        for job in jobs
+        for job in detection_jobs
     }
     assert set(
         by_source
@@ -653,13 +650,18 @@ def test_uncertainty_suite_has_matched_surprise_source_controls() -> None:
         "ensemble",
         "predictive",
     }
+    assert all(
+        job.primary_metric
+        == "change_detection.f1"
+        for job in detection_jobs
+    )
     assert {
         int(
             job.kwargs[
                 "total_steps"
             ]
         )
-        for job in jobs
+        for job in detection_jobs
     } == {
         900
     }
@@ -669,13 +671,13 @@ def test_uncertainty_suite_has_matched_surprise_source_controls() -> None:
                 "phase_steps"
             ]
         )
-        for job in jobs
+        for job in detection_jobs
     } == {
         300
     }
     assert {
         job.seeds
-        for job in jobs
+        for job in detection_jobs
     } == {
         (
             0,
@@ -687,13 +689,13 @@ def test_uncertainty_suite_has_matched_surprise_source_controls() -> None:
     }
     assert {
         job.environment
-        for job in jobs
+        for job in detection_jobs
     } == {
         "recurring_lqr"
     }
     assert {
         job.protocol
-        for job in jobs
+        for job in detection_jobs
     } == {
         "strict_task_agnostic"
     }
@@ -704,6 +706,12 @@ def test_uncertainty_suite_has_matched_surprise_source_controls() -> None:
     ):
         assert (
             "training.last_update_metrics.retention_lambda"
+            in by_source[
+                source
+            ].secondary_metrics
+        )
+        assert (
+            "surprise_auroc"
             in by_source[
                 source
             ].secondary_metrics
@@ -721,49 +729,86 @@ def test_uncertainty_suite_has_matched_surprise_source_controls() -> None:
         ].secondary_metrics
     )
 
-
-    for source in (
+    retention_jobs = [
+        job
+        for job in all_jobs
+        if job.comparison_group
+        == "recurring_retention_policy"
+    ]
+    assert {
+        str(
+            job.kwargs[
+                "surprise_source"
+            ]
+        )
+        for job in retention_jobs
+    } == {
+        "none",
         "td",
         "ensemble",
         "predictive",
-    ):
-        assert (
-            "surprise_auroc"
-            in by_source[
-                source
-            ].secondary_metrics
+    }
+    assert len(
+        retention_jobs
+    ) == 5
+    assert {
+        float(
+            job.kwargs[
+                "fixed_retention"
+            ]
         )
-
-    fixed = next(
-        job
-        for job in SUITES[
-            "uncertainty_analysis"
-        ].jobs
-        if job.job_id
-        == "fixed_retention_recurring_0p97"
+        for job in retention_jobs
+        if job.kwargs[
+            "surprise_source"
+        ]
+        == "none"
+    } == {
+        1.0,
+        0.97,
+    }
+    assert all(
+        job.primary_metric
+        == "training.final_10_mean_return"
+        for job in retention_jobs
     )
-    assert fixed.hypothesis_id == "D"
-    assert fixed.kwargs[
-        "surprise_source"
-    ] == "none"
-    assert fixed.kwargs[
-        "fixed_retention"
-    ] == pytest.approx(
-        0.97
-    )
-    assert fixed.kwargs[
-        "total_steps"
-    ] == 900
-    assert fixed.kwargs[
-        "phase_steps"
-    ] == 300
-    assert fixed.seeds == (
-        0,
-        1,
-        2,
-        3,
-        4,
-    )
+    assert {
+        job.protocol
+        for job in retention_jobs
+    } == {
+        "strict_task_agnostic_retention_policy"
+    }
+    assert {
+        job.seeds
+        for job in retention_jobs
+    } == {
+        (
+            0,
+            1,
+            2,
+            3,
+            4,
+        )
+    }
+    assert {
+        int(
+            job.kwargs[
+                "total_steps"
+            ]
+        )
+        for job in retention_jobs
+    } == {
+        900
+    }
+    assert {
+        int(
+            job.kwargs[
+                "phase_steps"
+            ]
+        )
+        for job in retention_jobs
+    } == {
+        300
+    }
 
 
 def test_mechanistic_and_detection_metrics_are_scalar_safe() -> None:
@@ -823,6 +868,7 @@ def _tiny_suite(
                 config_path=None,
                 primary_metric=primary_metric,
                 secondary_metrics=("initial_abs_mean",),
+                comparison_group="tiny_smoke_group",
                 runtime_class="smoke",
             ),
         ),
@@ -851,6 +897,15 @@ def test_execute_suite_writes_strict_artifacts(
     metadata = json.loads((run_dir / "run_metadata.json").read_text(encoding="utf-8"))
     assert metadata["strict_artifacts"] is True
     assert metadata["job_id"] == "tiny_smoke"
+    assert metadata[
+        "comparison_group"
+    ] == "tiny_smoke_group"
+    assert loaded.manifest.metadata[
+        "comparison_group"
+    ] == "tiny_smoke_group"
+    assert loaded.manifest.metadata[
+        "suite_revision"
+    ] == 2
 
 
 def test_execute_suite_fails_closed_on_missing_primary_metric(
@@ -874,6 +929,11 @@ def test_execute_suite_fails_closed_on_missing_primary_metric(
     assert "declared primary metric" in metadata["artifact_error"]
     failed_manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
     assert failed_manifest["status"] == "failed"
+    assert failed_manifest[
+        "metadata"
+    ][
+        "comparison_group"
+    ] == "tiny_smoke_group"
     with pytest.raises(
         ValueError,
         match="refuses incomplete",
