@@ -89,9 +89,9 @@ def run_quadratic(
 
         def objective(
             params: Mapping[str, torch.Tensor],
-            task: QuadraticTask = active_task,
+            current_task: QuadraticTask = active_task,
         ) -> torch.Tensor:
-            return task.loss(params["theta"])
+            return current_task.loss(params["theta"])
 
         result = updater.step(objective)
         losses.append(result.mean_loss)
