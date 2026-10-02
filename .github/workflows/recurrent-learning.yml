@@ -19,6 +19,10 @@ on:
       - "tests/algorithms/test_recurrent_bgd_learning.py"
       - ".github/workflows/recurrent-learning.yml"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   recurrent-learning:
     runs-on: ubuntu-latest

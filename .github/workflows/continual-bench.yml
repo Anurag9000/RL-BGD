@@ -15,6 +15,10 @@ on:
       - "pyproject.toml"
       - ".github/workflows/continual-bench.yml"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   continual-bench-smoke:
     runs-on: ubuntu-latest

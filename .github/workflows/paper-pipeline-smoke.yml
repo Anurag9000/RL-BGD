@@ -23,6 +23,10 @@ on:
       - "tests/integration/test_paper_pipeline_smoke.py"
       - ".github/workflows/paper-pipeline-smoke.yml"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   paper-pipeline:
     runs-on: ubuntu-latest
