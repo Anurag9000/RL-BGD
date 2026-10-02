@@ -35,6 +35,34 @@ class ContinualBenchImportError(ImportError):
     """Raised when the optional ContinualBench dependency is unavailable."""
 
 
+def _install_pinned_runtime_compatibility(
+    sawyer_bench_module: Any,
+) -> tuple[str, ...]:
+    """Patch non-semantic defects in the pinned ContinualBench revision.
+
+    The pinned upstream block reward returns a debug-only symbol whose
+    calculation is commented out. Defining that missing module global lets the
+    original reward function finish without replacing any reward computation.
+    """
+
+    repaired: list[str] = []
+    if not hasattr(
+        sawyer_bench_module,
+        "debug_grasp_reward_pad",
+    ):
+        setattr(
+            sawyer_bench_module,
+            "debug_grasp_reward_pad",
+            0.0,
+        )
+        repaired.append(
+            "debug_grasp_reward_pad"
+        )
+    return tuple(
+        repaired
+    )
+
+
 _ASSET_FILE_PATTERN = re.compile(r"""\bfile\s*=\s*["']([^"']+)["']""")
 _XML_COMMENT_PATTERN = re.compile(r"<!--.*?-->", re.DOTALL)
 
@@ -438,6 +466,9 @@ def make_continual_bench_stream(
 
     try:
         envs = import_module("continual_bench.envs")
+        sawyer_bench = import_module(
+            "continual_bench.envs.mujoco.sawyer_bench"
+        )
         metaworld = import_module("metaworld")
     except ImportError as exc:
         raise ContinualBenchImportError(
