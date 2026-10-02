@@ -20,46 +20,35 @@ TensorFlow summary readers, Plotly, or CORA's event-file layout.
 
 ## Runtime compatibility
 
-CORA's develop branch remains a legacy stack whose historical benchmark
-dependencies conflict with RL-BGD's Python 3.11+ modern PyTorch/Gymnasium base.
-RL-BGD therefore keeps each legacy family in an isolated workflow rather than
-downgrading the primary environment.
+CORA's historical benchmark stack conflicts with RL-BGD's Python 3.11+
+PyTorch/Gymnasium base, so every live compatibility check runs in an isolated
+legacy environment. None of these dependencies are installed into the modern
+RL-BGD process.
 
-The pinned CORA revision is
-`f2754bb282757829765beb4703f24b87efa13ff9`.
+The isolated workflow pins CORA revision
+`f2754bb282757829765beb4703f24b87efa13ff9` and validates real upstream task
+construction, reset, action sampling, step, finite reward, and close behavior.
 
-### Live-validated families
+- **Atari**: validated with Python 3.10, NumPy 1.23.5, Gym 0.25.2,
+  ALE/AutoROM, and CORA's wrapped `PongNoFrameskip-v4` task.
+- **Procgen**: validated in the isolated legacy workflow with CORA's own
+  Procgen task constructor and a real reset/step path.
+- **MiniHack/NLE**: isolated compatibility uses the historical CORA wrapper and
+  pinned NLE/MiniHack stack. CORA assumes an old private `_vardir` wrapper
+  layout; RL-BGD confines a compatibility shim to the smoke so the cwd hop is
+  preserved when that private API exists and bypassed when newer NLE no longer
+  exposes it. This does not alter task/reward/action semantics.
+- **CHORES/ALFRED**: the runtime path is scripted separately in
+  `.github/workflows/cora-chores.yml`, pinned to CORA and `crl_alfred`.
+  Faithful execution requires CORA's regenerated 2021 trajectory archive,
+  including raw goal images. The official OneDrive URL in CORA's installation
+  guide currently fails, and upstream issue #14 ("Install Problem for
+  Benchmarks") independently reports the same broken archive link and requests
+  a replacement. RL-BGD therefore does not substitute older ALFRED trajectories
+  or fabricated images. The recovery workflow is manual and requires an
+  authoritative archive URL, optionally a SHA-256, then verifies the exact
+  published CORA trajectory before running under Xvfb.
 
-- **Atari:** a Python 3.10/Gym 0.25.2/ALE/AutoROM workflow creates CORA's own
-  wrapped `PongNoFrameskip-v4` task and passes reset + real action step.
-- **Procgen:** an isolated pinned Procgen workflow creates CORA's own Procgen
-  task and passes reset + real action step.
-
-### MiniHack compatibility
-
-CORA's historical MiniHack wrapper assumes an old NLE implementation detail:
-`self.env.env._vardir`. The pinned NLE/MiniHack stack that can still be built
-today no longer guarantees that attribute. RL-BGD's smoke therefore preserves
-the old working-directory behavior when `_vardir` exists and delegates
-directly to the modernized child environment when it does not. This is a narrow
-wrapper-compatibility bridge; it does not alter the MiniHack task, reward,
-observation, or action semantics. Live reset/step validation remains the
-authority for whether that bridge is sufficient.
-
-### CHORES data blocker
-
-The CHORES/ALFRED runtime code, pinned `crl_alfred` integration, Xvfb path,
-official task factory, exact published trajectory lookup, and reset/step smoke
-are implemented in a separate workflow. However, CORA's documented ~1 GB
-trajectory archive URL is no longer downloadable. Upstream CORA issue #14,
-opened 2025-12-22, reports this exact broken OneDrive URL and currently has no
-maintainer response or replacement archive.
-
-The CHORES workflow is therefore manual and data-explicit: it requires an
-authoritative trajectory archive URL and optionally verifies a supplied
-SHA-256. RL-BGD will not silently substitute the general ALFRED dataset or an
-unverified mirror for CORA's curated trajectories.
-
-These isolated workflows validate runtime compatibility only. They do not claim
-reproduction of the published CORA training results, and none of the legacy
-dependencies are installed into RL-BGD's modern base environment.
+These live smokes establish runtime compatibility; they do not reproduce
+published CORA learning curves or make the legacy stack a dependency of the
+modern repository.
