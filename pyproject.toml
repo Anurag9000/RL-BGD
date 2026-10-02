@@ -23,7 +23,16 @@ dependencies = [
 
 [project.optional-dependencies]
 rl = ["gymnasium>=1.0"]
-dev = ["pytest>=8.3", "pytest-cov>=6.0", "ruff>=0.9", "mypy>=1.14", "pre-commit>=4.0", "gymnasium>=1.0"]
+dev = [
+  "pytest>=8.3",
+  "pytest-cov>=6.0",
+  "ruff>=0.9",
+  "mypy>=1.14",
+  "pre-commit>=4.0",
+  "gymnasium>=1.0",
+  "pandas-stubs>=2.2",
+  "types-PyYAML>=6.0",
+]
 # CARL 1.1.1 pins gymnasium<1.0.0; install this extra in a dedicated environment.
 carl = ["carl-bench==1.1.1"]
 continual-world = ["gymnasium>=1.0", "mujoco>=3.2", "metaworld>=3.0"]
@@ -67,6 +76,10 @@ check_untyped_defs = true
 disallow_untyped_defs = true
 no_implicit_optional = true
 packages = ["rl_bgd"]
+
+[[tool.mypy.overrides]]
+module = ["metaworld", "metaworld.*", "scipy", "scipy.*"]
+ignore_missing_imports = true
 
 [tool.hatch.metadata]
 allow-direct-references = true
