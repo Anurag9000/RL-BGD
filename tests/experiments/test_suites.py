@@ -426,6 +426,41 @@ def test_ucl_structured_outputs_are_not_declared_as_scalar_metrics() -> None:
     )
 
 
+def test_mechanistic_and_detection_metrics_are_scalar_safe() -> None:
+    mechanism = SUITES[
+        "mechanism_analysis"
+    ].jobs[
+        0
+    ]
+    assert mechanism.secondary_metrics == (
+        "perturbation_precision_spearman",
+        "curvature_signal_mean_relative_error",
+        "freezing_target_loss.none",
+        "freezing_target_loss.freeze_low_sigma",
+        "freezing_target_loss.freeze_high_sigma",
+    )
+
+    adaptive = next(
+        job
+        for job in SUITES[
+            "uncertainty_analysis"
+        ].jobs
+        if job.job_id
+        == "adaptive_timeline"
+    )
+    assert (
+        "change_detection.mean_detection_delay"
+        not in adaptive.secondary_metrics
+    )
+    assert {
+        "change_detection.precision",
+        "change_detection.recall",
+        "change_detection.false_alarms_per_million_steps",
+    } <= set(
+        adaptive.secondary_metrics
+    )
+
+
 def _tiny_suite(
     primary_metric: str,
 ) -> ExperimentSuite:
