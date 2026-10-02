@@ -46,8 +46,9 @@ def _repair_missing_metaworld_assets(
 
     Existing ContinualBench assets are never overwritten. Each missing file is
     copied from the identical relative path under Meta-World's assets tree.
-    Copied XML files are scanned too, so nested includes are repaired without
-    copying unrelated benchmark assets.
+    When the installed benchmark root is present, only its reachable XML graph
+    is traversed. Copied XML files are scanned too, so unrelated stale package
+    XML cannot block the active benchmark.
     """
 
     continual_file = getattr(continual_bench_envs, "__file__", None)
@@ -69,7 +70,16 @@ def _repair_missing_metaworld_assets(
         )
 
     destination_resolved = destination_root.resolve()
-    queue = sorted(destination_root.rglob("*.xml"))
+    benchmark_root = (
+        destination_root
+        / "sawyer_xyz"
+        / "sawyer_bench.xml"
+    )
+    queue = (
+        [benchmark_root]
+        if benchmark_root.is_file()
+        else sorted(destination_root.rglob("*.xml"))
+    )
     visited: set[Path] = set()
     repaired: list[str] = []
 
