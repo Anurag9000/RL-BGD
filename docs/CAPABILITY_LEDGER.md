@@ -88,6 +88,6 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | 3RL-style recurrent Continual World | PARTIAL | strict hidden-ID recurrent Adam/BGD/adaptive-BGD CW10/CW20 runners + source-verified protocol/deviation docs; full long benchmark runs pending |
 | CARL SAC/BGD training path | PARTIAL | strict hidden-context Adam/BGD/adaptive-BGD runner + isolated live benchmark test; latest training-path CI execution pending |
 | Mechanistic experiments | PARTIAL | Phase-13 curvature/movement/perturbation/freezing/uncertainty-quality artifact engine + replay/surprise mechanisms implemented; full external comparative runs pending |
-| Curated paper suites | PARTIAL | smoke/dev/CARL/CW10/CW20/task-agnostic/ablation/uncertainty/mechanism/compute manifests + strict canonical run conversion; end-to-end smoke CI pending |
+| Curated paper suites | COMPLETE | smoke/dev/CARL/CW10/CW20/task-agnostic/ablation/uncertainty/mechanism/compute manifests + strict canonical run conversion + green end-to-end smoke covering execution, canonical artifacts, provenance hashes, tables, and figures |
 | Canonical raw-run artifact schema | COMPLETE | manifest/config/metrics/summary schema + strict loader/provenance hashes + failed-run status + converter tests |
 | Paper tables/figures | PARTIAL | canonical raw-run aggregation, scalar/task bootstrap statistics, matched-seed differences, provenance/information-access tables, multi-format figures/tables; final artifacts await full benchmark runs |
