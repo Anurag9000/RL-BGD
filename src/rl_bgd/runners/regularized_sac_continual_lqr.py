@@ -4,18 +4,47 @@ from __future__ import annotations
 
 import json
 
-from rl_bgd.agents.sac.agent import SACConfig
+from rl_bgd.agents.sac.agent import (
+    SACAgent,
+    SACConfig,
+)
 from rl_bgd.agents.sac.regularized_agent import (
     RegularizationMethod,
     RegularizedSACAgent,
     RegularizedSACConfig,
 )
 from rl_bgd.agents.sac.train import SACTrainConfig, train_sac
-from rl_bgd.continual.schedules import ContextSchedule, ContextScheduleConfig
-from rl_bgd.envs.synthetic.lqr import LinearQuadraticControlEnv
-from rl_bgd.envs.synthetic.nonstationary_lqr import ScheduledLQREnv
+from rl_bgd.envs.synthetic.baseline_recurring_lqr import (
+    BASELINE_RECURRING_LQR_PROFILE,
+    make_baseline_recurring_lqr,
+)
 from rl_bgd.utils.device import resolve_device
 from rl_bgd.utils.randomness import seed_everything
+
+
+def _matched_sac_config() -> SACConfig:
+    return SACConfig(
+        actor_lr=1e-3,
+        critic_lr=1e-3,
+        alpha_lr=1e-3,
+    )
+
+
+def _matched_train_config(
+    *,
+    steps: int,
+    seed: int,
+) -> SACTrainConfig:
+    return SACTrainConfig(
+        total_steps=steps,
+        random_steps=24,
+        batch_size=16,
+        replay_capacity=max(
+            512,
+            steps,
+        ),
+        seed=seed,
+    )
 
 
 def run_regularized_sac_recurring_lqr(
@@ -25,40 +54,25 @@ def run_regularized_sac_recurring_lqr(
     seed: int = 93,
     device: str = "auto",
     consolidation_interval_updates: int = 8,
+    phase_steps: int = 40,
+    horizon: int = 24,
 ) -> dict[str, object]:
     """Run a fixed-update consolidation baseline without task-boundary input."""
 
     if steps < 32:
         raise ValueError("training horizon is too short")
-    seed_everything(seed, deterministic=True)
-    resolved = resolve_device(device)
-    schedule = ContextSchedule(
-        ContextScheduleConfig(
-            mode="recurring",
-            anchors=(
-                {
-                    "dynamics": 0.68,
-                    "control_gain": 0.32,
-                },
-                {
-                    "dynamics": 0.97,
-                    "control_gain": 0.70,
-                },
-                {
-                    "dynamics": 0.82,
-                    "control_gain": 0.46,
-                },
-            ),
-            phase_steps=40,
-            seed=seed,
-        )
+    seed_everything(
+        seed,
+        deterministic=True,
     )
-    env = ScheduledLQREnv(
-        LinearQuadraticControlEnv(
-            horizon=24,
-            device=resolved,
-        ),
-        schedule,
+    resolved = resolve_device(
+        device
+    )
+    env = make_baseline_recurring_lqr(
+        seed=seed,
+        device=resolved,
+        phase_steps=phase_steps,
+        horizon=horizon,
     )
     agent = RegularizedSACAgent(
         1,
@@ -66,11 +80,7 @@ def run_regularized_sac_recurring_lqr(
         action_low=env.action_space.low,
         action_high=env.action_space.high,
         hidden_dims=(16, 16),
-        sac_config=SACConfig(
-            actor_lr=1e-3,
-            critic_lr=1e-3,
-            alpha_lr=1e-3,
-        ),
+        sac_config=_matched_sac_config(),
         regularization_config=RegularizedSACConfig(
             method=method,
             target="actor_and_critic",
@@ -85,17 +95,19 @@ def run_regularized_sac_recurring_lqr(
     training = train_sac(
         env,
         agent,
-        config=SACTrainConfig(
-            total_steps=steps,
-            random_steps=24,
-            batch_size=16,
-            replay_capacity=max(512, steps),
+        config=_matched_train_config(
+            steps=steps,
             seed=seed,
         ),
     )
     return {
         "method": method,
         "steps": steps,
+        "benchmark_profile": (
+            BASELINE_RECURRING_LQR_PROFILE
+        ),
+        "phase_steps": phase_steps,
+        "horizon": horizon,
         "training": training,
         "consolidation_count": agent.consolidation_count,
         "final_evaluation_context": env.evaluation_context,
@@ -105,6 +117,71 @@ def run_regularized_sac_recurring_lqr(
             "receives_context": False,
             "consolidation_trigger": "fixed_optimizer_update_interval",
             "consolidation_interval_updates": consolidation_interval_updates,
+        },
+    }
+
+
+def run_sac_recurring_lqr_control(
+    *,
+    steps: int = 192,
+    seed: int = 93,
+    device: str = "auto",
+    phase_steps: int = 40,
+    horizon: int = 24,
+) -> dict[str, object]:
+    """Run the unregularized SAC control on the exact baseline stream."""
+
+    if steps < 32:
+        raise ValueError(
+            "training horizon is too short"
+        )
+    seed_everything(
+        seed,
+        deterministic=True,
+    )
+    resolved = resolve_device(
+        device
+    )
+    env = make_baseline_recurring_lqr(
+        seed=seed,
+        device=resolved,
+        phase_steps=phase_steps,
+        horizon=horizon,
+    )
+    agent = SACAgent(
+        1,
+        1,
+        action_low=env.action_space.low,
+        action_high=env.action_space.high,
+        hidden_dims=(16, 16),
+        config=_matched_sac_config(),
+        device=resolved,
+    )
+    training = train_sac(
+        env,
+        agent,
+        config=_matched_train_config(
+            steps=steps,
+            seed=seed,
+        ),
+    )
+    return {
+        "method": "adam_control",
+        "steps": steps,
+        "benchmark_profile": (
+            BASELINE_RECURRING_LQR_PROFILE
+        ),
+        "phase_steps": phase_steps,
+        "horizon": horizon,
+        "training": training,
+        "final_evaluation_context": (
+            env.evaluation_context
+        ),
+        "information_access": {
+            "receives_task_id": False,
+            "receives_task_boundary": False,
+            "receives_environment_context": False,
+            "consolidation_trigger": "none",
         },
     }
 
