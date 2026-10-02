@@ -3,42 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol
-
 import torch
 from torch import Tensor
 
 from rl_bgd.agents.ppo.recurrent_agent import (
     RecurrentPPOAgent,
 )
+from rl_bgd.envs.protocols import ContinuousTensorEnv
 from rl_bgd.agents.ppo.recurrent_rollout import (
     RecurrentRolloutBuffer,
 )
-
-
-class ContinuousEnv(Protocol):
-    action_space: object
-    observation_space: object
-
-    def reset(
-        self,
-        *,
-        seed: int | None = None,
-    ) -> tuple[
-        Tensor,
-        dict[str, object],
-    ]: ...
-
-    def step(
-        self,
-        action: Tensor,
-    ) -> tuple[
-        Tensor,
-        float,
-        bool,
-        bool,
-        dict[str, object],
-    ]: ...
 
 
 @dataclass(frozen=True)
@@ -49,7 +23,7 @@ class RecurrentPPOTrainConfig:
 
 
 def train_recurrent_ppo(
-    env: ContinuousEnv,
+    env: ContinuousTensorEnv,
     agent: RecurrentPPOAgent,
     *,
     config: RecurrentPPOTrainConfig,
@@ -146,7 +120,7 @@ def train_recurrent_ppo(
 
 @torch.no_grad()
 def evaluate_recurrent_ppo(
-    env: ContinuousEnv,
+    env: ContinuousTensorEnv,
     agent: RecurrentPPOAgent,
     *,
     episodes: int = 5,
