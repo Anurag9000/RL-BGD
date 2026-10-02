@@ -117,6 +117,15 @@ corresponding BGD evidence update.
 Fixed-retention experiments isolate the effect of controlled forgetting from
 change detection. Adaptive experiments compute lambda online from surprise.
 
+The late-life plasticity stress study isolates posterior-history effects more
+strictly. Vanilla and tempered conditions differ only during a long pre-shift
+consolidation phase. After the abrupt optimum shift, both conditions force
+retention to 1.0 and use the same BGD update rule. The study records inherited
+sigma/effective learning rate, first-step parameter movement, normalized
+post-shift loss AUC, final target loss, and recovery fraction. This makes a
+post-shift mobility difference attributable to the posterior state produced by
+the earlier evidence history rather than continued tempering after the shift.
+
 ## 6. Surprise-driven replasticization
 
 For a non-negative smoothed surprise signal `S_bar_t`, adaptive retention is
@@ -244,7 +253,10 @@ The repository includes independent implementations of:
 Task-agnostic regularization baselines use fixed optimizer-update consolidation
 when true task boundaries are unavailable. Boundary-triggered versions are
 separately labelled oracle/privileged. This distinction is part of the method,
-not merely presentation metadata.
+not merely presentation metadata. The paper registry contains a five-seed
+baseline suite for EWC, Online-EWC, SI, MAS, and separately labelled
+oracle-boundary UCL-PPO; runnable configurations are not treated as empirical
+results until canonical raw artifacts exist.
 
 ## 12. Benchmark protocols
 
@@ -275,9 +287,10 @@ configuration is explicitly labelled smoke/dev.
 ### ContinualBench and CORA
 
 ContinualBench has a strict hidden-task adapter and isolated pinned live smoke.
-CORA compatibility currently covers canonical protocol metadata and metric
-definitions; its legacy environment runtime remains isolated rather than
-forcing obsolete dependencies into the primary environment.
+CORA compatibility covers canonical protocol metadata and metric definitions.
+Its legacy Atari runtime is live-validated in a separate pinned Python 3.10
+workflow, keeping obsolete Gym/ALE dependencies isolated rather than forcing
+them into the primary environment.
 
 ## 13. Evaluation
 
