@@ -835,6 +835,7 @@ CW10_CORE = ExperimentSuite(
             protocol="strict_task_agnostic",
             config_path="configs/benchmarks/continual_world_ta_cw10.yaml",
             primary_metric="final_average",
+            comparison_group="cw10_task_agnostic_feedforward",
             secondary_metrics=("forgetting", "bwt", "success_rate"),
             optional_extra="continual-world",
             runtime_class="very_large",
@@ -856,6 +857,7 @@ CW10_CORE = ExperimentSuite(
             protocol="strict_task_agnostic",
             config_path="configs/benchmarks/continual_world_ta_cw10.yaml",
             primary_metric="final_average",
+            comparison_group="cw10_task_agnostic_feedforward",
             secondary_metrics=(
                 "forgetting",
                 "bwt",
@@ -940,6 +942,7 @@ CW20_FINAL = ExperimentSuite(
             protocol="strict_task_agnostic",
             config_path="configs/benchmarks/continual_world_ta_cw20.yaml",
             primary_metric="final_average",
+            comparison_group="cw20_task_agnostic_feedforward",
             secondary_metrics=(
                 "forgetting",
                 "bwt",
@@ -970,6 +973,7 @@ CW20_FINAL = ExperimentSuite(
             protocol="strict_task_agnostic",
             config_path="configs/benchmarks/continual_world_ta_cw20.yaml",
             primary_metric="final_average",
+            comparison_group="cw20_task_agnostic_feedforward",
             secondary_metrics=(
                 "forgetting",
                 "bwt",
@@ -1001,6 +1005,7 @@ CW20_FINAL = ExperimentSuite(
             protocol="3RL-style_task_agnostic",
             config_path="configs/benchmarks/three_rl_style_cw20.yaml",
             primary_metric="final_average",
+            comparison_group="cw20_recurrent",
             secondary_metrics=(
                 "forgetting",
                 "bwt",
@@ -1031,6 +1036,7 @@ CW20_FINAL = ExperimentSuite(
             protocol="3RL-style_task_agnostic",
             config_path="configs/benchmarks/three_rl_style_cw20.yaml",
             primary_metric="final_average",
+            comparison_group="cw20_recurrent",
             secondary_metrics=(
                 "forgetting",
                 "bwt",
@@ -1062,6 +1068,7 @@ CW20_FINAL = ExperimentSuite(
             protocol="3RL-style_task_agnostic",
             config_path="configs/benchmarks/three_rl_style_cw20.yaml",
             primary_metric="final_average",
+            comparison_group="cw20_recurrent",
             secondary_metrics=(
                 "forgetting",
                 "bwt",
@@ -1485,7 +1492,8 @@ def validate_suite_registry() -> None:
 
             context = (
                 job.comparison_group
-                or f"{job.protocol}|{job.environment}"
+                if job.comparison_group is not None
+                else f"__unpaired__:{job.job_id}"
             )
             contract = (
                 job.seeds,
