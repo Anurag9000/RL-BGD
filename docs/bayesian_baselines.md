@@ -76,6 +76,13 @@ Runnable command:
 
     python scripts/run_ucl_ppo_lqr.py
 
+For paper comparison, `baseline_core` also runs a five-seed
+PPO-Adam oracle-phase control on the exact same recurring-LQR profile, phase
+length, horizon, model widths, PPO hyperparameters, and seed set. The control
+receives the same phase segmentation but performs no Bayesian hidden-layer
+posterior snapshot and no UCL regularization, so the paired comparison isolates
+the UCL mechanism within the PPO backbone.
+
 This baseline receives true phase boundaries solely to snapshot the previous
 posterior. It receives no task ID and uses no task-specific head in the RL-BGD
 synthetic runner, so it is stricter than the original task-indexed UCL policy,
