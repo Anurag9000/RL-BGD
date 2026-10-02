@@ -1095,11 +1095,36 @@ def validate_suite_registry() -> None:
     for suite in SUITES.values():
         if not suite.jobs:
             raise RuntimeError(f"suite {suite.name} has no jobs")
+
+        context_contracts: dict[
+            tuple[str, str],
+            tuple[tuple[int, ...], str],
+        ] = {}
         for job in suite.jobs:
             if not job.seeds:
                 raise RuntimeError(f"job {job.job_id} has no seeds")
             if not job.primary_metric:
                 raise RuntimeError(f"job {job.job_id} lacks a primary metric")
+
+            context = (
+                job.protocol,
+                job.environment,
+            )
+            contract = (
+                job.seeds,
+                job.primary_metric,
+            )
+            previous = context_contracts.setdefault(
+                context,
+                contract,
+            )
+            if previous != contract:
+                raise RuntimeError(
+                    "paper-comparison context has inconsistent seed/primary-metric "
+                    f"contracts in suite {suite.name}: {context!r} / "
+                    f"expected {previous!r}, found {contract!r} at {job.job_id}"
+                )
+
             function = resolve_target(job.target)
             signature = inspect.signature(function)
             kwargs = dict(job.kwargs)
