@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict
+from typing import Literal
 
 from rl_bgd.agents.sac.agent import SACConfig
 from rl_bgd.agents.sac.bgd_agent import BGDSACAgent, BGDSACConfig
@@ -14,9 +15,19 @@ from rl_bgd.envs.synthetic.lqr import LinearQuadraticControlEnv
 from rl_bgd.envs.synthetic.nonstationary_lqr import ScheduledLQREnv
 from rl_bgd.metrics.change_detection import change_detection_metrics
 from rl_bgd.surprise.base import EMANormalizerConfig, RetentionMappingConfig
+from rl_bgd.surprise.ensemble import AdaptiveEnsembleRetentionConfig
+from rl_bgd.surprise.predictive import AdaptivePredictiveRetentionConfig
 from rl_bgd.surprise.td import AdaptiveTDRetentionConfig, TDSurpriseConfig
 from rl_bgd.utils.device import resolve_device
 from rl_bgd.utils.randomness import seed_everything
+
+
+SurpriseSource = Literal[
+    "none",
+    "td",
+    "ensemble",
+    "predictive",
+]
 
 
 def run_adaptive_bgd_lqr_stream(
@@ -26,6 +37,7 @@ def run_adaptive_bgd_lqr_stream(
     seed: int = 23,
     device: str = "auto",
     detection_threshold: float = 2.0,
+    surprise_source: SurpriseSource = "td",
 ) -> dict[str, object]:
     """Run A->B->A dynamics without passing phase boundaries to the agent."""
 
@@ -50,19 +62,53 @@ def run_adaptive_bgd_lqr_stream(
         ),
         schedule,
     )
-    adaptive = AdaptiveTDRetentionConfig(
-        surprise=TDSurpriseConfig(
-            aggregation="median_abs",
-            normalizer=EMANormalizerConfig(
-                decay=0.99,
-                smoothing_decay=0.9,
-                initial_variance=1.0,
+    if surprise_source not in {
+        "none",
+        "td",
+        "ensemble",
+        "predictive",
+    }:
+        raise ValueError(
+            f"unsupported surprise source: {surprise_source}"
+        )
+    normalizer = EMANormalizerConfig(
+        decay=0.99,
+        smoothing_decay=0.9,
+        initial_variance=1.0,
+    )
+    mapping = RetentionMappingConfig(
+        lambda_min=0.5,
+        kappa=1.0,
+    )
+    adaptive_td = (
+        AdaptiveTDRetentionConfig(
+            surprise=TDSurpriseConfig(
+                aggregation="median_abs",
+                normalizer=normalizer,
             ),
-        ),
-        mapping=RetentionMappingConfig(
-            lambda_min=0.5,
-            kappa=1.0,
-        ),
+            mapping=mapping,
+        )
+        if surprise_source == "td"
+        else None
+    )
+    adaptive_ensemble = (
+        AdaptiveEnsembleRetentionConfig(
+            normalizer=normalizer,
+            mapping=mapping,
+        )
+        if surprise_source == "ensemble"
+        else None
+    )
+    adaptive_predictive = (
+        AdaptivePredictiveRetentionConfig(
+            normalizer=normalizer,
+            mapping=mapping,
+            hidden_dims=(32, 32),
+            learning_rate=1e-3,
+            gradient_clip_norm=10.0,
+        )
+        if surprise_source == "predictive"
+        else None
     )
     agent = BGDSACAgent(
         1,
@@ -78,7 +124,9 @@ def run_adaptive_bgd_lqr_stream(
         bgd_config=BGDSACConfig(
             bayesianization="critic_only",
             posterior_std=0.1,
-            adaptive_td_retention=adaptive,
+            adaptive_td_retention=adaptive_td,
+            adaptive_ensemble_retention=adaptive_ensemble,
+            adaptive_predictive_retention=adaptive_predictive,
             critic_bgd=BGDConfig(
                 eta=0.1,
                 mc_samples=2,
@@ -104,6 +152,10 @@ def run_adaptive_bgd_lqr_stream(
             "critic1_sigma_mean": metrics["critic1_sigma_mean"],
             "critic1_effective_lr_mean": metrics["critic1_effective_lr_mean"],
         }
+        if "predictive_model_loss" in metrics:
+            record["predictive_model_loss"] = metrics[
+                "predictive_model_loss"
+            ]
         surprise_timeline.append(record)
         if metrics["surprise_normalized"] >= detection_threshold:
             detected_steps.append(step)
@@ -134,6 +186,7 @@ def run_adaptive_bgd_lqr_stream(
         total_steps=total_steps,
     )
     return {
+        "surprise_source": surprise_source,
         "training": training,
         "true_change_steps": true_changes,
         "detected_steps": detected_steps,
