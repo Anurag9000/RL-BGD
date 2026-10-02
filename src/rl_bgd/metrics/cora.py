@@ -181,7 +181,13 @@ def cora_isolated_zero_shot_forward_transfer(
     if any(index < 0 for index in ids):
         raise ValueError("CORA prior task ids must be non-negative")
     scale = cora_return_scale(traces) if return_scale is None else float(return_scale)
-    output = {index: [] for index in ids}
+    output: dict[
+        int,
+        list[float],
+    ] = {
+        index: []
+        for index in ids
+    }
 
     for trace in traces:
         scaled = CORATrace(
