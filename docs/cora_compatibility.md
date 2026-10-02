@@ -20,21 +20,46 @@ TensorFlow summary readers, Plotly, or CORA's event-file layout.
 
 ## Runtime compatibility
 
-CORA's develop branch remains a legacy stack whose historical Gym/Atari and
-setuptools constraints conflict with RL-BGD's Python 3.11+ modern
-PyTorch/Gymnasium base. RL-BGD therefore does not install CORA into the base or
-"all" environment.
+CORA's develop branch remains a legacy stack whose historical benchmark
+dependencies conflict with RL-BGD's Python 3.11+ modern PyTorch/Gymnasium base.
+RL-BGD therefore keeps each legacy family in an isolated workflow rather than
+downgrading the primary environment.
 
-A dedicated isolated workflow now validates one real upstream execution path.
-It pins CORA revision `f2754bb282757829765beb4703f24b87efa13ff9` in Python
-3.10 with NumPy 1.23.5, Gym 0.25.2, CPU PyTorch, ALE/AutoROM, and accepted Atari
-ROMs. The smoke creates CORA's own wrapped `PongNoFrameskip-v4` task, resets
-the environment, samples an action, executes a step, verifies a finite reward
-and observation/info contract, and closes the environment. That workflow is
-green.
+The pinned CORA revision is
+`f2754bb282757829765beb4703f24b87efa13ff9`.
 
-This establishes isolated **Atari** runtime compatibility only. It does not
-establish that CORA's Procgen, NetHack, CHORES, or complete historical
-dependency matrix can be exercised together, and it does not make the legacy
-stack a dependency of the modern RL-BGD process. Those broader runtime families
-remain intentionally isolated rather than inferred from a single Atari smoke.
+### Live-validated families
+
+- **Atari:** a Python 3.10/Gym 0.25.2/ALE/AutoROM workflow creates CORA's own
+  wrapped `PongNoFrameskip-v4` task and passes reset + real action step.
+- **Procgen:** an isolated pinned Procgen workflow creates CORA's own Procgen
+  task and passes reset + real action step.
+
+### MiniHack compatibility
+
+CORA's historical MiniHack wrapper assumes an old NLE implementation detail:
+`self.env.env._vardir`. The pinned NLE/MiniHack stack that can still be built
+today no longer guarantees that attribute. RL-BGD's smoke therefore preserves
+the old working-directory behavior when `_vardir` exists and delegates
+directly to the modernized child environment when it does not. This is a narrow
+wrapper-compatibility bridge; it does not alter the MiniHack task, reward,
+observation, or action semantics. Live reset/step validation remains the
+authority for whether that bridge is sufficient.
+
+### CHORES data blocker
+
+The CHORES/ALFRED runtime code, pinned `crl_alfred` integration, Xvfb path,
+official task factory, exact published trajectory lookup, and reset/step smoke
+are implemented in a separate workflow. However, CORA's documented ~1 GB
+trajectory archive URL is no longer downloadable. Upstream CORA issue #14,
+opened 2025-12-22, reports this exact broken OneDrive URL and currently has no
+maintainer response or replacement archive.
+
+The CHORES workflow is therefore manual and data-explicit: it requires an
+authoritative trajectory archive URL and optionally verifies a supplied
+SHA-256. RL-BGD will not silently substitute the general ALFRED dataset or an
+unverified mirror for CORA's curated trajectories.
+
+These isolated workflows validate runtime compatibility only. They do not claim
+reproduction of the published CORA training results, and none of the legacy
+dependencies are installed into RL-BGD's modern base environment.
