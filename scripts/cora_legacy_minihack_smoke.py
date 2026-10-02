@@ -28,9 +28,7 @@ def _find_vardir(wrapper: Any) -> str:
         if vardir is not None:
             return str(vardir)
         current = getattr(current, "env", None)
-    raise AttributeError(
-        "MiniHack environment wrapper chain does not expose _vardir"
-    )
+    raise AttributeError("MiniHack environment wrapper chain does not expose _vardir")
 
 
 def _compat_reset(self: Any) -> Any:
@@ -81,28 +79,19 @@ def _step(
 ) -> tuple[Any, float, bool, dict[str, Any]]:
     output = env.step(action)
     if not isinstance(output, tuple):
-        raise RuntimeError(
-            "CORA MiniHack environment step must return a tuple"
-        )
+        raise RuntimeError("CORA MiniHack environment step must return a tuple")
     if len(output) == 4:
         observation, reward, done, info = output
     elif len(output) == 5:
         observation, reward, terminated, truncated, info = output
         done = bool(terminated) or bool(truncated)
     else:
-        raise RuntimeError(
-            "unexpected CORA MiniHack step signature length: "
-            f"{len(output)}"
-        )
+        raise RuntimeError(f"unexpected CORA MiniHack step signature length: {len(output)}")
     if not isinstance(info, dict):
-        raise TypeError(
-            "CORA MiniHack step info must be a dictionary"
-        )
+        raise TypeError("CORA MiniHack step info must be a dictionary")
     reward_value = float(reward)
     if not np.isfinite(reward_value):
-        raise FloatingPointError(
-            "CORA MiniHack returned a nonfinite reward"
-        )
+        raise FloatingPointError("CORA MiniHack returned a nonfinite reward")
     return (
         observation,
         reward_value,
@@ -120,9 +109,7 @@ def main() -> None:
         num_timesteps=16,
         eval_mode=False,
     )
-    task_spec = (
-        task._task_spec
-    )  # CORA exposes no public TaskSpec accessor.
+    task_spec = task._task_spec  # CORA exposes no public TaskSpec accessor.
     env, _ = Utils.make_env(
         task_spec.env_spec,
         seed_to_set=31,
@@ -130,18 +117,14 @@ def main() -> None:
     try:
         observation = _reset(env)
         if observation is None:
-            raise RuntimeError(
-                "CORA MiniHack reset returned no observation"
-            )
+            raise RuntimeError("CORA MiniHack reset returned no observation")
         action = env.action_space.sample()
         next_observation, reward, done, info = _step(
             env,
             action,
         )
         if next_observation is None:
-            raise RuntimeError(
-                "CORA MiniHack step returned no observation"
-            )
+            raise RuntimeError("CORA MiniHack step returned no observation")
         print(
             json.dumps(
                 {
@@ -158,18 +141,11 @@ def main() -> None:
                         "__version__",
                         "unknown",
                     ),
-                    "compatibility_shim": (
-                        "cora_minihack_vardir_wrapper_depth"
-                    ),
-                    "action_space": str(
-                        env.action_space
-                    ),
+                    "compatibility_shim": "cora_minihack_vardir_wrapper_depth",
+                    "action_space": str(env.action_space),
                     "reward": reward,
                     "done": done,
-                    "info_keys": sorted(
-                        str(key)
-                        for key in info
-                    ),
+                    "info_keys": sorted(str(key) for key in info),
                 },
                 indent=2,
                 sort_keys=True,
