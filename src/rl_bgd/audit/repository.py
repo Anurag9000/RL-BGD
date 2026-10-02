@@ -17,6 +17,8 @@ _REQUIRED_PATHS = (
     "docs/paper_suites.md",
     "docs/paper_artifacts.md",
     "docs/mechanistic_analysis.md",
+    "paper/METHOD.md",
+    "paper/LIMITATIONS.md",
     "src/rl_bgd/artifacts/run.py",
     "src/rl_bgd/artifacts/suite.py",
     "src/rl_bgd/analysis/mechanistic.py",
