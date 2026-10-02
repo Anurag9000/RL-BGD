@@ -1522,7 +1522,7 @@ COMPUTE_ANALYSIS = ExperimentSuite(
                 "post_return",
                 "improvement",
             ),
-            comparison_group="compute_sac",
+            comparison_group="compute_bayesianization",
             runtime_class="compute",
         ),
         *tuple(
@@ -1546,7 +1546,7 @@ COMPUTE_ANALYSIS = ExperimentSuite(
                     "post_return",
                     "improvement",
                 ),
-                comparison_group="compute_sac",
+                comparison_group="compute_bayesianization",
                 runtime_class="compute",
             )
             for mode in (
@@ -1576,11 +1576,12 @@ COMPUTE_ANALYSIS = ExperimentSuite(
                     "post_return",
                     "improvement",
                 ),
-                comparison_group="compute_sac",
+                comparison_group="compute_mc_samples",
                 runtime_class="compute",
             )
             for mc_samples in (
                 1,
+                2,
                 4,
                 8,
             )
