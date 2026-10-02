@@ -8,7 +8,7 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Base CI | COMPLETE | tests/lint workflows |
 | Coding standards | COMPLETE | Ruff/mypy/pre-commit config |
 | Architecture documentation | COMPLETE | docs/architecture.md |
-| Initial literature audit | PARTIAL | docs/literature_review.md has explicit backlog |
+| Core literature authority | COMPLETE | docs/literature_review.md now covers BGD/FOO-VB/generalized Bayes, EWC/Online-EWC/SI/MAS/UCL, controlled forgetting/plasticity, CRL benchmarks/world models, exploration, and replay-evidence caveats; residual 2026 additions remain a living audit |
 | Diagonal Gaussian posterior | COMPLETE | bayes/diagonal_gaussian.py + tests |
 | FP32 Bayesian state | COMPLETE | posterior state tensors enforce FP32 |
 | BGD Monte Carlo update | COMPLETE | bayes/bgd.py + quadratic/integration tests |
