@@ -10,7 +10,7 @@ No expensive experiment is marked executed until raw run artifacts exist.
 | B | BGD can reduce short-stream forgetting | EWC/Online-EWC/SI/MAS + matched unregularized SAC control are five-seed `baseline_core` jobs; bounded dev comparators also IMPLEMENTED; execution pending |
 | C | Vanilla BGD loses late-life plasticity under repeated evidence | CONTROLLED late-shift runner + causal regression test + matched vanilla/tempered five-seed ablation jobs IMPLEMENTED; multi-seed execution pending |
 | D | Fixed tempering prevents trivial sigma collapse | IMPLEMENTED / TESTED mechanism + explicit fixed-retention ablation jobs; multi-seed execution pending |
-| E | Surprise-driven tempering adapts without boundary callbacks | IMPLEMENTED / TESTED on recurring LQR + CARL/uncertainty suites defined; external multi-seed execution pending |
+| E | Surprise-driven tempering adapts without boundary callbacks | IMPLEMENTED / TESTED on recurring LQR with matched five-seed none/TD/ensemble/predictive surprise-source ablation plus CARL schedules; external multi-seed execution pending |
 | F | Replay reuse accelerates posterior overconfidence without correction | four replay-evidence modes IMPLEMENTED / TESTED + matched ablation jobs defined; multi-seed execution pending |
 | G | Actor/critic Bayesianization have different tradeoffs | actor-only, critic-only, and actor+critic modes IMPLEMENTED / TESTED + matched ablation jobs defined; multi-seed execution pending |
 | GB-T | Generalized-Bayes evidence temperature changes evidence strength independently of eta/retention | IMPLEMENTED / TESTED math + matched per-temperature SAC jobs defined; multi-seed execution pending |
