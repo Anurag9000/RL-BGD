@@ -20,11 +20,21 @@ TensorFlow summary readers, Plotly, or CORA's event-file layout.
 
 ## Runtime compatibility
 
-CORA's current develop branch remains a legacy stack: its package metadata pins
-gym[atari]<=0.25.2, atari-py==0.2.5, and setuptools==59.5.0, while RL-BGD
-targets Python 3.11+ and modern PyTorch / Gymnasium benchmark integrations.
+CORA's develop branch remains a legacy stack whose historical Gym/Atari and
+setuptools constraints conflict with RL-BGD's Python 3.11+ modern
+PyTorch/Gymnasium base. RL-BGD therefore does not install CORA into the base or
+"all" environment.
 
-Therefore RL-BGD does not install CORA into the base or all environment. A
-future native runtime comparison should run CORA in a separately pinned legacy
-environment and exchange only declared artifacts/metrics. This is reported as a
-compatibility constraint rather than hidden by dependency overrides.
+A dedicated isolated workflow now validates one real upstream execution path.
+It pins CORA revision `f2754bb282757829765beb4703f24b87efa13ff9` in Python
+3.10 with NumPy 1.23.5, Gym 0.25.2, CPU PyTorch, ALE/AutoROM, and accepted Atari
+ROMs. The smoke creates CORA's own wrapped `PongNoFrameskip-v4` task, resets
+the environment, samples an action, executes a step, verifies a finite reward
+and observation/info contract, and closes the environment. That workflow is
+green.
+
+This establishes isolated **Atari** runtime compatibility only. It does not
+establish that CORA's Procgen, NetHack, CHORES, or complete historical
+dependency matrix can be exercised together, and it does not make the legacy
+stack a dependency of the modern RL-BGD process. Those broader runtime families
+remain intentionally isolated rather than inferred from a single Atari smoke.
