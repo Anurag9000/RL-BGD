@@ -13,8 +13,10 @@ from typing import Any
 
 from rl_bgd.analysis.paper_artifacts import (
     PaperArtifactConfig,
-    build_paper_artifacts as _build_paper_artifacts,
     load_paper_runs,
+)
+from rl_bgd.analysis.paper_artifacts import (
+    build_paper_artifacts as _build_paper_artifacts,
 )
 from rl_bgd.analysis.statistics import (
     bootstrap_mean_ci as _bootstrap_mean_ci,
