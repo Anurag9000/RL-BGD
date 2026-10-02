@@ -77,6 +77,8 @@ class TaskAwareSquashedGaussianActor(nn.Module):
             self.body.output_dim,
             action_dim * num_tasks,
         )
+        self.action_scale: Tensor
+        self.action_bias: Tensor
         self.register_buffer(
             "action_scale",
             ((action_high - action_low) / 2.0).float(),
