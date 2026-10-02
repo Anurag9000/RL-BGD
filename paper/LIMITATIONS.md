@@ -86,12 +86,18 @@ computation, and the upstream no-op close stub is tolerated. The pinned live
 reset/step workflow now passes, but the integration remains dependent on
 legacy Gym/MuJoCo internals and third-party benchmark behavior.
 
-CORA metric/protocol compatibility is implemented, and the legacy **Atari**
-runtime is validated in a separate Python 3.10 workflow pinned to CORA revision
-`f2754bb282757829765beb4703f24b87efa13ff9`, NumPy 1.23.5, Gym 0.25.2,
-ALE, and AutoROM. This is deliberately not a dependency of the modern RL-BGD
-environment. The smoke does not validate CORA's other historical environment
-families or reproduce published CORA results.
+CORA metric/protocol compatibility is implemented, while historical runtimes
+are isolated from the modern RL-BGD environment. Real Atari and Procgen
+reset/step paths are validated against pinned CORA revision
+`f2754bb282757829765beb4703f24b87efa13ff9`. MiniHack/NLE requires a narrow
+compatibility shim because CORA assumes a private historical `_vardir` wrapper
+layout; the shim changes only the obsolete cwd workaround, not task/reward/action
+semantics. CHORES remains externally data-blocked: CORA's official regenerated
+2021 trajectory archive is no longer downloadable from the documented OneDrive
+URL, and upstream issue #14 reports the same broken link. RL-BGD provides a
+manual pinned CHORES recovery workflow but does not replace the missing archive
+with older ALFRED trajectories or fabricated goal images. None of these smokes
+reproduce published CORA learning curves.
 
 ## External validity
 
