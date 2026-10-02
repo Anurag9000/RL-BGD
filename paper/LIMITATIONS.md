@@ -95,9 +95,11 @@ layout; the shim changes only the obsolete cwd workaround, not task/reward/actio
 semantics. CHORES remains externally data-blocked: CORA's official regenerated
 2021 trajectory archive is no longer downloadable from the documented OneDrive
 URL, and upstream issue #14 reports the same broken link. RL-BGD provides a
-manual pinned CHORES recovery workflow but does not replace the missing archive
-with older ALFRED trajectories or fabricated goal images. None of these smokes
-reproduce published CORA learning curves.
+manual pinned CHORES recovery workflow that validates the complete 27-trajectory
+CORA metadata closure and every referenced raw goal image before launching the
+published smoke, but it does not replace the missing archive with older ALFRED
+trajectories or fabricated goal images. None of these smokes reproduce published
+CORA learning curves.
 
 ## External validity
 
