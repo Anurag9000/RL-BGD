@@ -22,4 +22,4 @@ Strict recurrent continual runs receive observations, actions, rewards, terminat
 
 ## Current validation status
 
-Unit coverage includes reset-mask causality, sequence-chunk hidden-state preservation, Adam recurrent PPO updates, BGD recurrent posterior updates, and checkpoint round trips. The recurring LQR runner verifies that context changes do not create extra recurrent resets. Longer learning-acceptance experiments and recurrent SAC/sequence replay remain follow-up work.
+Unit coverage includes reset-mask causality, sequence-chunk hidden-state preservation, Adam/BGD recurrent PPO updates, recurrent SAC sequence replay with burn-in/unroll semantics, recurrent BGD-SAC actor/critic/all posterior modes, evidence accounting, and checkpoint round trips. Recurring hidden-context LQR runners verify that context changes do not create extra recurrent resets. Matched stationary learning-acceptance gates exist for recurrent Adam/BGD PPO and recurrent BGD-SAC. The 3RL-style Continual World path is runnable for recurrent Adam/BGD/adaptive-BGD; its full multi-million-step benchmark executions remain intentionally unexecuted until compute-backed raw artifacts exist.
