@@ -8,7 +8,7 @@ No expensive experiment is marked executed until raw run artifacts exist.
 | SYN-Q2 | E[g epsilon] approaches H sigma in small-sigma diagonal quadratic | IMPLEMENTED / TESTED |
 | A | Vanilla BGD can learn stationary RL tasks | IMPLEMENTED / TESTED on synthetic continuous control; large benchmark runs pending |
 | B | BGD can reduce short-stream forgetting | matched dev-suite comparators IMPLEMENTED; multi-seed execution pending |
-| C | Vanilla BGD loses late-life plasticity under repeated evidence | CONTROLLED mechanism tests implemented; long comparative study pending |
+| C | Vanilla BGD loses late-life plasticity under repeated evidence | CONTROLLED late-shift runner + causal regression test + matched vanilla/tempered five-seed ablation jobs IMPLEMENTED; multi-seed execution pending |
 | D | Fixed tempering prevents trivial sigma collapse | IMPLEMENTED / TESTED mechanism + explicit fixed-retention ablation jobs; multi-seed execution pending |
 | E | Surprise-driven tempering adapts without boundary callbacks | IMPLEMENTED / TESTED on recurring LQR + CARL/uncertainty suites defined; external multi-seed execution pending |
 | F | Replay reuse accelerates posterior overconfidence without correction | four replay-evidence modes IMPLEMENTED / TESTED + matched ablation jobs defined; multi-seed execution pending |
