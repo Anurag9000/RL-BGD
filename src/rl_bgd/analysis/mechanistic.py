@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -148,10 +148,10 @@ def _new_posterior(
 def _loss_objective(
     task: LossTask,
 ) -> Callable[
-    [dict[str, Tensor]],
+    [Mapping[str, Tensor]],
     Tensor,
 ]:
-    def objective(params: dict[str, Tensor]) -> Tensor:
+    def objective(params: Mapping[str, Tensor]) -> Tensor:
         return task.loss(params["theta"])
 
     return objective
