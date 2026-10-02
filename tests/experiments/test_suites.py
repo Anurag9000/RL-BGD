@@ -212,11 +212,9 @@ def test_external_baseline_suite_has_full_method_coverage() -> None:
     regularized = [
         job
         for job in jobs
-        if job.job_id.startswith(
-            "baseline_"
+        if job.target.endswith(
+            ":run_regularized_sac_recurring_lqr"
         )
-        and job.hypothesis_id
-        == "B"
     ]
     assert {
         job.kwargs[
@@ -241,20 +239,70 @@ def test_external_baseline_suite_has_full_method_coverage() -> None:
         for job in jobs
     )
 
+    sac_controls = [
+        job
+        for job in jobs
+        if job.target.endswith(
+            ":run_sac_recurring_lqr_control"
+        )
+    ]
+    assert len(
+        sac_controls
+    ) == 1
+    assert sac_controls[
+        0
+    ].protocol == (
+        "task_agnostic_fixed_update"
+    )
+
     ucl = [
         job
         for job in jobs
-        if job.hypothesis_id
-        == "UCL"
+        if job.target.endswith(
+            ":run_ucl_ppo_recurring_lqr"
+        )
+    ]
+    ucl_controls = [
+        job
+        for job in jobs
+        if job.target.endswith(
+            ":run_adam_ppo_oracle_recurring_lqr_control"
+        )
     ]
     assert len(
         ucl
+    ) == 1
+    assert len(
+        ucl_controls
     ) == 1
     assert ucl[
         0
     ].protocol == (
         "oracle_boundary"
     )
+    assert ucl_controls[
+        0
+    ].protocol == (
+        "oracle_boundary_control"
+    )
+    assert ucl[
+        0
+    ].kwargs[
+        "phase_steps"
+    ] == ucl_controls[
+        0
+    ].kwargs[
+        "phase_steps"
+    ]
+    assert ucl[
+        0
+    ].kwargs[
+        "phases"
+    ] == ucl_controls[
+        0
+    ].kwargs[
+        "phases"
+    ]
 
 
 def _tiny_suite(
