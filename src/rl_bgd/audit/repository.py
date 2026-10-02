@@ -35,7 +35,6 @@ _REQUIRED_PATHS = (
 _FORBIDDEN_SOURCE_MARKERS = (
     "TO" + "DO",
     "FIX" + "ME",
-    "Not" + "ImplementedError",
     ".cu" + "da(",
 )
 
@@ -225,6 +224,24 @@ def audit_repository(
                     ),
                 )
             )
+
+        checks_run += 1
+        for node in ast.walk(module):
+            if not isinstance(node, ast.Raise) or node.exc is None:
+                continue
+            raised = node.exc.func if isinstance(node.exc, ast.Call) else node.exc
+            if (
+                isinstance(raised, ast.Name)
+                and raised.id == "NotImplementedError"
+            ):
+                findings.append(
+                    AuditFinding(
+                        "placeholder_not_implemented",
+                        relative,
+                        "contains raise NotImplementedError",
+                    )
+                )
+                break
 
     compatibility_artifacts = (
         root
