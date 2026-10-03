@@ -1733,6 +1733,38 @@ def validate_suite_registry() -> None:
             signature.bind(**kwargs)
 
 
+def _write_json_atomic(
+    path: Path,
+    payload: dict[str, Any],
+) -> None:
+    """Atomically publish launcher JSON for crash/concurrent-shard safety."""
+
+    path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    temporary = path.with_name(
+        f".{path.name}.{os.getpid()}.{time.monotonic_ns()}.tmp"
+    )
+    try:
+        temporary.write_text(
+            json.dumps(
+                payload,
+                indent=2,
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+        os.replace(
+            temporary,
+            path,
+        )
+    finally:
+        temporary.unlink(
+            missing_ok=True
+        )
+
+
 def materialize_suite(
     suite_name: str,
     output_root: str | Path,
@@ -2228,12 +2260,8 @@ def execute_suite(
     ] = str(
         summary_path
     )
-    summary_path.write_text(
-        json.dumps(
-            summary,
-            indent=2,
-            sort_keys=True,
-        ),
-        encoding="utf-8",
+    _write_json_atomic(
+        summary_path,
+        summary,
     )
     return summary
