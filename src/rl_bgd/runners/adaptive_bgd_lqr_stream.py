@@ -25,7 +25,6 @@ from rl_bgd.surprise.td import AdaptiveTDRetentionConfig, TDSurpriseConfig
 from rl_bgd.utils.device import resolve_device
 from rl_bgd.utils.randomness import seed_everything
 
-
 SurpriseSource = Literal[
     "none",
     "td",
