@@ -9,6 +9,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Protocol
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 OFFICIAL_CHORES_ARCHIVE_URL = (
@@ -18,6 +19,7 @@ OFFICIAL_CHORES_ARCHIVE_URL = (
     "authkey=APSnA-AKY4Yw_vA"
 )
 DEFAULT_MAX_ARCHIVE_BYTES = 4 * 1024 * 1024 * 1024
+DEFAULT_MAX_EXTRACTED_BYTES = 16 * 1024 * 1024 * 1024
 
 
 class _Response(Protocol):
@@ -226,6 +228,12 @@ def download_chores_archive(
         raise ValueError(
             "at least one archive URL is required"
         )
+    for url in candidates:
+        parsed = urlparse(url)
+        if parsed.scheme.lower() != "https" or not parsed.netloc:
+            raise ValueError(
+                "archive URLs must use HTTPS with a network host"
+            )
 
     expected = (
         expected_sha256.lower()
@@ -341,8 +349,14 @@ def extract_chores_archive(
     *,
     archive: str | Path,
     destination: str | Path,
+    max_extracted_bytes: int = DEFAULT_MAX_EXTRACTED_BYTES,
 ) -> Path:
-    """Extract a validated ZIP without allowing path traversal or symlinks."""
+    """Extract a validated ZIP with traversal, symlink, and size defenses."""
+
+    if max_extracted_bytes < 1:
+        raise ValueError(
+            "max_extracted_bytes must be positive"
+        )
 
     source = Path(
         archive
@@ -368,7 +382,18 @@ def extract_chores_archive(
     with zipfile.ZipFile(
         source
     ) as archive_file:
-        for member in archive_file.infolist():
+        members = archive_file.infolist()
+        total_uncompressed = sum(
+            member.file_size
+            for member in members
+            if not member.is_dir()
+        )
+        if total_uncompressed > max_extracted_bytes:
+            raise ChoresArchiveDownloadError(
+                "archive expands beyond configured extraction size limit"
+            )
+
+        for member in members:
             member_path = Path(
                 member.filename
             )
