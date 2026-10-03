@@ -53,6 +53,12 @@ def _parser() -> argparse.ArgumentParser:
         default=60.0,
         help="Per-candidate network timeout in seconds.",
     )
+    parser.add_argument(
+        "--attempts-per-url",
+        type=int,
+        default=3,
+        help="Retries for transient network failures per candidate URL.",
+    )
     return parser
 
 
@@ -72,6 +78,9 @@ def main() -> None:
             args.expected_sha256
         ),
         timeout=args.timeout,
+        attempts_per_url=(
+            args.attempts_per_url
+        ),
     )
     payload = report.to_dict()
     if (
