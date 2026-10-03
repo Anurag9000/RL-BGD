@@ -503,7 +503,7 @@ def audit_repository(
     required_chores_workflow_snippets = (
         "workflow_dispatch:",
         "chores_archive_url:",
-        "required: true",
+        "default: \"https://onedrive.live.com/download?cid=601D311D0FC404D4",
         "scripts/validate_cora_chores_archive.py",
         "PYTHONPATH: src",
         "--root-only",
