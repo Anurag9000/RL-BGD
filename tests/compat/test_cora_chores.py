@@ -60,6 +60,24 @@ def _fixture_tree(
     _write_json(
         demo_root / "traj_data.json",
         {
+            "task_type": "pick_and_place_simple",
+            "pddl_params": {
+                "object_target": "ToiletPaper",
+                "parent_target": "ToiletPaperHanger",
+                "toggle_target": None,
+                "mrecep_target": None,
+                "object_sliced": False,
+            },
+            "scene": {
+                "scene_num": 402,
+                "floor_plan": "FloorPlan402",
+                "object_poses": [],
+                "dirty_and_empty": False,
+                "object_toggles": [],
+                "init_action": {
+                    "action": "TeleportFull",
+                },
+            },
             "images": [
                 {
                     "image_name": ("000000000.png"),
@@ -67,7 +85,25 @@ def _fixture_tree(
                     "high_idx": 0,
                 }
             ],
-            "plan": {"low_actions": [{"api_action": {}}]},
+            "plan": {
+                "low_actions": [
+                    {
+                        "api_action": {},
+                    }
+                ],
+                "high_pddl": [
+                    {
+                        "planner_action": {
+                            "action": "PickupObject",
+                        }
+                    },
+                    {
+                        "planner_action": {
+                            "action": "End",
+                        }
+                    },
+                ],
+            },
         },
     )
     raw_images = demo_root / "raw_images"
@@ -146,6 +182,98 @@ def test_chores_archive_rejects_missing_referenced_trajectory(
     with pytest.raises(
         FileNotFoundError,
         match="trajectory JSON",
+    ):
+        validate_chores_archive(
+            archive_root=archive_root,
+            metadata_root=metadata_root,
+        )
+
+
+def test_chores_archive_rejects_missing_scene_contract(
+    tmp_path: Path,
+) -> None:
+    (
+        metadata_root,
+        archive_root,
+        demo,
+    ) = _fixture_tree(tmp_path)
+    traj_path = (
+        archive_root
+        / "train"
+        / demo
+        / "traj_data.json"
+    )
+    payload = json.loads(
+        traj_path.read_text(
+            encoding="utf-8"
+        )
+    )
+    del payload[
+        "scene"
+    ]
+    _write_json(
+        traj_path,
+        payload,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="scene mapping",
+    ):
+        validate_chores_archive(
+            archive_root=archive_root,
+            metadata_root=metadata_root,
+        )
+
+
+def test_chores_archive_rejects_missing_subgoal_image_coverage(
+    tmp_path: Path,
+) -> None:
+    (
+        metadata_root,
+        archive_root,
+        demo,
+    ) = _fixture_tree(tmp_path)
+    traj_path = (
+        archive_root
+        / "train"
+        / demo
+        / "traj_data.json"
+    )
+    payload = json.loads(
+        traj_path.read_text(
+            encoding="utf-8"
+        )
+    )
+    payload[
+        "plan"
+    ][
+        "high_pddl"
+    ] = [
+        {
+            "planner_action": {
+                "action": "PickupObject",
+            }
+        },
+        {
+            "planner_action": {
+                "action": "PutObject",
+            }
+        },
+        {
+            "planner_action": {
+                "action": "End",
+            }
+        },
+    ]
+    _write_json(
+        traj_path,
+        payload,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="do not cover every executable high-level subgoal",
     ):
         validate_chores_archive(
             archive_root=archive_root,
