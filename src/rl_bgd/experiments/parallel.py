@@ -433,6 +433,12 @@ def _wait_for_gpu(
         raise ValueError(
             "poll_seconds must be positive"
         )
+    if (
+        min_free_vram_mb == 0
+        and max_gpu_utilization
+        == 100
+    ):
+        return
 
     while True:
         state = state_reader(
