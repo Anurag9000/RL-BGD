@@ -147,6 +147,19 @@ def test_download_falls_back_after_html_and_records_provenance(
     )
 
 
+def test_download_rejects_non_https_candidate(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match="must use HTTPS",
+    ):
+        download_chores_archive(
+            destination=tmp_path / "archive.zip",
+            urls=("http://mirror.example/archive",),
+        )
+
+
 def test_download_rejects_hash_mismatch(
     tmp_path: Path,
 ) -> None:
@@ -252,6 +265,32 @@ def test_safe_extract_rejects_parent_traversal(
         tmp_path
         / "escape.txt"
     ).exists()
+
+
+def test_safe_extract_rejects_uncompressed_size_limit(
+    tmp_path: Path,
+) -> None:
+    archive = tmp_path / "oversized.zip"
+    archive.write_bytes(
+        _zip_payload(
+            {
+                "data/payload.bin": b"x" * 64,
+            }
+        )
+    )
+
+    destination = tmp_path / "extract"
+    with pytest.raises(
+        ChoresArchiveDownloadError,
+        match="extraction size limit",
+    ):
+        extract_chores_archive(
+            archive=archive,
+            destination=destination,
+            max_extracted_bytes=32,
+        )
+
+    assert not (destination / "data" / "payload.bin").exists()
 
 
 def test_safe_extract_accepts_regular_archive(
