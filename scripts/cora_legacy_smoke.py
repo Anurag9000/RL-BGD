@@ -12,7 +12,6 @@ from typing import Any
 
 import gym
 import numpy as np
-
 from continual_rl.experiments.tasks.make_atari_task import (
     get_single_atari_task,
 )
