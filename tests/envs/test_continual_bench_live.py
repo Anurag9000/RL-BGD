@@ -50,5 +50,6 @@ def test_live_continual_bench_two_task_hidden_stream() -> None:
                 assert info == {}
 
         assert env.evaluation_context["task_name"] == "door"
+        assert env.environment_step == 3
     finally:
         env.close()
