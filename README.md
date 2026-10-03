@@ -39,7 +39,7 @@ The smoke test runs a small quadratic BGD optimization and prints posterior diag
 
 The project separates Bayesian posterior mechanics, controlled tempering, replay evidence accounting, SAC/PPO backbones, recurrent hidden-context inference, information-access controls, benchmarks, evaluation, and paper artifacts.
 
-See `docs/architecture.md`, `docs/mathematics.md`, `docs/literature_review.md`, and `docs/CAPABILITY_LEDGER.md`.
+See `docs/architecture.md`, `docs/mathematics.md`, `docs/literature_review.md`, `docs/CAPABILITY_LEDGER.md`, and `docs/FINAL_CLOSURE_AUDIT.md`.
 
 ## License
 
