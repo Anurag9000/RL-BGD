@@ -752,6 +752,119 @@ def test_execute_suite_resumes_matching_strict_success(
     ) == "resume-sentinel"
 
 
+def test_execute_suite_reruns_when_saved_contract_is_tampered(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    suite = _tiny_suite("final_abs_mean")
+    monkeypatch.setitem(
+        SUITES,
+        suite.name,
+        suite,
+    )
+    execute_suite(
+        suite.name,
+        tmp_path,
+    )
+    run_dir = (
+        tmp_path
+        / suite.name
+        / "smoke__tiny_smoke__seed_0"
+    )
+    metadata_path = (
+        run_dir
+        / "run_metadata.json"
+    )
+    metadata = json.loads(
+        metadata_path.read_text(
+            encoding="utf-8"
+        )
+    )
+    metadata[
+        "primary_metric"
+    ] = "tampered_metric"
+    metadata_path.write_text(
+        json.dumps(
+            metadata
+        ),
+        encoding="utf-8",
+    )
+    stdout_path = (
+        run_dir
+        / "stdout.json"
+    )
+    stdout_path.write_text(
+        "tampered-contract-sentinel",
+        encoding="utf-8",
+    )
+
+    result = execute_suite(
+        suite.name,
+        tmp_path,
+    )
+
+    assert result[
+        "jobs_executed"
+    ] == 1
+    assert result[
+        "jobs_skipped"
+    ] == 0
+    assert stdout_path.read_text(
+        encoding="utf-8"
+    ) != "tampered-contract-sentinel"
+
+
+def test_execute_suite_reruns_when_canonical_artifact_is_corrupted(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    suite = _tiny_suite("final_abs_mean")
+    monkeypatch.setitem(
+        SUITES,
+        suite.name,
+        suite,
+    )
+    execute_suite(
+        suite.name,
+        tmp_path,
+    )
+    run_dir = (
+        tmp_path
+        / suite.name
+        / "smoke__tiny_smoke__seed_0"
+    )
+    (
+        run_dir
+        / "summary.json"
+    ).write_text(
+        "{not-valid-json",
+        encoding="utf-8",
+    )
+    stdout_path = (
+        run_dir
+        / "stdout.json"
+    )
+    stdout_path.write_text(
+        "corrupt-artifact-sentinel",
+        encoding="utf-8",
+    )
+
+    result = execute_suite(
+        suite.name,
+        tmp_path,
+    )
+
+    assert result[
+        "jobs_executed"
+    ] == 1
+    assert result[
+        "jobs_skipped"
+    ] == 0
+    assert stdout_path.read_text(
+        encoding="utf-8"
+    ) != "corrupt-artifact-sentinel"
+
+
 def test_execute_suite_can_force_rerun_of_matching_success(
     tmp_path: Path,
     monkeypatch,
