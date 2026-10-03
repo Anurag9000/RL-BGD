@@ -6,15 +6,16 @@ import json
 import os
 from typing import Any, Optional
 
+import gym
+import minihack
+import nle
+import numpy as np
+
 from continual_rl.experiments.tasks.make_minihack_task import (
     MiniHackMakeVecSafeWrapper,
     get_single_minihack_task,
 )
 from continual_rl.utils.utils import Utils
-import gym
-import minihack
-import nle
-import numpy as np
 
 
 def _find_vardir(wrapper: Any) -> Optional[str]:
