@@ -181,8 +181,11 @@ def _contract_kwargs(
     """Return scientific invocation kwargs with per-run fields removed."""
 
     raw = job.get(
-        "kwargs",
-        {},
+        "resolved_call_kwargs",
+        job.get(
+            "kwargs",
+            {},
+        ),
     )
     if not isinstance(
         raw,
@@ -300,6 +303,12 @@ def record_completed_suite_run(
         "invocation": {
             "target": str(job["target"]),
             "kwargs": dict(job["kwargs"]),
+            "resolved_call_kwargs": dict(
+                job.get(
+                    "resolved_call_kwargs",
+                    job["kwargs"],
+                )
+            ),
         },
         "source_config_path": (source_path),
         "source_config": (source_payload),
