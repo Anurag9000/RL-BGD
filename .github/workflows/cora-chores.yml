@@ -5,7 +5,8 @@ on:
     inputs:
       chores_archive_url:
         description: "Authoritative CORA CHORES trajectory archive URL"
-        required: true
+        required: false
+        default: "https://onedrive.live.com/download?cid=601D311D0FC404D4&resid=601D311D0FC404D4%2155915&authkey=APSnA-AKY4Yw_vA"
         type: string
       chores_archive_sha256:
         description: "Optional expected SHA-256 for the archive"
@@ -33,7 +34,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             xvfb \
-            unzip \
             libglib2.0-0 \
             libgl1 \
             libnss3 \
@@ -81,17 +81,21 @@ jobs:
           assert gym.__version__ == "0.25.2"
           PY
 
-      - name: Download supplied CORA CHORES trajectories
+      - name: Recover authoritative CORA CHORES trajectories
         env:
+          PYTHONPATH: src
           CHORES_ARCHIVE_URL: ${{ inputs.chores_archive_url }}
           CHORES_ARCHIVE_SHA256: ${{ inputs.chores_archive_sha256 }}
         run: |
-          test -n "$CHORES_ARCHIVE_URL"
-          curl --fail --location --retry 3 --output /tmp/cora_trajs.zip "$CHORES_ARCHIVE_URL"
+          args=(
+            --url "$CHORES_ARCHIVE_URL"
+            --destination /tmp/cora_trajs.zip
+            --extract-dir /tmp/cora_data
+          )
           if [ -n "$CHORES_ARCHIVE_SHA256" ]; then
-            echo "$CHORES_ARCHIVE_SHA256  /tmp/cora_trajs.zip" | sha256sum --check -
+            args+=(--expected-sha256 "$CHORES_ARCHIVE_SHA256")
           fi
-          unzip -q /tmp/cora_trajs.zip -d /tmp/cora_data
+          python scripts/fetch_cora_chores_archive.py "${args[@]}" | tee /tmp/cora_chores_download.json
 
       - name: Validate complete published CHORES archive
         id: chores-data
