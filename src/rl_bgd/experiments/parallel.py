@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import queue
@@ -733,10 +734,50 @@ def run_suite_parallel(
         parents=True,
         exist_ok=True,
     )
-    summary_path = (
-        suite_dir
-        / "parallel_execution_summary.json"
+    selected_run_ids = sorted(
+        str(
+            job[
+                "run_id"
+            ]
+        )
+        for job in selected
     )
+    filtered = bool(
+        job_ids
+        or seeds
+        or run_ids
+    )
+    if filtered:
+        selection_key = hashlib.sha256(
+            "\n".join(
+                selected_run_ids
+            ).encode(
+                "utf-8"
+            )
+        ).hexdigest()[
+            :16
+        ]
+        summary_dir = (
+            suite_dir
+            / "parallel_execution_summaries"
+        )
+        summary_dir.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+        summary_path = (
+            summary_dir
+            / (
+                "selection_"
+                + selection_key
+                + ".json"
+            )
+        )
+    else:
+        summary_path = (
+            suite_dir
+            / "parallel_execution_summary.json"
+        )
     temporary = (
         summary_path.with_name(
             (
