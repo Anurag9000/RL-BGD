@@ -30,12 +30,18 @@ def main() -> None:
         "--continue-on-error",
         action="store_true",
     )
+    parser.add_argument(
+        "--no-resume",
+        action="store_true",
+        help="rerun even strict successful jobs whose saved contract still matches",
+    )
     args = parser.parse_args()
     if args.execute:
         result = execute_suite(
             args.suite,
             args.output_root,
             continue_on_error=args.continue_on_error,
+            resume=not args.no_resume,
         )
     else:
         result = materialize_suite(
