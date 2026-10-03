@@ -100,7 +100,7 @@ example:
     python scripts/run_paper_suite.py cw20_final \
       --output-root artifacts/suites \
       --execute \
-      --job-id cw20_task_aware_bgd \
+      --job-id cw20_ta_bgd \
       --seed 3
 
 Materialization still writes the complete suite manifest. A filtered worker
