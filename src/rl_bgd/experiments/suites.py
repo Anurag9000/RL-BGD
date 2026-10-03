@@ -1798,9 +1798,7 @@ def materialize_suite(
             path,
         )
     finally:
-        temporary.unlink(
-            missing_ok=True
-        )
+        temporary.unlink(missing_ok=True)
     manifest["manifest_path"] = str(path)
     return manifest
 
