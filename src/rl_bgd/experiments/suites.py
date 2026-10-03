@@ -6,6 +6,7 @@ import hashlib
 import inspect
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -1943,6 +1944,104 @@ def _select_execution_jobs(
     return selected
 
 
+def _archive_existing_run(
+    run_dir: Path,
+    *,
+    output_root: str | Path,
+    suite_name: str,
+) -> Path | None:
+    """Move a superseded run outside the active results tree before rerunning."""
+
+    if not run_dir.is_dir():
+        return None
+    try:
+        has_contents = next(
+            run_dir.iterdir(),
+            None,
+        ) is not None
+    except OSError:
+        has_contents = True
+    if not has_contents:
+        return None
+
+    prior_commit = "unknown"
+    metadata_path = run_dir / "run_metadata.json"
+    if metadata_path.is_file():
+        try:
+            payload = json.loads(
+                metadata_path.read_text(
+                    encoding="utf-8",
+                )
+            )
+        except (
+            OSError,
+            json.JSONDecodeError,
+        ):
+            payload = None
+        if isinstance(
+            payload,
+            dict,
+        ):
+            raw_commit = payload.get(
+                "git_commit"
+            )
+            if (
+                isinstance(
+                    raw_commit,
+                    str,
+                )
+                and raw_commit.strip()
+            ):
+                prior_commit = raw_commit.strip()[
+                    :12
+                ]
+
+    root = Path(
+        output_root
+    )
+    archive_base = root.with_name(
+        root.name
+        + "_archives"
+    )
+    archive_parent = (
+        archive_base
+        / suite_name
+        / run_dir.name
+    )
+    archive_parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    timestamp = datetime.now(
+        UTC
+    ).strftime(
+        "%Y%m%dT%H%M%S%fZ"
+    )
+    destination = (
+        archive_parent
+        / f"{prior_commit}__{timestamp}"
+    )
+    counter = 1
+    while destination.exists():
+        destination = (
+            archive_parent
+            / (
+                f"{prior_commit}__{timestamp}"
+                f"__{counter}"
+            )
+        )
+        counter += 1
+    shutil.move(
+        str(
+            run_dir
+        ),
+        str(
+            destination
+        ),
+    )
+    return destination
+
+
 def _completed_run_matches_job(
     run_dir: Path,
     *,
@@ -2047,12 +2146,9 @@ def execute_suite(
     failures: list[str] = []
     skipped: list[str] = []
     executed: list[str] = []
+    archived: list[dict[str, str]] = []
     for job in selected_jobs:
         run_dir = Path(job["run_dir"])
-        run_dir.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
         if resume and _completed_run_matches_job(
             run_dir,
             suite_name=suite_name,
@@ -2061,6 +2157,26 @@ def execute_suite(
         ):
             skipped.append(str(job["run_id"]))
             continue
+        archived_path = _archive_existing_run(
+            run_dir,
+            output_root=output_root,
+            suite_name=suite_name,
+        )
+        if archived_path is not None:
+            archived.append(
+                {
+                    "run_id": str(
+                        job["run_id"]
+                    ),
+                    "path": str(
+                        archived_path
+                    ),
+                }
+            )
+        run_dir.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
         executed.append(str(job["run_id"]))
         metadata_path = run_dir / "run_metadata.json"
         stdout_path = run_dir / "stdout.json"
@@ -2152,6 +2268,13 @@ def execute_suite(
             "stdout_path": str(stdout_path),
             "stderr_path": str(stderr_path),
             "strict_artifacts": status == "success",
+            "supersedes_archive": (
+                str(
+                    archived_path
+                )
+                if archived_path is not None
+                else None
+            ),
         }
         metadata_path.write_text(
             json.dumps(
@@ -2204,6 +2327,7 @@ def execute_suite(
         "jobs_skipped": len(skipped),
         "executed_run_ids": executed,
         "skipped_run_ids": skipped,
+        "archived_runs": archived,
         "failures": failures,
         "selection": selection,
         "status": "success" if not failures else "failed",
