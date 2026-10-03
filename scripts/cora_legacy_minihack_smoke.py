@@ -10,7 +10,6 @@ import gym
 import minihack
 import nle
 import numpy as np
-
 from continual_rl.experiments.tasks.make_minihack_task import (
     MiniHackMakeVecSafeWrapper,
     get_single_minihack_task,
