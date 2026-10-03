@@ -50,7 +50,7 @@ class ExperimentSuite:
     name: str
     description: str
     jobs: tuple[ExperimentJob, ...]
-    revision: int = 2
+    revision: int = 3
 
 
 def _job(
@@ -92,6 +92,22 @@ def _job(
         output_kwarg=output_kwarg,
         notes=notes,
     )
+
+
+_CANONICAL_SAC_CONTROL_KWARGS: dict[str, Any] = {
+    "actor_lr": 3e-4,
+    "critic_lr": 3e-4,
+    "alpha_lr": 3e-4,
+    "initial_alpha": 0.2,
+    "evaluation_seed": 20_000,
+}
+
+_CANONICAL_PPO_CONTROL_KWARGS: dict[str, Any] = {
+    "actor_lr": 3e-4,
+    "value_lr": 1e-3,
+    "update_epochs": 10,
+    "evaluation_seed": 30_000,
+}
 
 
 def _hidden_context_jobs(
@@ -165,9 +181,11 @@ def _evidence_temperature_jobs(
             "GB-T",
             "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
             kwargs={
+                **_CANONICAL_SAC_CONTROL_KWARGS,
                 "steps": steps,
                 "device": "auto",
                 "bayesianization": "critic_only",
+                "mc_samples": 4,
                 "evidence_temperature": temperature,
             },
             seeds=seeds,
@@ -211,9 +229,11 @@ def _replay_evidence_jobs(
             "F",
             "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
             kwargs={
+                **_CANONICAL_SAC_CONTROL_KWARGS,
                 "steps": steps,
                 "device": "auto",
                 "bayesianization": "critic_only",
+                "mc_samples": 4,
                 "replay_evidence_mode": mode,
             },
             seeds=seeds,
@@ -305,6 +325,7 @@ def _mc_sample_jobs(
             "MC-K",
             "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
             kwargs={
+                **_CANONICAL_SAC_CONTROL_KWARGS,
                 "steps": steps,
                 "device": "auto",
                 "bayesianization": "critic_only",
@@ -351,9 +372,11 @@ def _fixed_tempering_jobs(
             "D",
             "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
             kwargs={
+                **_CANONICAL_SAC_CONTROL_KWARGS,
                 "steps": steps,
                 "device": "auto",
                 "bayesianization": "critic_only",
+                "mc_samples": 4,
                 "temper_retention": retention,
             },
             seeds=seeds,
@@ -509,7 +532,11 @@ SMOKE = ExperimentSuite(
             "sac_adam_lqr",
             "A",
             "rl_bgd.runners.sac_lqr:run_sac_lqr",
-            kwargs={"steps": 96, "device": "cpu"},
+            kwargs={
+                **_CANONICAL_SAC_CONTROL_KWARGS,
+                "steps": 96,
+                "device": "cpu",
+            },
             seeds=(0,),
             algorithm="SAC-Adam",
             environment="synthetic_lqr",
@@ -525,9 +552,11 @@ SMOKE = ExperimentSuite(
             "A",
             "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
             kwargs={
+                **_CANONICAL_SAC_CONTROL_KWARGS,
                 "steps": 96,
                 "device": "cpu",
                 "bayesianization": "critic_only",
+                "mc_samples": 4,
             },
             seeds=(0,),
             algorithm="SAC-BGD",
@@ -546,7 +575,11 @@ SMOKE = ExperimentSuite(
             "ppo_adam_lqr",
             "A",
             "rl_bgd.runners.ppo_lqr:run_ppo_lqr",
-            kwargs={"steps": 128, "device": "cpu"},
+            kwargs={
+                **_CANONICAL_PPO_CONTROL_KWARGS,
+                "steps": 128,
+                "device": "cpu",
+            },
             seeds=(0,),
             algorithm="PPO-Adam",
             environment="synthetic_lqr",
@@ -569,6 +602,7 @@ STATIONARY_CORE = ExperimentSuite(
             "A",
             "rl_bgd.runners.sac_lqr:run_sac_lqr",
             kwargs={
+                **_CANONICAL_SAC_CONTROL_KWARGS,
                 "steps": 800,
                 "device": "auto",
             },
@@ -590,9 +624,11 @@ STATIONARY_CORE = ExperimentSuite(
             "A",
             "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
             kwargs={
+                **_CANONICAL_SAC_CONTROL_KWARGS,
                 "steps": 800,
                 "device": "auto",
                 "bayesianization": "critic_only",
+                "mc_samples": 4,
             },
             seeds=(0, 1, 2, 3, 4),
             algorithm="SAC-BGD",
@@ -612,6 +648,7 @@ STATIONARY_CORE = ExperimentSuite(
             "A",
             "rl_bgd.runners.ppo_lqr:run_ppo_lqr",
             kwargs={
+                **_CANONICAL_PPO_CONTROL_KWARGS,
                 "steps": 800,
                 "device": "auto",
             },
@@ -633,9 +670,11 @@ STATIONARY_CORE = ExperimentSuite(
             "A",
             "rl_bgd.runners.bgd_ppo_lqr:run_bgd_ppo_lqr",
             kwargs={
+                **_CANONICAL_PPO_CONTROL_KWARGS,
                 "steps": 800,
                 "device": "auto",
                 "bayesianization": "actor_and_value",
+                "mc_samples": 4,
             },
             seeds=(0, 1, 2, 3, 4),
             algorithm="PPO-BGD",
@@ -1286,10 +1325,12 @@ ABLATION_CORE = ExperimentSuite(
             "G",
             "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
             kwargs={
+                **_CANONICAL_SAC_CONTROL_KWARGS,
                 "steps": 600,
                 "device": "auto",
                 "bayesianization": mode,
                 "evidence_temperature": 1.0,
+                "mc_samples": 4,
             },
             seeds=(0, 1, 2, 3, 4),
             algorithm=f"SAC-BGD-{mode}",
@@ -1505,6 +1546,7 @@ COMPUTE_ANALYSIS = ExperimentSuite(
             "COMPUTE",
             "rl_bgd.runners.sac_lqr:run_sac_lqr",
             kwargs={
+                **_CANONICAL_SAC_CONTROL_KWARGS,
                 "steps": 600,
                 "device": "auto",
             },
@@ -1527,10 +1569,11 @@ COMPUTE_ANALYSIS = ExperimentSuite(
                 "COMPUTE",
                 "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
                 kwargs={
+                    **_CANONICAL_SAC_CONTROL_KWARGS,
                     "steps": 600,
                     "device": "auto",
                     "bayesianization": mode,
-                    "mc_samples": 2,
+                    "mc_samples": 4,
                 },
                 seeds=(0, 1, 2),
                 algorithm=f"SAC-BGD-{mode}",
@@ -1557,6 +1600,7 @@ COMPUTE_ANALYSIS = ExperimentSuite(
                 "MC-K",
                 "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
                 kwargs={
+                    **_CANONICAL_SAC_CONTROL_KWARGS,
                     "steps": 600,
                     "device": "auto",
                     "bayesianization": "critic_only",
