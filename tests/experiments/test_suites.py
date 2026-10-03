@@ -972,6 +972,17 @@ def test_execute_suite_can_force_rerun_of_matching_success(
     assert result["jobs_executed"] == 1
     assert result["jobs_skipped"] == 0
     assert stdout_path.read_text(encoding="utf-8") != "force-rerun-sentinel"
+    assert len(result["archived_runs"]) == 1
+    archived = Path(
+        result["archived_runs"][0]["path"]
+    )
+    assert archived.parent.name == "smoke__tiny_smoke__seed_0"
+    archived_run = load_run_directory(archived)
+    assert archived_run.manifest.run_id == "smoke__tiny_smoke__seed_0"
+    metadata = json.loads(
+        (run_dir / "run_metadata.json").read_text(encoding="utf-8")
+    )
+    assert metadata["supersedes_archive"] == str(archived)
 
 
 def test_execute_suite_fails_closed_on_missing_primary_metric(
