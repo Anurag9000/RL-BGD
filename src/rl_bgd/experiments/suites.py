@@ -1812,10 +1812,7 @@ def _completed_run_matches_job(
         )
     except (OSError, TypeError, ValueError):
         return False
-    return (
-        loaded.manifest.run_id == job["run_id"]
-        and loaded.manifest.git_commit == git_commit
-    )
+    return loaded.manifest.run_id == job["run_id"] and loaded.manifest.git_commit == git_commit
 
 
 def execute_suite(
