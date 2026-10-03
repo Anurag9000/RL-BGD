@@ -787,7 +787,7 @@ def test_paper_builder_rejects_cross_method_information_access_mismatch(
 
     with pytest.raises(
         ValueError,
-        match="different information access",
+        match="different privilege access",
     ):
         build_paper_artifacts(
             results,
@@ -893,10 +893,6 @@ def _write_paired_contract_run(
                 "receives_task_id": False,
                 "receives_task_boundary": False,
                 "receives_environment_context": False,
-                **(
-                    extra_information_access
-                    or {}
-                ),
             },
             metadata={
                 "suite": "paired_contract_suite",
