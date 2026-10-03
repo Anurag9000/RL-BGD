@@ -63,9 +63,11 @@ default it creates one worker per detected GPU and sets a per-child
 If no GPU is visible it falls back to one CPU worker. `--workers-per-gpu` and
 `--cpu-workers` are explicit opt-ins for higher concurrency. Optional free-VRAM
 and utilization thresholds are polled before a GPU worker launches its next
-run (30 s default). Worker exceptions and non-zero child exits are retained in
-`parallel_execution_summary.json`; rerunning the command safely resumes strict
-matching successes.
+run (30 s default). Worker exceptions and non-zero child exits are retained in the parent
+execution summary. A full-suite launch writes `parallel_execution_summary.json`;
+filtered launches write deterministic selection-specific summaries under
+`parallel_execution_summaries/`, so independent orchestration shards do not
+overwrite each other. Rerunning safely resumes strict matching successes.
 
 Successful jobs are converted into the canonical Phase-15 schema:
 
