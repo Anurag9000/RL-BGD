@@ -45,7 +45,14 @@ construction, reset, action sampling, step, finite reward, and close behavior.
   including raw goal images. The official OneDrive URL in CORA's installation
   guide currently fails, and upstream issue #14 ("Install Problem for
   Benchmarks") independently reports the same broken archive link and requests
-  a replacement. RL-BGD therefore does not substitute older ALFRED trajectories
+  a replacement. The provenance requirement is also explicit in CORA's own
+  history: commit `4347f76d0abad6b50ab069efc509809c0c9ea1ba` states that
+  repeatability requires the trajectories to be exactly the same and that they
+  should be published rather than regenerated; later commits
+  `de52a692a96a0353607d1550e0b2147d9fee0c53` and
+  `474c32dd311eccaeb3b598332a1a41940757a8c7` introduce certified/validated
+  2021 trajectories used by the benchmark metadata. RL-BGD therefore does not
+  substitute older 2019 ALFRED trajectories, newly regenerated approximations,
   or fabricated images. The recovery workflow is manual and requires an
   authoritative archive URL, optionally a SHA-256. Before launching AI2-THOR it
   loads all four CHORES metadata files from the pinned CORA revision, requires
