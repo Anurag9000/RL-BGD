@@ -1625,6 +1625,30 @@ def _git_head() -> str | None:
     return result.stdout.strip() or None
 
 
+def _resolved_call_kwargs(
+    target: str,
+    kwargs: dict[str, Any],
+) -> dict[str, Any]:
+    """Resolve a runner call including signature defaults for provenance."""
+
+    function = resolve_target(target)
+    signature = inspect.signature(function)
+    bound = signature.bind(**kwargs)
+    bound.apply_defaults()
+    resolved = dict(bound.arguments)
+    try:
+        return json.loads(
+            json.dumps(
+                resolved,
+                sort_keys=True,
+            )
+        )
+    except TypeError as exc:
+        raise TypeError(
+            f"runner {target} has non-JSON-serializable resolved arguments"
+        ) from exc
+
+
 def _expanded_jobs(
     suite: ExperimentSuite,
     output_root: Path,
@@ -1648,12 +1672,17 @@ def _expanded_jobs(
                 "--kwargs-json",
                 json.dumps(kwargs, sort_keys=True),
             ]
+            resolved_call_kwargs = _resolved_call_kwargs(
+                job.target,
+                kwargs,
+            )
             expanded.append(
                 {
                     **asdict(job),
                     "suite_revision": suite.revision,
                     "seed": seed,
                     "kwargs": kwargs,
+                    "resolved_call_kwargs": resolved_call_kwargs,
                     "run_id": run_id,
                     "run_dir": str(run_dir),
                     "command": command,
@@ -1946,6 +1975,7 @@ def _completed_run_matches_job(
                 sort_keys=True,
             )
         ),
+        "resolved_call_kwargs": job["resolved_call_kwargs"],
         "seed": job["seed"],
         "algorithm": job["algorithm"],
         "environment": job["environment"],
@@ -2110,6 +2140,7 @@ def execute_suite(
             "git_commit": git_commit,
             "target": job["target"],
             "kwargs": job["kwargs"],
+            "resolved_call_kwargs": job["resolved_call_kwargs"],
             "seed": job["seed"],
             "algorithm": job["algorithm"],
             "environment": job["environment"],
