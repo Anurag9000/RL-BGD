@@ -334,12 +334,10 @@ def download_chores_archive(
                 )
             except OSError as exc:
                 failures.append(
-                    (
-                        f"{url} attempt "
-                        f"{attempt_index + 1}/"
-                        f"{attempts_per_url}: "
-                        f"network error: {exc}"
-                    )
+                    f"{url} attempt "
+                    f"{attempt_index + 1}/"
+                    f"{attempts_per_url}: "
+                    f"network error: {exc}"
                 )
                 if (
                     attempt_index + 1
