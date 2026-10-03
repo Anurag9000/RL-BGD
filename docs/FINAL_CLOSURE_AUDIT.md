@@ -76,11 +76,14 @@ tested surfaces include:
 CORA CHORES is the only capability still marked BLOCKED.
 
 The implementation side is complete: a pinned isolated Xvfb/crl_alfred runtime,
-archive validator, metadata closure checks, optional SHA-256 verification, and
-the exact published trajectory smoke path are present. Execution is blocked
-because the authoritative certified 2021 CORA CHORES trajectory archive is no
-longer available from the original source, and no authoritative replacement has
-been recovered.
+secure official-source/mirror downloader, atomic archive publication, optional
+SHA-256 verification, safe ZIP extraction, metadata closure checks, complete
+27-trajectory/raw-image validation, and the exact published trajectory smoke
+path are present. The recovery workflow defaults to CORA's historical OneDrive
+URL and can accept an authoritative replacement mirror without code changes.
+Execution is blocked because the certified 2021 CORA CHORES archive is no
+longer retrievable from the original source and no authoritative replacement
+has been recovered.
 
 The repository must not substitute regenerated or guessed trajectories while
 claiming reproduction of the published CORA CHORES result.
