@@ -19,10 +19,18 @@ directory containing:
 
 - `manifest.json`: run ID, method, benchmark, protocol, seed, git revision,
   task order, information-access assumptions, status, and scientific metadata;
-- `config.yaml`: resolved invocation plus the referenced source config;
+- `config.yaml`: the runner target, user-supplied kwargs, fully resolved
+  call arguments after Python signature defaults are applied, plus any referenced
+  configuration template;
 - `metrics.csv`: raw timeline/matrix rows or scalar result rows;
 - `summary.json`: finite scalar metrics, per-task metrics, and resources;
 - launcher stdout/stderr and execution metadata where the suite runner is used.
+
+The fully resolved call arguments are the authoritative call-level execution
+contract. Referenced YAML is retained for traceability and human comparison, but
+it is not allowed to override what the runner actually received. Scientific
+settings that were previously hard-coded in the stationary SAC/PPO runners are
+now explicit function arguments so they appear in this resolved contract.
 
 The loader validates schema versions, finite scalar values, run-ID consistency,
 artifact presence, and completion status. Every loaded source file receives a
