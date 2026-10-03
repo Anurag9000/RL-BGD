@@ -709,6 +709,7 @@ def test_execute_suite_writes_strict_artifacts(
     assert metadata["strict_artifacts"] is True
     assert metadata["job_id"] == "tiny_smoke"
     assert metadata["comparison_group"] == "tiny_smoke_group"
+    assert metadata["suite_revision"] == 2
     assert loaded.manifest.metadata["comparison_group"] == "tiny_smoke_group"
     assert loaded.manifest.metadata["suite_revision"] == 2
 
