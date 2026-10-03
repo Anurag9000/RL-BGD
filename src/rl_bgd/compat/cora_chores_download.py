@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import os
-import shutil
 import zipfile
 from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import BinaryIO, Protocol
+from typing import Protocol
 from urllib.request import Request, urlopen
 
 OFFICIAL_CHORES_ARCHIVE_URL = (
