@@ -1,0 +1,296 @@
+from __future__ import annotations
+
+import hashlib
+import io
+import zipfile
+from pathlib import Path
+from urllib.request import Request
+
+import pytest
+
+from rl_bgd.compat.cora_chores_download import (
+    ChoresArchiveDownloadError,
+    download_chores_archive,
+    extract_chores_archive,
+)
+
+
+class _FakeResponse:
+    def __init__(
+        self,
+        payload: bytes,
+        *,
+        content_type: str,
+    ) -> None:
+        self._stream = io.BytesIO(
+            payload
+        )
+        self.headers = {
+            "Content-Type": content_type
+        }
+
+    def read(
+        self,
+        amount: int = -1,
+    ) -> bytes:
+        return self._stream.read(
+            amount
+        )
+
+    def __enter__(
+        self,
+    ) -> "_FakeResponse":
+        return self
+
+    def __exit__(
+        self,
+        exc_type: object,
+        exc_value: object,
+        traceback: object,
+    ) -> None:
+        return None
+
+
+def _zip_payload(
+    members: dict[
+        str,
+        bytes,
+    ],
+) -> bytes:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(
+        buffer,
+        "w",
+        compression=zipfile.ZIP_DEFLATED,
+    ) as archive:
+        for name, payload in (
+            members.items()
+        ):
+            archive.writestr(
+                name,
+                payload,
+            )
+    return buffer.getvalue()
+
+
+def test_download_falls_back_after_html_and_records_provenance(
+    tmp_path: Path,
+) -> None:
+    archive_bytes = _zip_payload(
+        {
+            "cora_trajs/train/demo/traj_data.json": (
+                b"{}"
+            )
+        }
+    )
+    payloads = {
+        "https://broken.example/archive": (
+            b"<html>sign in</html>",
+            "text/html",
+        ),
+        "https://mirror.example/archive": (
+            archive_bytes,
+            "application/zip",
+        ),
+    }
+
+    def opener(
+        request: Request,
+        timeout: float,
+    ) -> _FakeResponse:
+        assert timeout == 12.0
+        payload, content_type = (
+            payloads[
+                request.full_url
+            ]
+        )
+        return _FakeResponse(
+            payload,
+            content_type=content_type,
+        )
+
+    destination = (
+        tmp_path
+        / "cora_trajs.zip"
+    )
+    expected_sha = hashlib.sha256(
+        archive_bytes
+    ).hexdigest()
+    report = download_chores_archive(
+        destination=destination,
+        urls=(
+            "https://broken.example/archive",
+            "https://mirror.example/archive",
+        ),
+        expected_sha256=expected_sha,
+        timeout=12.0,
+        opener=opener,
+    )
+
+    assert destination.read_bytes() == (
+        archive_bytes
+    )
+    assert report.source_url == (
+        "https://mirror.example/archive"
+    )
+    assert report.sha256 == expected_sha
+    assert report.bytes_written == len(
+        archive_bytes
+    )
+    assert len(
+        report.candidate_failures
+    ) == 1
+    assert "returned HTML" in (
+        report.candidate_failures[
+            0
+        ]
+    )
+
+
+def test_download_rejects_hash_mismatch(
+    tmp_path: Path,
+) -> None:
+    archive_bytes = _zip_payload(
+        {
+            "data/traj_data.json": b"{}"
+        }
+    )
+
+    def opener(
+        request: Request,
+        timeout: float,
+    ) -> _FakeResponse:
+        del request, timeout
+        return _FakeResponse(
+            archive_bytes,
+            content_type="application/zip",
+        )
+
+    with pytest.raises(
+        ChoresArchiveDownloadError,
+        match="SHA-256 mismatch",
+    ):
+        download_chores_archive(
+            destination=(
+                tmp_path
+                / "archive.zip"
+            ),
+            urls=(
+                "https://mirror.example/archive",
+            ),
+            expected_sha256=(
+                "0" * 64
+            ),
+            opener=opener,
+        )
+
+    assert not (
+        tmp_path
+        / "archive.zip"
+    ).exists()
+
+
+def test_download_rejects_non_zip_payload(
+    tmp_path: Path,
+) -> None:
+    def opener(
+        request: Request,
+        timeout: float,
+    ) -> _FakeResponse:
+        del request, timeout
+        return _FakeResponse(
+            b"not a zip",
+            content_type=(
+                "application/octet-stream"
+            ),
+        )
+
+    with pytest.raises(
+        ChoresArchiveDownloadError,
+        match="not a ZIP archive",
+    ):
+        download_chores_archive(
+            destination=(
+                tmp_path
+                / "archive.zip"
+            ),
+            urls=(
+                "https://invalid.example/archive",
+            ),
+            opener=opener,
+        )
+
+
+def test_safe_extract_rejects_parent_traversal(
+    tmp_path: Path,
+) -> None:
+    archive = (
+        tmp_path
+        / "unsafe.zip"
+    )
+    archive.write_bytes(
+        _zip_payload(
+            {
+                "../escape.txt": b"bad"
+            }
+        )
+    )
+
+    with pytest.raises(
+        ChoresArchiveDownloadError,
+        match="unsafe path",
+    ):
+        extract_chores_archive(
+            archive=archive,
+            destination=(
+                tmp_path
+                / "extract"
+            ),
+        )
+
+    assert not (
+        tmp_path
+        / "escape.txt"
+    ).exists()
+
+
+def test_safe_extract_accepts_regular_archive(
+    tmp_path: Path,
+) -> None:
+    archive = (
+        tmp_path
+        / "safe.zip"
+    )
+    archive.write_bytes(
+        _zip_payload(
+            {
+                (
+                    "cora_trajs/train/demo/"
+                    "traj_data.json"
+                ): b"{}",
+                (
+                    "cora_trajs/train/demo/"
+                    "raw_images/000.png"
+                ): b"png",
+            }
+        )
+    )
+
+    destination = (
+        tmp_path
+        / "extract"
+    )
+    resolved = extract_chores_archive(
+        archive=archive,
+        destination=destination,
+    )
+    assert resolved == (
+        destination.resolve()
+    )
+    assert (
+        destination
+        / "cora_trajs"
+        / "train"
+        / "demo"
+        / "traj_data.json"
+    ).is_file()
