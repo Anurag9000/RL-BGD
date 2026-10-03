@@ -69,3 +69,25 @@ suite, curated paper experiment manifests/launchers, and automatic raw-run
 aggregation with deterministic bootstrap confidence intervals. These
 infrastructure paths are distinct from expensive experiment execution: paper
 claims remain pending until corresponding raw run artifacts exist.
+
+## Suite execution and resume
+
+Paper suites are materialized without execution by default:
+
+    python scripts/run_paper_suite.py <suite> --output-root artifacts/suites
+
+Execute a suite with:
+
+    python scripts/run_paper_suite.py <suite> --output-root artifacts/suites --execute
+
+Execution is resumable by default. A run is skipped only when its saved
+`run_metadata.json` reports a strict successful result, its full execution
+contract matches the newly materialized job, its git commit matches the suite
+manifest, and the canonical run artifacts can be loaded successfully. Failed,
+partial, corrupted, stale-commit, or contract-mismatched runs are executed
+again automatically.
+
+Use `--continue-on-error` to preserve a failed run artifact and continue with
+the remaining jobs. Use `--no-resume` to force every declared job to execute
+again even when a matching strict success already exists. The suite execution
+summary records executed, skipped, and failed run IDs explicitly.
