@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import inspect
 import json
 import os
@@ -1753,12 +1754,161 @@ def materialize_suite(
         "jobs": _expanded_jobs(suite, root),
     }
     path = suite_dir / "suite_manifest.json"
-    path.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True),
-        encoding="utf-8",
+    temporary = path.with_name(
+        f".{path.name}.{os.getpid()}.tmp"
     )
+    try:
+        temporary.write_text(
+            json.dumps(
+                manifest,
+                indent=2,
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+        os.replace(
+            temporary,
+            path,
+        )
+    finally:
+        temporary.unlink(
+            missing_ok=True
+        )
     manifest["manifest_path"] = str(path)
     return manifest
+
+
+def _select_execution_jobs(
+    jobs: list[dict[str, Any]],
+    *,
+    job_ids: tuple[str, ...] | None,
+    seeds: tuple[int, ...] | None,
+    run_ids: tuple[str, ...] | None,
+) -> list[dict[str, Any]]:
+    requested_job_ids = set(
+        job_ids
+        or ()
+    )
+    requested_seeds = set(
+        seeds
+        or ()
+    )
+    requested_run_ids = set(
+        run_ids
+        or ()
+    )
+
+    known_job_ids = {
+        str(
+            job[
+                "job_id"
+            ]
+        )
+        for job in jobs
+    }
+    known_seeds = {
+        int(
+            job[
+                "seed"
+            ]
+        )
+        for job in jobs
+    }
+    known_run_ids = {
+        str(
+            job[
+                "run_id"
+            ]
+        )
+        for job in jobs
+    }
+
+    unknown_job_ids = (
+        requested_job_ids
+        - known_job_ids
+    )
+    if unknown_job_ids:
+        raise KeyError(
+            "unknown suite job IDs: "
+            + ", ".join(
+                sorted(
+                    unknown_job_ids
+                )
+            )
+        )
+    unknown_seeds = (
+        requested_seeds
+        - known_seeds
+    )
+    if unknown_seeds:
+        raise KeyError(
+            "unknown suite seeds: "
+            + ", ".join(
+                str(
+                    value
+                )
+                for value in sorted(
+                    unknown_seeds
+                )
+            )
+        )
+    unknown_run_ids = (
+        requested_run_ids
+        - known_run_ids
+    )
+    if unknown_run_ids:
+        raise KeyError(
+            "unknown suite run IDs: "
+            + ", ".join(
+                sorted(
+                    unknown_run_ids
+                )
+            )
+        )
+
+    selected = [
+        job
+        for job in jobs
+        if (
+            not requested_job_ids
+            or str(
+                job[
+                    "job_id"
+                ]
+            )
+            in requested_job_ids
+        )
+        and (
+            not requested_seeds
+            or int(
+                job[
+                    "seed"
+                ]
+            )
+            in requested_seeds
+        )
+        and (
+            not requested_run_ids
+            or str(
+                job[
+                    "run_id"
+                ]
+            )
+            in requested_run_ids
+        )
+    ]
+    if (
+        (
+            requested_job_ids
+            or requested_seeds
+            or requested_run_ids
+        )
+        and not selected
+    ):
+        raise ValueError(
+            "suite execution filters select no runs"
+        )
+    return selected
 
 
 def _completed_run_matches_job(
@@ -1831,6 +1981,9 @@ def execute_suite(
     *,
     continue_on_error: bool = False,
     resume: bool = True,
+    job_ids: tuple[str, ...] | None = None,
+    seeds: tuple[int, ...] | None = None,
+    run_ids: tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
     manifest = materialize_suite(
         suite_name,
@@ -1840,10 +1993,29 @@ def execute_suite(
     if not isinstance(git_commit, str) or not git_commit:
         raise RuntimeError("suite execution requires a concrete git commit for provenance")
 
+    manifest_jobs = manifest[
+        "jobs"
+    ]
+    if not isinstance(
+        manifest_jobs,
+        list,
+    ):
+        raise TypeError(
+            "suite manifest jobs must be a list"
+        )
+    selected_jobs = (
+        _select_execution_jobs(
+            manifest_jobs,
+            job_ids=job_ids,
+            seeds=seeds,
+            run_ids=run_ids,
+        )
+    )
+
     failures: list[str] = []
     skipped: list[str] = []
     executed: list[str] = []
-    for job in manifest["jobs"]:
+    for job in selected_jobs:
         run_dir = Path(job["run_dir"])
         run_dir.mkdir(
             parents=True,
@@ -1962,18 +2134,100 @@ def execute_suite(
             if not continue_on_error:
                 break
 
+    selected_run_ids = [
+        str(
+            job[
+                "run_id"
+            ]
+        )
+        for job in selected_jobs
+    ]
+    selection = {
+        "job_ids": sorted(
+            set(
+                job_ids
+                or ()
+            )
+        ),
+        "seeds": sorted(
+            set(
+                seeds
+                or ()
+            )
+        ),
+        "run_ids": sorted(
+            set(
+                run_ids
+                or ()
+            )
+        ),
+    }
     summary = {
         "suite": suite_name,
         "manifest_path": manifest["manifest_path"],
-        "jobs_declared": len(manifest["jobs"]),
+        "jobs_declared": len(manifest_jobs),
+        "jobs_selected": len(selected_jobs),
+        "selected_run_ids": selected_run_ids,
         "jobs_executed": len(executed),
         "jobs_skipped": len(skipped),
         "executed_run_ids": executed,
         "skipped_run_ids": skipped,
         "failures": failures,
+        "selection": selection,
         "status": "success" if not failures else "failed",
     }
-    summary_path = Path(output_root) / suite_name / "suite_execution_summary.json"
+
+    filtered = any(
+        (
+            job_ids,
+            seeds,
+            run_ids,
+        )
+    )
+    suite_dir = (
+        Path(
+            output_root
+        )
+        / suite_name
+    )
+    if filtered:
+        selection_key = hashlib.sha256(
+            "\n".join(
+                sorted(
+                    selected_run_ids
+                )
+            ).encode(
+                "utf-8"
+            )
+        ).hexdigest()[
+            :16
+        ]
+        summary_dir = (
+            suite_dir
+            / "execution_summaries"
+        )
+        summary_dir.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+        summary_path = (
+            summary_dir
+            / (
+                "selection_"
+                + selection_key
+                + ".json"
+            )
+        )
+    else:
+        summary_path = (
+            suite_dir
+            / "suite_execution_summary.json"
+        )
+    summary[
+        "summary_path"
+    ] = str(
+        summary_path
+    )
     summary_path.write_text(
         json.dumps(
             summary,
