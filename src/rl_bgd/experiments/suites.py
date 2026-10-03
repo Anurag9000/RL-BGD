@@ -1785,9 +1785,15 @@ def _completed_run_matches_job(
         "job_id": job["job_id"],
         "comparison_group": job["comparison_group"],
         "suite": suite_name,
+        "suite_revision": job["suite_revision"],
         "git_commit": git_commit,
         "target": job["target"],
-        "kwargs": job["kwargs"],
+        "kwargs": json.loads(
+            json.dumps(
+                job["kwargs"],
+                sort_keys=True,
+            )
+        ),
         "seed": job["seed"],
         "algorithm": job["algorithm"],
         "environment": job["environment"],
@@ -1812,7 +1818,11 @@ def _completed_run_matches_job(
         )
     except (OSError, TypeError, ValueError):
         return False
-    return loaded.manifest.run_id == job["run_id"] and loaded.manifest.git_commit == git_commit
+    return (
+        loaded.manifest.run_id == job["run_id"]
+        and loaded.manifest.git_commit == git_commit
+        and loaded.manifest.metadata.get("suite_revision") == job["suite_revision"]
+    )
 
 
 def execute_suite(
@@ -1915,6 +1925,7 @@ def execute_suite(
             "job_id": job["job_id"],
             "comparison_group": job["comparison_group"],
             "suite": suite_name,
+            "suite_revision": job["suite_revision"],
             "git_commit": git_commit,
             "target": job["target"],
             "kwargs": job["kwargs"],
