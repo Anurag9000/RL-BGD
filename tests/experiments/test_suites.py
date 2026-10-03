@@ -743,43 +743,20 @@ def test_execute_suite_filters_one_seed_without_touching_other_runs(
     assert result["jobs_declared"] == 2
     assert result["jobs_selected"] == 1
     assert result["jobs_executed"] == 1
-    assert result["selected_run_ids"] == [
-        "smoke__tiny_smoke__seed_1"
-    ]
+    assert result["selected_run_ids"] == ["smoke__tiny_smoke__seed_1"]
     assert result["selection"] == {
         "job_ids": [],
         "seeds": [1],
         "run_ids": [],
     }
-    summary_path = Path(
-        result[
-            "summary_path"
-        ]
-    )
-    assert (
-        summary_path.parent.name
-        == "execution_summaries"
-    )
+    summary_path = Path(result["summary_path"])
+    assert summary_path.parent.name == "execution_summaries"
     assert summary_path.is_file()
 
-    seed_one = (
-        tmp_path
-        / "smoke"
-        / "smoke__tiny_smoke__seed_1"
-    )
-    seed_zero = (
-        tmp_path
-        / "smoke"
-        / "smoke__tiny_smoke__seed_0"
-    )
-    assert (
-        seed_one
-        / "run_metadata.json"
-    ).is_file()
-    assert not (
-        seed_zero
-        / "run_metadata.json"
-    ).exists()
+    seed_one = tmp_path / "smoke" / "smoke__tiny_smoke__seed_1"
+    seed_zero = tmp_path / "smoke" / "smoke__tiny_smoke__seed_0"
+    assert (seed_one / "run_metadata.json").is_file()
+    assert not (seed_zero / "run_metadata.json").exists()
 
 
 def test_execute_suite_filter_validation_is_fail_closed(
@@ -816,9 +793,7 @@ def test_execute_suite_filter_validation_is_fail_closed(
         execute_suite(
             suite.name,
             tmp_path,
-            job_ids=(
-                "missing_job",
-            ),
+            job_ids=("missing_job",),
         )
 
     with pytest.raises(
@@ -828,9 +803,7 @@ def test_execute_suite_filter_validation_is_fail_closed(
         execute_suite(
             suite.name,
             tmp_path,
-            run_ids=(
-                "missing_run",
-            ),
+            run_ids=("missing_run",),
         )
 
 
@@ -973,15 +946,11 @@ def test_execute_suite_can_force_rerun_of_matching_success(
     assert result["jobs_skipped"] == 0
     assert stdout_path.read_text(encoding="utf-8") != "force-rerun-sentinel"
     assert len(result["archived_runs"]) == 1
-    archived = Path(
-        result["archived_runs"][0]["path"]
-    )
+    archived = Path(result["archived_runs"][0]["path"])
     assert archived.parent.name == "smoke__tiny_smoke__seed_0"
     archived_run = load_run_directory(archived)
     assert archived_run.manifest.run_id == "smoke__tiny_smoke__seed_0"
-    metadata = json.loads(
-        (run_dir / "run_metadata.json").read_text(encoding="utf-8")
-    )
+    metadata = json.loads((run_dir / "run_metadata.json").read_text(encoding="utf-8"))
     assert metadata["supersedes_archive"] == str(archived)
 
 

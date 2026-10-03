@@ -1744,9 +1744,7 @@ def _write_json_atomic(
         parents=True,
         exist_ok=True,
     )
-    temporary = path.with_name(
-        f".{path.name}.{os.getpid()}.{time.monotonic_ns()}.tmp"
-    )
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.{time.monotonic_ns()}.tmp")
     try:
         temporary.write_text(
             json.dumps(
@@ -1761,9 +1759,7 @@ def _write_json_atomic(
             path,
         )
     finally:
-        temporary.unlink(
-            missing_ok=True
-        )
+        temporary.unlink(missing_ok=True)
 
 
 def materialize_suite(
@@ -1787,9 +1783,7 @@ def materialize_suite(
         "jobs": _expanded_jobs(suite, root),
     }
     path = suite_dir / "suite_manifest.json"
-    temporary = path.with_name(
-        f".{path.name}.{os.getpid()}.tmp"
-    )
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
     try:
         temporary.write_text(
             json.dumps(
@@ -1818,129 +1812,35 @@ def _select_execution_jobs(
     seeds: tuple[int, ...] | None,
     run_ids: tuple[str, ...] | None,
 ) -> list[dict[str, Any]]:
-    requested_job_ids = set(
-        job_ids
-        or ()
-    )
-    requested_seeds = set(
-        seeds
-        or ()
-    )
-    requested_run_ids = set(
-        run_ids
-        or ()
-    )
+    requested_job_ids = set(job_ids or ())
+    requested_seeds = set(seeds or ())
+    requested_run_ids = set(run_ids or ())
 
-    known_job_ids = {
-        str(
-            job[
-                "job_id"
-            ]
-        )
-        for job in jobs
-    }
-    known_seeds = {
-        int(
-            job[
-                "seed"
-            ]
-        )
-        for job in jobs
-    }
-    known_run_ids = {
-        str(
-            job[
-                "run_id"
-            ]
-        )
-        for job in jobs
-    }
+    known_job_ids = {str(job["job_id"]) for job in jobs}
+    known_seeds = {int(job["seed"]) for job in jobs}
+    known_run_ids = {str(job["run_id"]) for job in jobs}
 
-    unknown_job_ids = (
-        requested_job_ids
-        - known_job_ids
-    )
+    unknown_job_ids = requested_job_ids - known_job_ids
     if unknown_job_ids:
-        raise KeyError(
-            "unknown suite job IDs: "
-            + ", ".join(
-                sorted(
-                    unknown_job_ids
-                )
-            )
-        )
-    unknown_seeds = (
-        requested_seeds
-        - known_seeds
-    )
+        raise KeyError("unknown suite job IDs: " + ", ".join(sorted(unknown_job_ids)))
+    unknown_seeds = requested_seeds - known_seeds
     if unknown_seeds:
         raise KeyError(
-            "unknown suite seeds: "
-            + ", ".join(
-                str(
-                    value
-                )
-                for value in sorted(
-                    unknown_seeds
-                )
-            )
+            "unknown suite seeds: " + ", ".join(str(value) for value in sorted(unknown_seeds))
         )
-    unknown_run_ids = (
-        requested_run_ids
-        - known_run_ids
-    )
+    unknown_run_ids = requested_run_ids - known_run_ids
     if unknown_run_ids:
-        raise KeyError(
-            "unknown suite run IDs: "
-            + ", ".join(
-                sorted(
-                    unknown_run_ids
-                )
-            )
-        )
+        raise KeyError("unknown suite run IDs: " + ", ".join(sorted(unknown_run_ids)))
 
     selected = [
         job
         for job in jobs
-        if (
-            not requested_job_ids
-            or str(
-                job[
-                    "job_id"
-                ]
-            )
-            in requested_job_ids
-        )
-        and (
-            not requested_seeds
-            or int(
-                job[
-                    "seed"
-                ]
-            )
-            in requested_seeds
-        )
-        and (
-            not requested_run_ids
-            or str(
-                job[
-                    "run_id"
-                ]
-            )
-            in requested_run_ids
-        )
+        if (not requested_job_ids or str(job["job_id"]) in requested_job_ids)
+        and (not requested_seeds or int(job["seed"]) in requested_seeds)
+        and (not requested_run_ids or str(job["run_id"]) in requested_run_ids)
     ]
-    if (
-        (
-            requested_job_ids
-            or requested_seeds
-            or requested_run_ids
-        )
-        and not selected
-    ):
-        raise ValueError(
-            "suite execution filters select no runs"
-        )
+    if (requested_job_ids or requested_seeds or requested_run_ids) and not selected:
+        raise ValueError("suite execution filters select no runs")
     return selected
 
 
@@ -1955,10 +1855,13 @@ def _archive_existing_run(
     if not run_dir.is_dir():
         return None
     try:
-        has_contents = next(
-            run_dir.iterdir(),
-            None,
-        ) is not None
+        has_contents = (
+            next(
+                run_dir.iterdir(),
+                None,
+            )
+            is not None
+        )
     except OSError:
         has_contents = True
     if not has_contents:
@@ -1982,9 +1885,7 @@ def _archive_existing_run(
             payload,
             dict,
         ):
-            raw_commit = payload.get(
-                "git_commit"
-            )
+            raw_commit = payload.get("git_commit")
             if (
                 isinstance(
                     raw_commit,
@@ -1992,55 +1893,24 @@ def _archive_existing_run(
                 )
                 and raw_commit.strip()
             ):
-                prior_commit = raw_commit.strip()[
-                    :12
-                ]
+                prior_commit = raw_commit.strip()[:12]
 
-    root = Path(
-        output_root
-    )
-    archive_base = (
-        root.parent
-        / (
-            (root.name or "results")
-            + "_archives"
-        )
-    )
-    archive_parent = (
-        archive_base
-        / suite_name
-        / run_dir.name
-    )
+    root = Path(output_root)
+    archive_base = root.parent / ((root.name or "results") + "_archives")
+    archive_parent = archive_base / suite_name / run_dir.name
     archive_parent.mkdir(
         parents=True,
         exist_ok=True,
     )
-    timestamp = datetime.now(
-        UTC
-    ).strftime(
-        "%Y%m%dT%H%M%S%fZ"
-    )
-    destination = (
-        archive_parent
-        / f"{prior_commit}__{timestamp}"
-    )
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+    destination = archive_parent / f"{prior_commit}__{timestamp}"
     counter = 1
     while destination.exists():
-        destination = (
-            archive_parent
-            / (
-                f"{prior_commit}__{timestamp}"
-                f"__{counter}"
-            )
-        )
+        destination = archive_parent / (f"{prior_commit}__{timestamp}__{counter}")
         counter += 1
     shutil.move(
-        str(
-            run_dir
-        ),
-        str(
-            destination
-        ),
+        str(run_dir),
+        str(destination),
     )
     return destination
 
@@ -2127,23 +1997,17 @@ def execute_suite(
     if not isinstance(git_commit, str) or not git_commit:
         raise RuntimeError("suite execution requires a concrete git commit for provenance")
 
-    manifest_jobs = manifest[
-        "jobs"
-    ]
+    manifest_jobs = manifest["jobs"]
     if not isinstance(
         manifest_jobs,
         list,
     ):
-        raise TypeError(
-            "suite manifest jobs must be a list"
-        )
-    selected_jobs = (
-        _select_execution_jobs(
-            manifest_jobs,
-            job_ids=job_ids,
-            seeds=seeds,
-            run_ids=run_ids,
-        )
+        raise TypeError("suite manifest jobs must be a list")
+    selected_jobs = _select_execution_jobs(
+        manifest_jobs,
+        job_ids=job_ids,
+        seeds=seeds,
+        run_ids=run_ids,
     )
 
     failures: list[str] = []
@@ -2168,12 +2032,8 @@ def execute_suite(
         if archived_path is not None:
             archived.append(
                 {
-                    "run_id": str(
-                        job["run_id"]
-                    ),
-                    "path": str(
-                        archived_path
-                    ),
+                    "run_id": str(job["run_id"]),
+                    "path": str(archived_path),
                 }
             )
         run_dir.mkdir(
@@ -2271,13 +2131,7 @@ def execute_suite(
             "stdout_path": str(stdout_path),
             "stderr_path": str(stderr_path),
             "strict_artifacts": status == "success",
-            "supersedes_archive": (
-                str(
-                    archived_path
-                )
-                if archived_path is not None
-                else None
-            ),
+            "supersedes_archive": (str(archived_path) if archived_path is not None else None),
         }
         metadata_path.write_text(
             json.dumps(
@@ -2292,33 +2146,11 @@ def execute_suite(
             if not continue_on_error:
                 break
 
-    selected_run_ids = [
-        str(
-            job[
-                "run_id"
-            ]
-        )
-        for job in selected_jobs
-    ]
+    selected_run_ids = [str(job["run_id"]) for job in selected_jobs]
     selection = {
-        "job_ids": sorted(
-            set(
-                job_ids
-                or ()
-            )
-        ),
-        "seeds": sorted(
-            set(
-                seeds
-                or ()
-            )
-        ),
-        "run_ids": sorted(
-            set(
-                run_ids
-                or ()
-            )
-        ),
+        "job_ids": sorted(set(job_ids or ())),
+        "seeds": sorted(set(seeds or ())),
+        "run_ids": sorted(set(run_ids or ())),
     }
     summary = {
         "suite": suite_name,
@@ -2343,12 +2175,7 @@ def execute_suite(
             run_ids,
         )
     )
-    suite_dir = (
-        Path(
-            output_root
-        )
-        / suite_name
-    )
+    suite_dir = Path(output_root) / suite_name
     if filtered:
         selection_key = hashlib.sha256(
             "\n".join(
@@ -2369,24 +2196,10 @@ def execute_suite(
             parents=True,
             exist_ok=True,
         )
-        summary_path = (
-            summary_dir
-            / (
-                "selection_"
-                + selection_key
-                + ".json"
-            )
-        )
+        summary_path = summary_dir / ("selection_" + selection_key + ".json")
     else:
-        summary_path = (
-            suite_dir
-            / "suite_execution_summary.json"
-        )
-    summary[
-        "summary_path"
-    ] = str(
-        summary_path
-    )
+        summary_path = suite_dir / "suite_execution_summary.json"
+    summary["summary_path"] = str(summary_path)
     _write_json_atomic(
         summary_path,
         summary,

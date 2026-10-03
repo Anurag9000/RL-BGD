@@ -61,24 +61,9 @@ def main() -> None:
             args.output_root,
             continue_on_error=args.continue_on_error,
             resume=not args.no_resume,
-            job_ids=(
-                tuple(
-                    args.job_id
-                )
-                or None
-            ),
-            seeds=(
-                tuple(
-                    args.seed
-                )
-                or None
-            ),
-            run_ids=(
-                tuple(
-                    args.run_id
-                )
-                or None
-            ),
+            job_ids=(tuple(args.job_id) or None),
+            seeds=(tuple(args.seed) or None),
+            run_ids=(tuple(args.run_id) or None),
         )
     else:
         result = materialize_suite(
