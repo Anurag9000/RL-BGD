@@ -2176,20 +2176,9 @@ def execute_suite(
     suite_dir = Path(output_root) / suite_name
     if filtered:
         selection_key = hashlib.sha256(
-            "\n".join(
-                sorted(
-                    selected_run_ids
-                )
-            ).encode(
-                "utf-8"
-            )
-        ).hexdigest()[
-            :16
-        ]
-        summary_dir = (
-            suite_dir
-            / "execution_summaries"
-        )
+            "\n".join(sorted(selected_run_ids)).encode("utf-8")
+        ).hexdigest()[:16]
+        summary_dir = suite_dir / "execution_summaries"
         summary_dir.mkdir(
             parents=True,
             exist_ok=True,
