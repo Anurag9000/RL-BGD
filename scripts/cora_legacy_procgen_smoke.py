@@ -8,7 +8,6 @@ from typing import Any
 import gym
 import numpy as np
 import procgen
-
 from continual_rl.experiments.tasks.make_procgen_task import (
     get_single_procgen_task,
 )
