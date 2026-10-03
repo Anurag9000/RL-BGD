@@ -30,6 +30,8 @@ python -m pip install -e ".[dev]"
 pytest
 python scripts/smoke_test.py
 python scripts/run_paper_suite.py smoke --output-root artifacts/suites
+# For expensive suites on multi-GPU machines:
+python scripts/run_paper_suite_parallel.py cw10_core --output-root artifacts/suites --gpu-ids 0,1
 python scripts/build_paper_artifacts.py --results-root artifacts/suites --output-dir artifacts/paper
 ```
 
