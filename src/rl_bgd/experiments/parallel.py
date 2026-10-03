@@ -120,14 +120,12 @@ def detect_gpu_ids(
     visible = env.get(
         "CUDA_VISIBLE_DEVICES"
     )
-    if (
-        visible is not None
-        and visible.strip()
-        not in {
+    if visible is not None:
+        if visible.strip() in {
             "",
             "-1",
-        }
-    ):
+        }:
+            return ()
         return parse_gpu_ids(
             visible
         )
@@ -550,6 +548,13 @@ def run_suite_parallel(
                 job = run_queue.get_nowait()
             except queue.Empty:
                 return
+
+            run_id = str(
+                job["run_id"]
+            )
+            started = (
+                time.perf_counter()
+            )
             try:
                 if slot.gpu_id is not None:
                     _wait_for_gpu(
@@ -583,9 +588,6 @@ def run_suite_parallel(
                     "RL_BGD_WORKER_SLOT"
                 ] = slot.name
 
-                run_id = str(
-                    job["run_id"]
-                )
                 command = _child_command(
                     suite_name=(
                         suite_name
@@ -596,16 +598,9 @@ def run_suite_parallel(
                     run_id=run_id,
                     resume=resume,
                 )
-                started = (
-                    time.perf_counter()
-                )
                 completed = runner(
                     command,
                     environment,
-                )
-                duration = (
-                    time.perf_counter()
-                    - started
                 )
                 result = (
                     ParallelRunResult(
@@ -618,7 +613,8 @@ def run_suite_parallel(
                             completed.returncode
                         ),
                         duration_seconds=(
-                            duration
+                            time.perf_counter()
+                            - started
                         ),
                         stdout=(
                             completed.stdout
@@ -628,11 +624,31 @@ def run_suite_parallel(
                         ),
                     )
                 )
+            except Exception as exc:
+                result = (
+                    ParallelRunResult(
+                        run_id=run_id,
+                        worker=slot.name,
+                        gpu_id=(
+                            slot.gpu_id
+                        ),
+                        returncode=-1,
+                        duration_seconds=(
+                            time.perf_counter()
+                            - started
+                        ),
+                        stdout="",
+                        stderr=(
+                            f"{type(exc).__name__}: "
+                            f"{exc}"
+                        ),
+                    )
+                )
+            finally:
                 with results_lock:
                     results.append(
                         result
                     )
-            finally:
                 run_queue.task_done()
 
     threads = [
