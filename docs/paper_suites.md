@@ -47,6 +47,26 @@ summary, while the complete suite manifest is written atomically. This allows
 Slurm arrays or one-process-per-GPU launchers to share an output root without
 mixing run directories or overwriting the full-suite summary.
 
+GPU-first parallel execution is also provided directly:
+
+    python scripts/run_paper_suite_parallel.py cw10_core \
+      --output-root artifacts/suites \
+      --gpu-ids 0,1,2,3 \
+      --min-free-vram-mb 12000 \
+      --max-gpu-utilization 25
+
+The parallel launcher materializes the same canonical suite and invokes the
+existing one-run launcher for each selected expanded run; it does not bypass
+resume, supersession archives, strict artifacts, or provenance checks. By
+default it creates one worker per detected GPU and sets a per-child
+`CUDA_VISIBLE_DEVICES`, so an `device=auto` runner sees only its assigned GPU.
+If no GPU is visible it falls back to one CPU worker. `--workers-per-gpu` and
+`--cpu-workers` are explicit opt-ins for higher concurrency. Optional free-VRAM
+and utilization thresholds are polled before a GPU worker launches its next
+run (30 s default). Worker exceptions and non-zero child exits are retained in
+`parallel_execution_summary.json`; rerunning the command safely resumes strict
+matching successes.
+
 Successful jobs are converted into the canonical Phase-15 schema:
 
 - manifest.json
