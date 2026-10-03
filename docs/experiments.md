@@ -90,4 +90,27 @@ again automatically.
 Use `--continue-on-error` to preserve a failed run artifact and continue with
 the remaining jobs. Use `--no-resume` to force every declared job to execute
 again even when a matching strict success already exists. The suite execution
-summary records executed, skipped, and failed run IDs explicitly.
+summary records selected, executed, skipped, and failed run IDs explicitly.
+
+Large suites can be partitioned deterministically for cluster, Slurm, or
+multi-GPU orchestration without weakening provenance. Repeat `--job-id`,
+`--seed`, or `--run-id` to select an intersection of declared jobs. For
+example:
+
+    python scripts/run_paper_suite.py cw20_final \
+      --output-root artifacts/suites \
+      --execute \
+      --job-id cw20_task_aware_bgd \
+      --seed 3
+
+Materialization still writes the complete suite manifest. A filtered worker
+executes only its selected run directories and writes a selection-specific
+summary under `execution_summaries/`, so independent workers do not overwrite
+the full-suite execution summary. The suite-manifest write is atomic, allowing
+separate workers to materialize the same suite safely. Unknown job IDs, seeds,
+or expanded run IDs fail before training starts.
+
+For GPU arrays, launch one filtered process per assigned GPU/process and leave
+the job's `device: auto` setting intact; process-level CUDA visibility can be
+set by the scheduler. This avoids hidden in-process GPU contention while
+preserving the same runner code and canonical artifacts.
