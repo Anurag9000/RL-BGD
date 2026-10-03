@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -71,41 +72,6 @@ def test_detect_gpu_ids_prefers_explicit_then_visible_environment() -> None:
 
 
 def test_worker_slots_are_gpu_first_with_cpu_fallback() -> None:
-    assert build_worker_slots(
-        gpu_ids=(
-            "0",
-            "2",
-        ),
-        workers_per_gpu=2,
-        cpu_workers=7,
-    ) == (
-        pytest.helpers.worker_slot(
-            "gpu-0-worker-0",
-            "0",
-        )
-        if False
-        else build_worker_slots(
-            gpu_ids=(
-                "0",
-                "2",
-            ),
-            workers_per_gpu=2,
-            cpu_workers=7,
-        )[
-            0
-        ],
-        *build_worker_slots(
-            gpu_ids=(
-                "0",
-                "2",
-            ),
-            workers_per_gpu=2,
-            cpu_workers=7,
-        )[
-            1:
-        ],
-    )
-
     slots = build_worker_slots(
         gpu_ids=(
             "0",
@@ -189,6 +155,9 @@ def test_parallel_suite_assigns_each_child_to_worker_gpu(
             dict[str, str],
         ]
     ] = []
+    barrier = threading.Barrier(
+        2
+    )
 
     def fake_runner(
         command: Any,
@@ -201,6 +170,9 @@ def test_parallel_suite_assigns_each_child_to_worker_gpu(
                 tuple(command),
                 dict(environment),
             )
+        )
+        barrier.wait(
+            timeout=5.0
         )
         return subprocess.CompletedProcess(
             args=list(command),
@@ -367,6 +339,81 @@ def test_parallel_suite_cpu_fallback_hides_cuda(
     ][
         "CUDA_VISIBLE_DEVICES"
     ] == ""
+
+
+def test_parallel_suite_records_worker_exception_as_failure(
+    tmp_path: Path,
+) -> None:
+    manifest = materialize_suite(
+        "smoke",
+        tmp_path,
+    )
+    jobs = manifest[
+        "jobs"
+    ]
+    assert isinstance(
+        jobs,
+        list,
+    )
+    run_id = str(
+        jobs[
+            0
+        ][
+            "run_id"
+        ]
+    )
+
+    def failing_runner(
+        command: Any,
+        environment: Any,
+    ) -> subprocess.CompletedProcess[
+        str
+    ]:
+        del command, environment
+        raise RuntimeError(
+            "synthetic worker failure"
+        )
+
+    summary = run_suite_parallel(
+        "smoke",
+        tmp_path,
+        run_ids=(
+            run_id,
+        ),
+        gpu_ids=(),
+        command_runner=(
+            failing_runner
+        ),
+    )
+
+    assert summary[
+        "status"
+    ] == "failed"
+    assert summary[
+        "failures"
+    ] == [
+        run_id
+    ]
+    results = summary[
+        "results"
+    ]
+    assert isinstance(
+        results,
+        list,
+    )
+    assert results[
+        0
+    ][
+        "returncode"
+    ] == -1
+    assert (
+        "synthetic worker failure"
+        in results[
+            0
+        ][
+            "stderr"
+        ]
+    )
 
 
 def test_parallel_suite_rejects_unknown_run_selection(
