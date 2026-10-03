@@ -758,9 +758,11 @@ def test_execute_suite_writes_strict_artifacts(
         )
     )
     resolved = config["invocation"]["resolved_call_kwargs"]
-    assert resolved["seed"] == 0
-    assert resolved["device"] == "cpu"
-    assert resolved["dimension"] == 4
+    assert resolved == {
+        "steps": 4,
+        "seed": 0,
+        "device": "cpu",
+    }
 
 
 def test_execute_suite_filters_one_seed_without_touching_other_runs(
