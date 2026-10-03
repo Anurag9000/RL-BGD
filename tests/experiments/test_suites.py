@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
+import yaml
 
 from rl_bgd.artifacts import load_run_directory
 from rl_bgd.experiments.suites import (
@@ -751,6 +752,15 @@ def test_execute_suite_writes_strict_artifacts(
     assert metadata["suite_revision"] == 3
     assert loaded.manifest.metadata["comparison_group"] == "tiny_smoke_group"
     assert loaded.manifest.metadata["suite_revision"] == 3
+    config = yaml.safe_load(
+        (run_dir / "config.yaml").read_text(
+            encoding="utf-8",
+        )
+    )
+    resolved = config["invocation"]["resolved_call_kwargs"]
+    assert resolved["seed"] == 0
+    assert resolved["device"] == "cpu"
+    assert resolved["dimension"] == 4
 
 
 def test_execute_suite_filters_one_seed_without_touching_other_runs(
