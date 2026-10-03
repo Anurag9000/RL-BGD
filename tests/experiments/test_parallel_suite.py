@@ -286,6 +286,75 @@ def test_parallel_suite_assigns_each_child_to_worker_gpu(
     )
 
 
+def test_parallel_suite_default_pressure_policy_does_not_poll_gpu(
+    tmp_path: Path,
+) -> None:
+    manifest = materialize_suite(
+        "smoke",
+        tmp_path,
+    )
+    jobs = manifest[
+        "jobs"
+    ]
+    assert isinstance(
+        jobs,
+        list,
+    )
+    run_id = str(
+        jobs[
+            0
+        ][
+            "run_id"
+        ]
+    )
+
+    def fake_runner(
+        command: Any,
+        environment: Any,
+    ) -> subprocess.CompletedProcess[
+        str
+    ]:
+        assert (
+            environment[
+                "CUDA_VISIBLE_DEVICES"
+            ]
+            == "3"
+        )
+        return subprocess.CompletedProcess(
+            args=list(command),
+            returncode=0,
+            stdout="{}",
+            stderr="",
+        )
+
+    def forbidden_state_reader(
+        gpu_id: str,
+    ) -> GpuState:
+        raise AssertionError(
+            "no-op pressure policy must not poll GPU state: "
+            f"{gpu_id}"
+        )
+
+    summary = run_suite_parallel(
+        "smoke",
+        tmp_path,
+        run_ids=(
+            run_id,
+        ),
+        gpu_ids=(
+            "3",
+        ),
+        command_runner=fake_runner,
+        state_reader=(
+            forbidden_state_reader
+        ),
+    )
+
+    assert summary[
+        "status"
+    ] == "success"
+
+
 def test_parallel_suite_cpu_fallback_hides_cuda(
     tmp_path: Path,
 ) -> None:
