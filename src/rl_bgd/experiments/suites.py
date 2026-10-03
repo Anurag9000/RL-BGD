@@ -501,77 +501,7 @@ def _regularized_baseline_jobs(
     )
 
 
-SMOKE = ExperimentSuite(
-    name="smoke",
-    description="Dependency-light stationary and hidden-context execution gates.",
-    jobs=(
-        _job(
-            "sac_adam_lqr",
-            "A",
-            "rl_bgd.runners.sac_lqr:run_sac_lqr",
-            kwargs={
-                "steps": 96,
-                "device": "cpu",
-            },
-            seeds=(0,),
-            algorithm="SAC-Adam",
-            environment="synthetic_lqr",
-            protocol="stationary",
-            config_path="configs/environments/lqr_smoke.yaml",
-            primary_metric="post_return",
-            secondary_metrics=("improvement",),
-            comparison_group="smoke_sac",
-            runtime_class="smoke",
-        ),
-        _job(
-            "sac_bgd_lqr",
-            "A",
-            "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
-            kwargs={
-                "steps": 96,
-                "device": "cpu",
-                "bayesianization": "critic_only",
-                "evaluation_seed": 20_000,
-            },
-            seeds=(0,),
-            algorithm="SAC-BGD",
-            environment="synthetic_lqr",
-            protocol="stationary",
-            config_path="configs/algorithms/sac_bgd.yaml",
-            primary_metric="post_return",
-            secondary_metrics=(
-                "improvement",
-                "training.last_update_metrics.critic1_sigma_mean",
-            ),
-            comparison_group="smoke_sac",
-            runtime_class="smoke",
-        ),
-        _job(
-            "ppo_adam_lqr",
-            "A",
-            "rl_bgd.runners.ppo_lqr:run_ppo_lqr",
-            kwargs={
-                **_CANONICAL_PPO_CONTROL_KWARGS,
-                "steps": 128,
-                "device": "cpu",
-            },
-            seeds=(0,),
-            algorithm="PPO-Adam",
-            environment="synthetic_lqr",
-            protocol="stationary",
-            config_path="configs/algorithms/ppo_adam.yaml",
-            primary_metric="post_return",
-            secondary_metrics=("improvement",),
-            comparison_group="smoke_ppo",
-            runtime_class="smoke",
-        ),
-    ),
-)
-
-
-_STATIONARY_SAC_COMMON: dict[str, Any] = {
-    "steps": 800,
-    "device": "auto",
+_MATCHED_SAC_CONTROL_KWARGS: dict[str, Any] = {
     "horizon": 30,
     "hidden_dims": (32, 32),
     "gamma": 0.99,
@@ -590,9 +520,7 @@ _STATIONARY_SAC_COMMON: dict[str, Any] = {
     "evaluation_seed": 20_000,
 }
 
-_STATIONARY_PPO_COMMON: dict[str, Any] = {
-    "steps": 800,
-    "device": "auto",
+_MATCHED_PPO_CONTROL_KWARGS: dict[str, Any] = {
     "horizon": 30,
     "hidden_dims": (32, 32),
     "gamma": 0.99,
@@ -614,6 +542,76 @@ _STATIONARY_PPO_COMMON: dict[str, Any] = {
 }
 
 
+SMOKE = ExperimentSuite(
+    name="smoke",
+    description="Dependency-light stationary and hidden-context execution gates.",
+    jobs=(
+        _job(
+            "sac_adam_lqr",
+            "A",
+            "rl_bgd.runners.sac_lqr:run_sac_lqr",
+            kwargs={
+                **_MATCHED_SAC_CONTROL_KWARGS,
+                "steps": 96,
+                "device": "cpu",
+            },
+            seeds=(0,),
+            algorithm="SAC-Adam",
+            environment="synthetic_lqr",
+            protocol="stationary",
+            config_path="configs/environments/lqr_smoke.yaml",
+            primary_metric="post_return",
+            secondary_metrics=("improvement",),
+            comparison_group="smoke_sac",
+            runtime_class="smoke",
+        ),
+        _job(
+            "sac_bgd_lqr",
+            "A",
+            "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
+            kwargs={
+                **_MATCHED_SAC_CONTROL_KWARGS,
+                "steps": 96,
+                "device": "cpu",
+                "bayesianization": "critic_only",
+                "mc_samples": 2,
+            },
+            seeds=(0,),
+            algorithm="SAC-BGD",
+            environment="synthetic_lqr",
+            protocol="stationary",
+            config_path="configs/algorithms/sac_bgd.yaml",
+            primary_metric="post_return",
+            secondary_metrics=(
+                "improvement",
+                "training.last_update_metrics.critic1_sigma_mean",
+            ),
+            comparison_group="smoke_sac",
+            runtime_class="smoke",
+        ),
+        _job(
+            "ppo_adam_lqr",
+            "A",
+            "rl_bgd.runners.ppo_lqr:run_ppo_lqr",
+            kwargs={
+                **_MATCHED_PPO_CONTROL_KWARGS,
+                "steps": 128,
+                "device": "cpu",
+            },
+            seeds=(0,),
+            algorithm="PPO-Adam",
+            environment="synthetic_lqr",
+            protocol="stationary",
+            config_path="configs/algorithms/ppo_adam.yaml",
+            primary_metric="post_return",
+            secondary_metrics=("improvement",),
+            comparison_group="smoke_ppo",
+            runtime_class="smoke",
+        ),
+    ),
+)
+
+
 STATIONARY_CORE = ExperimentSuite(
     name="stationary_core",
     description=("Five-seed stationary SAC/PPO Adam-versus-BGD learning confirmation."),
@@ -622,7 +620,11 @@ STATIONARY_CORE = ExperimentSuite(
             "stationary_sac_adam",
             "A",
             "rl_bgd.runners.sac_lqr:run_sac_lqr",
-            kwargs=dict(_STATIONARY_SAC_COMMON),
+            kwargs={
+                **_MATCHED_SAC_CONTROL_KWARGS,
+                "steps": 800,
+                "device": "auto",
+            },
             seeds=(0, 1, 2, 3, 4),
             algorithm="SAC-Adam",
             environment="synthetic_lqr",
@@ -641,7 +643,9 @@ STATIONARY_CORE = ExperimentSuite(
             "A",
             "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
             kwargs={
-                **_STATIONARY_SAC_COMMON,
+                **_MATCHED_SAC_CONTROL_KWARGS,
+                "steps": 800,
+                "device": "auto",
                 "bayesianization": "critic_only",
                 "mc_samples": 2,
             },
@@ -663,7 +667,7 @@ STATIONARY_CORE = ExperimentSuite(
             "A",
             "rl_bgd.runners.ppo_lqr:run_ppo_lqr",
             kwargs={
-                **_CANONICAL_PPO_CONTROL_KWARGS,
+                **_MATCHED_PPO_CONTROL_KWARGS,
                 "steps": 800,
                 "device": "auto",
             },
@@ -685,7 +689,7 @@ STATIONARY_CORE = ExperimentSuite(
             "A",
             "rl_bgd.runners.bgd_ppo_lqr:run_bgd_ppo_lqr",
             kwargs={
-                **_CANONICAL_PPO_CONTROL_KWARGS,
+                **_MATCHED_PPO_CONTROL_KWARGS,
                 "steps": 800,
                 "device": "auto",
                 "bayesianization": "actor_and_value",
@@ -1559,8 +1563,9 @@ COMPUTE_ANALYSIS = ExperimentSuite(
             "COMPUTE",
             "rl_bgd.runners.sac_lqr:run_sac_lqr",
             kwargs={
-                **_STATIONARY_SAC_COMMON,
+                **_MATCHED_SAC_CONTROL_KWARGS,
                 "steps": 600,
+                "device": "auto",
             },
             seeds=(0, 1, 2),
             algorithm="SAC-Adam",
@@ -1581,7 +1586,8 @@ COMPUTE_ANALYSIS = ExperimentSuite(
                 "COMPUTE",
                 "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
                 kwargs={
-                        "steps": 600,
+                    **_MATCHED_SAC_CONTROL_KWARGS,
+                    "steps": 600,
                     "device": "auto",
                     "bayesianization": mode,
                     "mc_samples": 4,
@@ -1611,7 +1617,8 @@ COMPUTE_ANALYSIS = ExperimentSuite(
                 "MC-K",
                 "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr",
                 kwargs={
-                        "steps": 600,
+                    **_MATCHED_SAC_CONTROL_KWARGS,
+                    "steps": 600,
                     "device": "auto",
                     "bayesianization": "critic_only",
                     "mc_samples": mc_samples,
