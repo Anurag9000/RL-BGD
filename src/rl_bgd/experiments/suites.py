@@ -1999,9 +1999,12 @@ def _archive_existing_run(
     root = Path(
         output_root
     )
-    archive_base = root.with_name(
-        root.name
-        + "_archives"
+    archive_base = (
+        root.parent
+        / (
+            (root.name or "results")
+            + "_archives"
+        )
     )
     archive_parent = (
         archive_base
