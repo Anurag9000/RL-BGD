@@ -161,9 +161,7 @@ def _resolve_primary_metric(
 def _comparison_group(
     job: Mapping[str, Any],
 ) -> str | None:
-    raw = job.get(
-        "comparison_group"
-    )
+    raw = job.get("comparison_group")
     if raw is None:
         return None
     if (
@@ -173,9 +171,7 @@ def _comparison_group(
         )
         or not raw.strip()
     ):
-        raise TypeError(
-            "suite comparison_group must be a non-empty string or None"
-        )
+        raise TypeError("suite comparison_group must be a non-empty string or None")
     return raw.strip()
 
 
@@ -192,9 +188,7 @@ def _contract_kwargs(
         raw,
         Mapping,
     ):
-        raise TypeError(
-            "suite job kwargs must be a mapping"
-        )
+        raise TypeError("suite job kwargs must be a mapping")
     normalized: dict[
         str,
         object,
@@ -204,24 +198,21 @@ def _contract_kwargs(
             key,
             str,
         ):
-            raise TypeError(
-                "suite job kwarg names must be strings"
-            )
-        normalized[
-            key
-        ] = value
+            raise TypeError("suite job kwarg names must be strings")
+        normalized[key] = value
 
     for field_name in (
         "seed_kwarg",
         "output_kwarg",
     ):
-        field = job.get(
-            field_name
-        )
-        if isinstance(
-            field,
-            str,
-        ) and field:
+        field = job.get(field_name)
+        if (
+            isinstance(
+                field,
+                str,
+            )
+            and field
+        ):
             normalized.pop(
                 field,
                 None,
@@ -241,54 +232,20 @@ def record_completed_suite_run(
     """Write a completed suite invocation in the canonical raw-run schema."""
 
     if not git_commit.strip():
-        raise ValueError(
-            "completed paper run requires a git commit"
-        )
-    run_id = str(
-        job[
-            "run_id"
-        ]
-    )
-    protocol = str(
-        job[
-            "protocol"
-        ]
-    )
-    comparison_group = (
-        _comparison_group(
-            job
-        )
-    )
-    source_path, source_payload = (
-        _source_config(
-            job.get(
-                "config_path"
-            )
-        )
-    )
+        raise ValueError("completed paper run requires a git commit")
+    run_id = str(job["run_id"])
+    protocol = str(job["protocol"])
+    comparison_group = _comparison_group(job)
+    source_path, source_payload = _source_config(job.get("config_path"))
     manifest = RunManifest(
         run_id=run_id,
-        method=str(
-            job[
-                "algorithm"
-            ]
-        ),
+        method=str(job["algorithm"]),
         setting=protocol,
-        benchmark=str(
-            job[
-                "environment"
-            ]
-        ),
-        seed=int(
-            job[
-                "seed"
-            ]
-        ),
+        benchmark=str(job["environment"]),
+        seed=int(job["seed"]),
         git_commit=git_commit,
         status="completed",
-        task_order=_task_order(
-            result
-        ),
+        task_order=_task_order(result),
         information_access=(
             information_access_for_result(
                 result,
@@ -297,46 +254,20 @@ def record_completed_suite_run(
         ),
         metadata={
             "suite": suite_name,
-            "suite_revision": job.get(
-                "suite_revision"
-            ),
-            "job_id": str(
-                job[
-                    "job_id"
-                ]
-            ),
-            "comparison_group": (
-                comparison_group
-            ),
-            "hypothesis_id": str(
-                job[
-                    "hypothesis_id"
-                ]
-            ),
-            "target": str(
-                job[
-                    "target"
-                ]
-            ),
-            "primary_metric": str(
-                job[
-                    "primary_metric"
-                ]
-            ),
+            "suite_revision": job.get("suite_revision"),
+            "job_id": str(job["job_id"]),
+            "comparison_group": (comparison_group),
+            "hypothesis_id": str(job["hypothesis_id"]),
+            "target": str(job["target"]),
+            "primary_metric": str(job["primary_metric"]),
             "secondary_metrics": list(
                 job.get(
                     "secondary_metrics",
                     (),
                 )
             ),
-            "source_config_path": (
-                source_path
-            ),
-            "contract_kwargs": (
-                _contract_kwargs(
-                    job
-                )
-            ),
+            "source_config_path": (source_path),
+            "contract_kwargs": (_contract_kwargs(job)),
         },
     )
     summary = summarize_runner_result(
@@ -344,82 +275,41 @@ def record_completed_suite_run(
         result,
         duration_seconds=duration_seconds,
     )
-    primary_metric = str(
-        job[
-            "primary_metric"
-        ]
+    primary_metric = str(job["primary_metric"])
+    primary_value = _resolve_primary_metric(
+        summary,
+        primary_metric,
     )
-    primary_value = (
-        _resolve_primary_metric(
-            summary,
-            primary_metric,
-        )
-    )
-    if (
-        primary_metric
-        not in summary.metrics
-        and primary_metric
-        not in summary.resources
-    ):
+    if primary_metric not in summary.metrics and primary_metric not in summary.resources:
         summary = RunSummary(
             run_id=summary.run_id,
             metrics={
                 **summary.metrics,
-                primary_metric: (
-                    primary_value
-                ),
+                primary_metric: (primary_value),
             },
-            task_metrics=(
-                summary.task_metrics
-            ),
-            resources=(
-                summary.resources
-            ),
-            metadata=(
-                summary.metadata
-            ),
+            task_metrics=(summary.task_metrics),
+            resources=(summary.resources),
+            metadata=(summary.metadata),
         )
     resolved_config = {
         "suite": suite_name,
-        "suite_revision": job.get(
-            "suite_revision"
-        ),
-        "comparison_group": (
-            comparison_group
-        ),
+        "suite_revision": job.get("suite_revision"),
+        "comparison_group": (comparison_group),
         "run_id": run_id,
         "git_commit": git_commit,
         "invocation": {
-            "target": str(
-                job[
-                    "target"
-                ]
-            ),
-            "kwargs": dict(
-                job[
-                    "kwargs"
-                ]
-            ),
+            "target": str(job["target"]),
+            "kwargs": dict(job["kwargs"]),
         },
-        "source_config_path": (
-            source_path
-        ),
-        "source_config": (
-            source_payload
-        ),
+        "source_config_path": (source_path),
+        "source_config": (source_payload),
     }
     write_run_artifacts(
         run_dir,
         manifest=manifest,
         summary=summary,
-        resolved_config=(
-            resolved_config
-        ),
-        metrics_rows=(
-            metrics_rows_from_result(
-                result
-            )
-        ),
+        resolved_config=(resolved_config),
+        metrics_rows=(metrics_rows_from_result(result)),
     )
     return manifest
 
@@ -434,91 +324,34 @@ def record_failed_suite_run(
 ) -> RunManifest:
     """Record failed jobs so aggregation cannot silently omit them."""
 
-    run_id = str(
-        job[
-            "run_id"
-        ]
-    )
-    protocol = str(
-        job[
-            "protocol"
-        ]
-    )
+    run_id = str(job["run_id"])
+    protocol = str(job["protocol"])
     manifest = RunManifest(
         run_id=run_id,
-        method=str(
-            job[
-                "algorithm"
-            ]
-        ),
+        method=str(job["algorithm"]),
         setting=protocol,
-        benchmark=str(
-            job[
-                "environment"
-            ]
-        ),
-        seed=int(
-            job[
-                "seed"
-            ]
-        ),
-        git_commit=(
-            git_commit
-            if git_commit.strip()
-            else "unresolved"
-        ),
+        benchmark=str(job["environment"]),
+        seed=int(job["seed"]),
+        git_commit=(git_commit if git_commit.strip() else "unresolved"),
         status="failed",
-        information_access=(
-            information_access_for_protocol(
-                protocol
-            )
-        ),
+        information_access=(information_access_for_protocol(protocol)),
         metadata={
             "suite": suite_name,
-            "suite_revision": job.get(
-                "suite_revision"
-            ),
-            "job_id": str(
-                job[
-                    "job_id"
-                ]
-            ),
-            "comparison_group": (
-                _comparison_group(
-                    job
-                )
-            ),
-            "hypothesis_id": str(
-                job[
-                    "hypothesis_id"
-                ]
-            ),
-            "target": str(
-                job[
-                    "target"
-                ]
-            ),
-            "contract_kwargs": (
-                _contract_kwargs(
-                    job
-                )
-            ),
-            "failure_reason": (
-                failure_reason
-            ),
+            "suite_revision": job.get("suite_revision"),
+            "job_id": str(job["job_id"]),
+            "comparison_group": (_comparison_group(job)),
+            "hypothesis_id": str(job["hypothesis_id"]),
+            "target": str(job["target"]),
+            "contract_kwargs": (_contract_kwargs(job)),
+            "failure_reason": (failure_reason),
         },
     )
-    root = Path(
-        run_dir
-    )
+    root = Path(run_dir)
     root.mkdir(
         parents=True,
         exist_ok=True,
     )
-    (
-        root
-        / "manifest.json"
-    ).write_text(
+    (root / "manifest.json").write_text(
         json.dumps(
             manifest.to_dict(),
             indent=2,

@@ -50,9 +50,7 @@ def run_adaptive_bgd_lqr_stream(
     if not 0.0 <= fixed_retention <= 1.0:
         raise ValueError("fixed_retention must lie in [0, 1]")
     if surprise_source != "none" and fixed_retention != 1.0:
-        raise ValueError(
-            "fixed retention and adaptive surprise cannot be enabled together"
-        )
+        raise ValueError("fixed retention and adaptive surprise cannot be enabled together")
     seed_everything(seed, deterministic=True)
     resolved = resolve_device(device)
     schedule = ContextSchedule(
@@ -78,9 +76,7 @@ def run_adaptive_bgd_lqr_stream(
         "ensemble",
         "predictive",
     }:
-        raise ValueError(
-            f"unsupported surprise source: {surprise_source}"
-        )
+        raise ValueError(f"unsupported surprise source: {surprise_source}")
     normalizer = EMANormalizerConfig(
         decay=0.99,
         smoothing_decay=0.9,
@@ -164,9 +160,7 @@ def run_adaptive_bgd_lqr_stream(
             "critic1_effective_lr_mean": metrics["critic1_effective_lr_mean"],
         }
         if "predictive_model_loss" in metrics:
-            record["predictive_model_loss"] = metrics[
-                "predictive_model_loss"
-            ]
+            record["predictive_model_loss"] = metrics["predictive_model_loss"]
         surprise_timeline.append(record)
         if metrics["surprise_normalized"] >= detection_threshold:
             detected_steps.append(step)
@@ -207,22 +201,11 @@ def run_adaptive_bgd_lqr_stream(
             true_changes,
             positive_window=positive_window,
         )
-        observed_steps = [
-            int(record["step"])
-            for record in surprise_timeline
-        ]
-        labels = [
-            int(all_labels[step])
-            for step in observed_steps
-        ]
+        observed_steps = [int(record["step"]) for record in surprise_timeline]
+        labels = [int(all_labels[step]) for step in observed_steps]
         if any(labels) and not all(labels):
             surprise_auroc = binary_auroc(
-                [
-                    record[
-                        "surprise_normalized"
-                    ]
-                    for record in surprise_timeline
-                ],
+                [record["surprise_normalized"] for record in surprise_timeline],
                 labels,
             )
     return {

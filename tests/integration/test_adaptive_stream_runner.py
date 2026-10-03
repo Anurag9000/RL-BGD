@@ -50,18 +50,10 @@ def test_adaptive_stream_runner_supports_all_retention_policies(
         fixed_retention=fixed_retention,
     )
     assert result["surprise_source"] == source
-    assert result["fixed_retention"] == pytest.approx(
-        fixed_retention
-    )
-    assert bool(
-        result["surprise_timeline"]
-    ) is expects_timeline
-    assert result["true_change_steps"] == [
-        64
-    ]
-    detection = result[
-        "change_detection"
-    ]
+    assert result["fixed_retention"] == pytest.approx(fixed_retention)
+    assert bool(result["surprise_timeline"]) is expects_timeline
+    assert result["true_change_steps"] == [64]
+    detection = result["change_detection"]
     assert isinstance(
         detection,
         dict,

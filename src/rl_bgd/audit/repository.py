@@ -190,11 +190,7 @@ def audit_repository(
 
     validate_suite_registry()
     checks_run += 1
-    suite_hypothesis_ids = {
-        job.hypothesis_id
-        for suite in SUITES.values()
-        for job in suite.jobs
-    }
+    suite_hypothesis_ids = {job.hypothesis_id for suite in SUITES.values() for job in suite.jobs}
     for suite_name, suite in SUITES.items():
         job_ids = [job.job_id for job in suite.jobs]
         checks_run += 1
@@ -412,9 +408,7 @@ def audit_repository(
                 )
                 continue
             missing_terms = [
-                term
-                for term in required_terms
-                if term.lower() not in rationale.lower()
+                term for term in required_terms if term.lower() not in rationale.lower()
             ]
             if missing_terms:
                 findings.append(
@@ -428,9 +422,7 @@ def audit_repository(
                     )
                 )
 
-    registry = (root / "docs" / "EXPERIMENT_REGISTRY.md").read_text(
-        encoding="utf-8"
-    )
+    registry = (root / "docs" / "EXPERIMENT_REGISTRY.md").read_text(encoding="utf-8")
     registry_ids: set[str] = set()
     for line in registry.splitlines():
         if not line.startswith("|"):
@@ -497,17 +489,12 @@ def audit_repository(
                 AuditFinding(
                     "experiment_test_evidence",
                     relative,
-                    (
-                        f"{experiment_id!r} is missing required regression test "
-                        f"{marker!r}"
-                    ),
+                    (f"{experiment_id!r} is missing required regression test {marker!r}"),
                 )
             )
 
     chores_workflow_relative = ".github/workflows/cora-chores.yml"
-    chores_workflow = (root / chores_workflow_relative).read_text(
-        encoding="utf-8"
-    )
+    chores_workflow = (root / chores_workflow_relative).read_text(encoding="utf-8")
     required_chores_workflow_snippets = (
         "workflow_dispatch:",
         "chores_archive_url:",

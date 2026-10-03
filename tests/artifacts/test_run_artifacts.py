@@ -294,7 +294,6 @@ def test_matrix_rows_preserve_stage_and_task_identity() -> None:
     }
 
 
-
 def test_repeated_task_names_preserve_occurrence_metrics() -> None:
     result = {
         "task_names": [
@@ -372,35 +371,17 @@ def test_repeated_task_names_preserve_occurrence_metrics() -> None:
         result,
     )
 
-    assert tuple(
-        summary.task_metrics
-    ) == (
+    assert tuple(summary.task_metrics) == (
         "a#occurrence_1",
         "b#occurrence_1",
         "a#occurrence_2",
         "b#occurrence_2",
     )
-    assert summary.task_metrics[
-        "a#occurrence_1"
-    ] == {
+    assert summary.task_metrics["a#occurrence_1"] == {
         "final_performance": 0.7,
         "success_rate": 0.1,
         "forgetting": 0.3,
     }
-    assert summary.task_metrics[
-        "b#occurrence_1"
-    ][
-        "forgetting"
-    ] == pytest.approx(
-        0.2
-    )
-    assert summary.task_metrics[
-        "a#occurrence_2"
-    ][
-        "forgetting"
-    ] == pytest.approx(
-        0.1
-    )
-    assert "forgetting" not in summary.task_metrics[
-        "b#occurrence_2"
-    ]
+    assert summary.task_metrics["b#occurrence_1"]["forgetting"] == pytest.approx(0.2)
+    assert summary.task_metrics["a#occurrence_2"]["forgetting"] == pytest.approx(0.1)
+    assert "forgetting" not in summary.task_metrics["b#occurrence_2"]

@@ -130,9 +130,7 @@ def _group_runs(
             "suite_revision": reference.manifest.metadata.get("suite_revision"),
             "information_access": reference.manifest.information_access,
             "hypothesis_id": reference.manifest.metadata.get("hypothesis_id"),
-            "comparison_group": reference.manifest.metadata.get(
-                "comparison_group"
-            ),
+            "comparison_group": reference.manifest.metadata.get("comparison_group"),
             "target": reference.manifest.metadata.get("target"),
             "source_config_path": reference.manifest.metadata.get("source_config_path"),
             "declared_metrics": _declared_metric_names(reference),
@@ -144,9 +142,7 @@ def _group_runs(
                 "suite_revision": run.manifest.metadata.get("suite_revision"),
                 "information_access": run.manifest.information_access,
                 "hypothesis_id": run.manifest.metadata.get("hypothesis_id"),
-                "comparison_group": run.manifest.metadata.get(
-                    "comparison_group"
-                ),
+                "comparison_group": run.manifest.metadata.get("comparison_group"),
                 "target": run.manifest.metadata.get("target"),
                 "source_config_path": run.manifest.metadata.get("source_config_path"),
                 "declared_metrics": _declared_metric_names(run),
@@ -222,11 +218,7 @@ def _declared_metric_names(
 ) -> tuple[str, ...] | None:
     """Return suite-declared paper metrics, or None for non-suite artifacts."""
 
-    primary = (
-        run.manifest.metadata.get(
-            "primary_metric"
-        )
-    )
+    primary = run.manifest.metadata.get("primary_metric")
     if primary is None:
         return None
     if (
@@ -240,25 +232,18 @@ def _declared_metric_names(
             f"{run.manifest.run_id}: primary_metric metadata must be a non-empty string"
         )
 
-    secondary_raw = (
-        run.manifest.metadata.get(
-            "secondary_metrics",
-            (),
-        )
+    secondary_raw = run.manifest.metadata.get(
+        "secondary_metrics",
+        (),
     )
-    if (
-        isinstance(
-            secondary_raw,
-            (str, bytes),
-        )
-        or not isinstance(
-            secondary_raw,
-            Sequence,
-        )
+    if isinstance(
+        secondary_raw,
+        (str, bytes),
+    ) or not isinstance(
+        secondary_raw,
+        Sequence,
     ):
-        raise ValueError(
-            f"{run.manifest.run_id}: secondary_metrics metadata must be a sequence"
-        )
+        raise ValueError(f"{run.manifest.run_id}: secondary_metrics metadata must be a sequence")
 
     secondary: list[str] = []
     for value in secondary_raw:
@@ -272,9 +257,7 @@ def _declared_metric_names(
             raise ValueError(
                 f"{run.manifest.run_id}: secondary metric names must be non-empty strings"
             )
-        secondary.append(
-            value
-        )
+        secondary.append(value)
     return tuple(
         dict.fromkeys(
             (
@@ -295,27 +278,12 @@ def _resolve_declared_scalar_metric(
     if name in run.summary.resources:
         return run.summary.resources[name]
 
-    suffix = (
-        "."
-        + name
-    )
-    matches = [
-        value
-        for key, value in metrics.items()
-        if key.endswith(
-            suffix
-        )
-    ]
-    if len(
-        matches
-    ) > 1:
-        raise ValueError(
-            f"{run.manifest.run_id}: declared metric {name!r} is ambiguous"
-        )
+    suffix = "." + name
+    matches = [value for key, value in metrics.items() if key.endswith(suffix)]
+    if len(matches) > 1:
+        raise ValueError(f"{run.manifest.run_id}: declared metric {name!r} is ambiguous")
     if matches:
-        return matches[
-            0
-        ]
+        return matches[0]
     return None
 
 
@@ -324,39 +292,24 @@ def _metric_map(
 ) -> dict[str, float]:
     """Expose paper-authorized scalar outcomes plus recorded resources."""
 
-    declared = (
-        _declared_metric_names(
-            run
-        )
-    )
+    declared = _declared_metric_names(run)
     declared_resource_names: set[str] = set()
     values: dict[str, float]
     if declared is None:
-        values = dict(
-            run.summary.metrics
-        )
+        values = dict(run.summary.metrics)
     else:
         values = {}
         for name in declared:
-            value = (
-                _resolve_declared_scalar_metric(
-                    run,
-                    name,
-                )
+            value = _resolve_declared_scalar_metric(
+                run,
+                name,
             )
             if value is not None:
-                values[
-                    name
-                ] = value
-                if (
-                    name in run.summary.resources
-                    and name not in run.summary.metrics
-                ):
+                values[name] = value
+                if name in run.summary.resources and name not in run.summary.metrics:
                     declared_resource_names.add(name)
 
-        primary = declared[
-            0
-        ]
+        primary = declared[0]
         if primary not in values:
             raise ValueError(
                 f"{run.manifest.run_id}: declared primary metric {primary!r} "
@@ -366,14 +319,8 @@ def _metric_map(
     for key, value in run.summary.resources.items():
         if key in declared_resource_names:
             continue
-        metric = (
-            key
-            if key not in values
-            else f"resource.{key}"
-        )
-        values[
-            metric
-        ] = value
+        metric = key if key not in values else f"resource.{key}"
+        values[metric] = value
     return values
 
 
@@ -518,12 +465,8 @@ def _comparison_group(
 ) -> str | None:
     """Return a declared suite comparison group or a legacy fallback."""
 
-    raw = run.manifest.metadata.get(
-        "comparison_group"
-    )
-    suite = run.manifest.metadata.get(
-        "suite"
-    )
+    raw = run.manifest.metadata.get("comparison_group")
+    suite = run.manifest.metadata.get("suite")
     if raw is None:
         if (
             isinstance(
@@ -533,10 +476,7 @@ def _comparison_group(
             and suite.strip()
         ):
             return None
-        return (
-            f"legacy:{run.manifest.setting}|"
-            f"{run.manifest.benchmark}"
-        )
+        return f"legacy:{run.manifest.setting}|{run.manifest.benchmark}"
     if (
         not isinstance(
             raw,
@@ -544,9 +484,7 @@ def _comparison_group(
         )
         or not raw.strip()
     ):
-        raise ValueError(
-            f"{run.manifest.run_id}: comparison_group must be a non-empty string"
-        )
+        raise ValueError(f"{run.manifest.run_id}: comparison_group must be a non-empty string")
     return raw.strip()
 
 
@@ -564,19 +502,13 @@ def _privilege_access(
 
     privilege: dict[str, bool] = {}
     for key in _PRIVILEGE_ACCESS_KEYS:
-        value = run.manifest.information_access.get(
-            key
-        )
+        value = run.manifest.information_access.get(key)
         if not isinstance(
             value,
             bool,
         ):
-            raise ValueError(
-                f"{run.manifest.run_id}: information_access lacks boolean {key!r}"
-            )
-        privilege[
-            key
-        ] = value
+            raise ValueError(f"{run.manifest.run_id}: information_access lacks boolean {key!r}")
+        privilege[key] = value
     return privilege
 
 
@@ -587,9 +519,7 @@ def paired_method_differences(
 ) -> pd.DataFrame:
     """Create matched-seed differences only inside declared comparison groups."""
 
-    grouped = _group_runs(
-        runs
-    )
+    grouped = _group_runs(runs)
     by_context: dict[
         tuple[
             str,
@@ -603,15 +533,9 @@ def paired_method_differences(
                 list[LoadedRun],
             ]
         ],
-    ] = defaultdict(
-        list
-    )
+    ] = defaultdict(list)
     for group, group_runs in grouped.items():
-        suite_raw = group_runs[
-            0
-        ].manifest.metadata.get(
-            "suite"
-        )
+        suite_raw = group_runs[0].manifest.metadata.get("suite")
         suite = (
             suite_raw.strip()
             if isinstance(
@@ -621,13 +545,7 @@ def paired_method_differences(
             and suite_raw.strip()
             else ""
         )
-        comparison_group = (
-            _comparison_group(
-                group_runs[
-                    0
-                ]
-            )
-        )
+        comparison_group = _comparison_group(group_runs[0])
         if comparison_group is None:
             continue
         by_context[
@@ -656,79 +574,43 @@ def paired_method_differences(
         comparison_group,
         setting,
         benchmark,
-    ), groups in sorted(
-        by_context.items()
-    ):
+    ), groups in sorted(by_context.items()):
         ordered = sorted(
             groups,
             key=lambda item: (
-                item[
-                    0
-                ].method,
-                item[
-                    0
-                ].experiment,
+                item[0].method,
+                item[0].experiment,
             ),
         )
-        for left_index in range(
-            len(
-                ordered
-            )
-        ):
+        for left_index in range(len(ordered)):
             for right_index in range(
                 left_index + 1,
-                len(
-                    ordered
-                ),
+                len(ordered),
             ):
                 (
                     left_group,
                     left_runs,
-                ) = ordered[
-                    left_index
-                ]
+                ) = ordered[left_index]
                 (
                     right_group,
                     right_runs,
-                ) = ordered[
-                    right_index
-                ]
-                left_by_seed = {
-                    run.manifest.seed: run
-                    for run in left_runs
-                }
-                right_by_seed = {
-                    run.manifest.seed: run
-                    for run in right_runs
-                }
-                left_seeds = set(
-                    left_by_seed
-                )
-                right_seeds = set(
-                    right_by_seed
-                )
+                ) = ordered[right_index]
+                left_by_seed = {run.manifest.seed: run for run in left_runs}
+                right_by_seed = {run.manifest.seed: run for run in right_runs}
+                left_seeds = set(left_by_seed)
+                right_seeds = set(right_by_seed)
                 if left_seeds != right_seeds:
                     raise ValueError(
                         "paired paper methods have different seed sets: "
                         f"{left_group.label} / {sorted(left_seeds)} versus "
                         f"{right_group.label} / {sorted(right_seeds)}"
                     )
-                matched_seeds = sorted(
-                    left_seeds
-                )
+                matched_seeds = sorted(left_seeds)
                 if not matched_seeds:
                     continue
 
-                left_primary = left_runs[
-                    0
-                ].manifest.metadata.get(
-                    "primary_metric"
-                )
-                right_primary = right_runs[
-                    0
-                ].manifest.metadata.get(
-                    "primary_metric"
-                )
+                left_primary = left_runs[0].manifest.metadata.get("primary_metric")
+                right_primary = right_runs[0].manifest.metadata.get("primary_metric")
                 if left_primary != right_primary:
                     raise ValueError(
                         "paired paper methods declare different primary metrics: "
@@ -736,16 +618,8 @@ def paired_method_differences(
                         f"{right_group.label}={right_primary!r}"
                     )
 
-                left_revision = left_runs[
-                    0
-                ].manifest.metadata.get(
-                    "suite_revision"
-                )
-                right_revision = right_runs[
-                    0
-                ].manifest.metadata.get(
-                    "suite_revision"
-                )
+                left_revision = left_runs[0].manifest.metadata.get("suite_revision")
+                right_revision = right_runs[0].manifest.metadata.get("suite_revision")
                 if left_revision != right_revision:
                     raise ValueError(
                         "paired paper methods use different suite revisions: "
@@ -754,16 +628,9 @@ def paired_method_differences(
                     )
 
                 for seed in matched_seeds:
-                    left_run = left_by_seed[
-                        seed
-                    ]
-                    right_run = right_by_seed[
-                        seed
-                    ]
-                    if (
-                        left_run.manifest.git_commit
-                        != right_run.manifest.git_commit
-                    ):
+                    left_run = left_by_seed[seed]
+                    right_run = right_by_seed[seed]
+                    if left_run.manifest.git_commit != right_run.manifest.git_commit:
                         raise ValueError(
                             "paired paper runs use different git commits: "
                             f"seed {seed} / {left_run.manifest.run_id}="
@@ -771,56 +638,25 @@ def paired_method_differences(
                             f"{right_run.manifest.run_id}="
                             f"{right_run.manifest.git_commit!r}"
                         )
-                    if (
-                        _privilege_access(
-                            left_run
-                        )
-                        != _privilege_access(
-                            right_run
-                        )
-                    ):
+                    if _privilege_access(left_run) != _privilege_access(right_run):
                         raise ValueError(
                             "paired paper runs have different privilege access: "
                             f"seed {seed} / {left_run.manifest.run_id} / "
                             f"{right_run.manifest.run_id}"
                         )
-                    if (
-                        left_run.manifest.task_order
-                        != right_run.manifest.task_order
-                    ):
+                    if left_run.manifest.task_order != right_run.manifest.task_order:
                         raise ValueError(
                             "paired paper runs have different task order: "
                             f"seed {seed} / {left_run.manifest.run_id} / "
                             f"{right_run.manifest.run_id}"
                         )
 
-                left_metrics = {
-                    metric
-                    for run in left_runs
-                    for metric in _metric_map(
-                        run
-                    )
-                }
-                right_metrics = {
-                    metric
-                    for run in right_runs
-                    for metric in _metric_map(
-                        run
-                    )
-                }
-                common_metrics = sorted(
-                    left_metrics
-                    & right_metrics
-                )
-                for metric_index, metric in enumerate(
-                    common_metrics
-                ):
-                    left_values: list[
-                        float
-                    ] = []
-                    right_values: list[
-                        float
-                    ] = []
+                left_metrics = {metric for run in left_runs for metric in _metric_map(run)}
+                right_metrics = {metric for run in right_runs for metric in _metric_map(run)}
+                common_metrics = sorted(left_metrics & right_metrics)
+                for metric_index, metric in enumerate(common_metrics):
+                    left_values: list[float] = []
+                    right_values: list[float] = []
                     run_pairs: list[
                         tuple[
                             str,
@@ -829,102 +665,48 @@ def paired_method_differences(
                     ] = []
                     complete = True
                     for seed in matched_seeds:
-                        left_map = _metric_map(
-                            left_by_seed[
-                                seed
-                            ]
-                        )
-                        right_map = _metric_map(
-                            right_by_seed[
-                                seed
-                            ]
-                        )
-                        if (
-                            metric
-                            not in left_map
-                            or metric
-                            not in right_map
-                        ):
+                        left_map = _metric_map(left_by_seed[seed])
+                        right_map = _metric_map(right_by_seed[seed])
+                        if metric not in left_map or metric not in right_map:
                             complete = False
                             break
-                        left_values.append(
-                            left_map[
-                                metric
-                            ]
-                        )
-                        right_values.append(
-                            right_map[
-                                metric
-                            ]
-                        )
+                        left_values.append(left_map[metric])
+                        right_values.append(right_map[metric])
                         run_pairs.append(
                             (
-                                left_by_seed[
-                                    seed
-                                ].manifest.run_id,
-                                right_by_seed[
-                                    seed
-                                ].manifest.run_id,
+                                left_by_seed[seed].manifest.run_id,
+                                right_by_seed[seed].manifest.run_id,
                             )
                         )
                     if not complete:
                         continue
-                    estimate = (
-                        paired_bootstrap_difference(
-                            left_values,
-                            right_values,
-                            confidence=(
-                                config.confidence
-                            ),
-                            resamples=(
-                                config.bootstrap_resamples
-                            ),
-                            seed=(
-                                config.seed
-                                + 2_000_000
-                                + comparison_index
-                                * 100_000
-                                + metric_index
-                            ),
-                        )
+                    estimate = paired_bootstrap_difference(
+                        left_values,
+                        right_values,
+                        confidence=(config.confidence),
+                        resamples=(config.bootstrap_resamples),
+                        seed=(config.seed + 2_000_000 + comparison_index * 100_000 + metric_index),
                     )
                     rows.append(
                         {
                             "suite": suite,
-                            "comparison_group": (
-                                comparison_group
-                            ),
+                            "comparison_group": (comparison_group),
                             "setting": setting,
                             "benchmark": benchmark,
-                            "left_experiment": (
-                                left_group.experiment
-                            ),
-                            "left_method": (
-                                left_group.method
-                            ),
-                            "right_experiment": (
-                                right_group.experiment
-                            ),
-                            "right_method": (
-                                right_group.method
-                            ),
+                            "left_experiment": (left_group.experiment),
+                            "left_method": (left_group.method),
+                            "right_experiment": (right_group.experiment),
+                            "right_method": (right_group.method),
                             "metric": metric,
-                            "difference": (
-                                "left_minus_right"
-                            ),
+                            "difference": ("left_minus_right"),
                             **estimate.to_dict(),
-                            "matched_seeds": json.dumps(
-                                matched_seeds
-                            ),
-                            "run_pairs": json.dumps(
-                                run_pairs
-                            ),
+                            "matched_seeds": json.dumps(matched_seeds),
+                            "run_pairs": json.dumps(run_pairs),
                         }
                     )
                 comparison_index += 1
-    return pd.DataFrame(
-        rows
-    )
+    return pd.DataFrame(rows)
+
 
 def run_index(
     runs: Sequence[LoadedRun],
@@ -942,16 +724,8 @@ def run_index(
             {
                 "run_id": run.manifest.run_id,
                 "experiment": _experiment_id(run),
-                "comparison_group": (
-                    _comparison_group(
-                        run
-                    )
-                ),
-                "suite_revision": (
-                    run.manifest.metadata.get(
-                        "suite_revision"
-                    )
-                ),
+                "comparison_group": (_comparison_group(run)),
+                "suite_revision": (run.manifest.metadata.get("suite_revision")),
                 "method": run.manifest.method,
                 "setting": run.manifest.setting,
                 "benchmark": run.manifest.benchmark,

@@ -114,20 +114,12 @@ def test_ta_runner_supports_boundary_free_regularized_sac(
     class FakeTrainEnv:
         def __init__(self) -> None:
             self.observation_space = TensorBox(
-                low=torch.tensor(
-                    [-1.0]
-                ),
-                high=torch.tensor(
-                    [1.0]
-                ),
+                low=torch.tensor([-1.0]),
+                high=torch.tensor([1.0]),
             )
             self.action_space = TensorBox(
-                low=torch.tensor(
-                    [-1.0]
-                ),
-                high=torch.tensor(
-                    [1.0]
-                ),
+                low=torch.tensor([-1.0]),
+                high=torch.tensor([1.0]),
             )
 
     class FakeBundle:
@@ -187,9 +179,7 @@ def test_ta_runner_supports_boundary_free_regularized_sac(
             agent,
             RegularizedSACAgent,
         )
-        assert callable(
-            post_step_observer
-        )
+        assert callable(post_step_observer)
         post_step_observer(
             1,
             agent,
@@ -234,19 +224,9 @@ def test_ta_runner_supports_boundary_free_regularized_sac(
         consolidation_interval_updates=7,
     )
 
-    access = result[
-        "information_access"
-    ]
-    assert access[
-        "receives_task_id"
-    ] is False
-    assert access[
-        "receives_task_boundary"
-    ] is False
-    assert access[
-        "consolidation_trigger"
-    ] == "fixed_optimizer_update_interval"
-    assert access[
-        "consolidation_interval_updates"
-    ] == 7
+    access = result["information_access"]
+    assert access["receives_task_id"] is False
+    assert access["receives_task_boundary"] is False
+    assert access["consolidation_trigger"] == "fixed_optimizer_update_interval"
+    assert access["consolidation_interval_updates"] == 7
     assert bundle.closed

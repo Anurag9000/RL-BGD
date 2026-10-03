@@ -471,14 +471,8 @@ def test_paper_builder_aggregates_only_declared_suite_metrics(
         ),
     )
 
-    aggregate = pd.read_csv(
-        output
-        / "tables"
-        / "aggregate_statistics.csv"
-    )
-    metrics = set(
-        aggregate["metric"]
-    )
+    aggregate = pd.read_csv(output / "tables" / "aggregate_statistics.csv")
+    metrics = set(aggregate["metric"])
     assert metrics == {
         "score",
         "auxiliary",
@@ -553,16 +547,12 @@ def test_paper_builder_accepts_declared_resource_primary_without_duplicate(
         ),
     )
 
-    aggregate = pd.read_csv(
-        output / "tables" / "aggregate_statistics.csv"
-    )
+    aggregate = pd.read_csv(output / "tables" / "aggregate_statistics.csv")
     metrics = set(aggregate["metric"])
     assert "duration_seconds" in metrics
     assert "post_return" in metrics
     assert "resource.duration_seconds" not in metrics
-    duration_row = aggregate[
-        aggregate["metric"] == "duration_seconds"
-    ].iloc[0]
+    duration_row = aggregate[aggregate["metric"] == "duration_seconds"].iloc[0]
     assert duration_row["mean"] == pytest.approx(3.0)
 
 
@@ -992,7 +982,6 @@ def test_paper_builder_rejects_paired_suite_revision_mismatch(
         )
 
 
-
 def _write_grouped_comparison_run(
     root: Path,
     *,
@@ -1005,8 +994,7 @@ def _write_grouped_comparison_run(
     extra_information_access: dict[str, bool] | None = None,
 ) -> None:
     write_run_artifacts(
-        root
-        / run_id,
+        root / run_id,
         manifest=RunManifest(
             run_id=run_id,
             method=method,
@@ -1018,10 +1006,7 @@ def _write_grouped_comparison_run(
                 "receives_task_id": False,
                 "receives_task_boundary": False,
                 "receives_environment_context": False,
-                **(
-                    extra_information_access
-                    or {}
-                ),
+                **(extra_information_access or {}),
             },
             metadata={
                 "suite": "comparison_suite",
@@ -1029,9 +1014,7 @@ def _write_grouped_comparison_run(
                 "job_id": job_id,
                 "comparison_group": comparison_group,
                 "hypothesis_id": "TEST",
-                "target": (
-                    "rl_bgd.runners.example:run"
-                ),
+                "target": ("rl_bgd.runners.example:run"),
                 "source_config_path": None,
                 "primary_metric": "score",
                 "secondary_metrics": [],
@@ -1062,10 +1045,7 @@ def _write_grouped_comparison_run(
 def test_paired_statistics_respect_explicit_comparison_groups(
     tmp_path: Path,
 ) -> None:
-    results = (
-        tmp_path
-        / "results"
-    )
+    results = tmp_path / "results"
     for seed in (
         0,
         1,
@@ -1107,31 +1087,18 @@ def test_paired_statistics_respect_explicit_comparison_groups(
             score=0.7 + seed,
         )
 
-    output = (
-        tmp_path
-        / "paper"
-    )
+    output = tmp_path / "paper"
     build_paper_artifacts(
         results,
         output,
         config=PaperArtifactConfig(
             bootstrap_resamples=50,
             seed=47,
-            figure_formats=(
-                "png",
-            ),
+            figure_formats=("png",),
         ),
     )
-    paired = pd.read_csv(
-        output
-        / "tables"
-        / "paired_differences.csv"
-    )
-    assert set(
-        paired[
-            "comparison_group"
-        ]
-    ) == {
+    paired = pd.read_csv(output / "tables" / "paired_differences.csv")
+    assert set(paired["comparison_group"]) == {
         "sac_family",
         "ppo_family",
     }
@@ -1143,8 +1110,7 @@ def test_paired_statistics_respect_explicit_comparison_groups(
             )
         )
         for row in paired.itertuples()
-        if row.metric
-        == "score"
+        if row.metric == "score"
     }
     assert method_pairs == {
         frozenset(
@@ -1160,7 +1126,6 @@ def test_paired_statistics_respect_explicit_comparison_groups(
             )
         ),
     }
-
 
 
 def test_paired_statistics_ignore_method_internal_access_metadata(
@@ -1192,9 +1157,7 @@ def test_paired_statistics_ignore_method_internal_access_metadata(
         )
 
     paired = paired_method_differences(
-        load_paper_runs(
-            results
-        ),
+        load_paper_runs(results),
         config=PaperArtifactConfig(
             bootstrap_resamples=20,
             seed=61,
@@ -1202,26 +1165,9 @@ def test_paired_statistics_ignore_method_internal_access_metadata(
         ),
     )
     assert not paired.empty
-    score = paired[
-        paired[
-            "metric"
-        ]
-        == "score"
-    ].iloc[
-        0
-    ]
-    assert score[
-        "comparison_group"
-    ] == "matched_family"
-    assert abs(
-        float(
-            score[
-                "mean"
-            ]
-        )
-    ) == pytest.approx(
-        0.2
-    )
+    score = paired[paired["metric"] == "score"].iloc[0]
+    assert score["comparison_group"] == "matched_family"
+    assert abs(float(score["mean"])) == pytest.approx(0.2)
 
 
 def test_suite_jobs_without_comparison_group_are_not_paired(
@@ -1249,9 +1195,7 @@ def test_suite_jobs_without_comparison_group_are_not_paired(
         )
 
     paired = paired_method_differences(
-        load_paper_runs(
-            results
-        ),
+        load_paper_runs(results),
         config=PaperArtifactConfig(
             bootstrap_resamples=20,
             seed=62,

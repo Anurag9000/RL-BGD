@@ -536,9 +536,7 @@ def _occurrence_aware_task_labels(
         int,
     ] = {}
     for name in names:
-        totals[
-            name
-        ] = (
+        totals[name] = (
             totals.get(
                 name,
                 0,
@@ -550,16 +548,10 @@ def _occurrence_aware_task_labels(
         str,
         int,
     ] = {}
-    labels: list[
-        str
-    ] = []
+    labels: list[str] = []
     for name in names:
-        if totals[
-            name
-        ] == 1:
-            labels.append(
-                name
-            )
+        if totals[name] == 1:
+            labels.append(name)
             continue
         occurrence = (
             seen.get(
@@ -568,25 +560,11 @@ def _occurrence_aware_task_labels(
             )
             + 1
         )
-        seen[
-            name
-        ] = occurrence
-        labels.append(
-            f"{name}#occurrence_{occurrence}"
-        )
-    if len(
-        labels
-    ) != len(
-        set(
-            labels
-        )
-    ):
-        raise ValueError(
-            "task occurrence labels are not unique"
-        )
-    return tuple(
-        labels
-    )
+        seen[name] = occurrence
+        labels.append(f"{name}#occurrence_{occurrence}")
+    if len(labels) != len(set(labels)):
+        raise ValueError("task occurrence labels are not unique")
+    return tuple(labels)
 
 
 def _task_metrics_from_result(
@@ -604,17 +582,12 @@ def _task_metrics_from_result(
     names = tuple(str(value) for value in task_names)
     if not names:
         return {}
-    labels = _occurrence_aware_task_labels(
-        names
-    )
+    labels = _occurrence_aware_task_labels(names)
 
     task_metrics: dict[
         str,
         dict[str, float],
-    ] = {
-        label: {}
-        for label in labels
-    }
+    ] = {label: {} for label in labels}
 
     return_matrix = result.get("return_matrix")
     if (
@@ -724,11 +697,7 @@ def _task_metrics_from_result(
                 ),
             }
         ):
-            forgetting_labels = labels[
-                : len(
-                    forgetting
-                )
-            ]
+            forgetting_labels = labels[: len(forgetting)]
             for label, value in zip(
                 forgetting_labels,
                 forgetting,
@@ -745,13 +714,7 @@ def _task_metrics_from_result(
                     )
                     and math.isfinite(float(value))
                 ):
-                    task_metrics[
-                        label
-                    ][
-                        "forgetting"
-                    ] = float(
-                        value
-                    )
+                    task_metrics[label]["forgetting"] = float(value)
 
     return {task: values for task, values in task_metrics.items() if values}
 

@@ -66,20 +66,14 @@ def run_bgd_sac_lqr(
             actor_bgd=BGDConfig(
                 eta=0.1,
                 mc_samples=mc_samples,
-                antithetic=(
-                    mc_samples > 1
-                    and mc_samples % 2 == 0
-                ),
+                antithetic=(mc_samples > 1 and mc_samples % 2 == 0),
                 evidence_temperature=evidence_temperature,
                 temper_retention=temper_retention,
             ),
             critic_bgd=BGDConfig(
                 eta=0.1,
                 mc_samples=mc_samples,
-                antithetic=(
-                    mc_samples > 1
-                    and mc_samples % 2 == 0
-                ),
+                antithetic=(mc_samples > 1 and mc_samples % 2 == 0),
                 evidence_temperature=evidence_temperature,
                 temper_retention=temper_retention,
             ),
@@ -113,10 +107,7 @@ def run_bgd_sac_lqr(
         "temper_retention": temper_retention,
         "replay_evidence_mode": replay_evidence_mode,
         "mc_samples": mc_samples,
-        "antithetic": (
-            mc_samples > 1
-            and mc_samples % 2 == 0
-        ),
+        "antithetic": (mc_samples > 1 and mc_samples % 2 == 0),
         "steps": steps,
         "pre_return": pre_return,
         "post_return": post_return,

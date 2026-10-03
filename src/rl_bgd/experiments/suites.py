@@ -812,9 +812,7 @@ CARL_CORE = ExperimentSuite(
             config_path=f"configs/environments/carl_pendulum_{mode}.yaml",
             primary_metric="final_10_mean_return",
             secondary_metrics=(
-                (
-                    "training.last_update_metrics.critic1_sigma_mean",
-                )
+                ("training.last_update_metrics.critic1_sigma_mean",)
                 if optimizer == "bgd"
                 else (
                     (
@@ -986,9 +984,7 @@ CW10_CORE = ExperimentSuite(
                         "success_rate",
                     )
                     + (
-                        (
-                            "training.last_update_metrics.critic1_sigma_mean",
-                        )
+                        ("training.last_update_metrics.critic1_sigma_mean",)
                         if optimizer
                         in {
                             "bgd",
@@ -997,11 +993,8 @@ CW10_CORE = ExperimentSuite(
                         else ()
                     )
                     + (
-                        (
-                            "training.last_update_metrics.retention_lambda",
-                        )
-                        if optimizer
-                        == "adaptive_bgd"
+                        ("training.last_update_metrics.retention_lambda",)
+                        if optimizer == "adaptive_bgd"
                         else ()
                     )
                 ),
@@ -1703,13 +1696,8 @@ def validate_suite_registry() -> None:
             if not job.primary_metric:
                 raise RuntimeError(f"job {job.job_id} lacks a primary metric")
 
-            if (
-                job.comparison_group is not None
-                and not job.comparison_group.strip()
-            ):
-                raise RuntimeError(
-                    f"job {job.job_id} has an empty comparison group"
-                )
+            if job.comparison_group is not None and not job.comparison_group.strip():
+                raise RuntimeError(f"job {job.job_id} has an empty comparison group")
             context = (
                 job.comparison_group
                 if job.comparison_group is not None
@@ -1858,9 +1846,7 @@ def execute_suite(
             "schema_version": 2,
             "run_id": job["run_id"],
             "job_id": job["job_id"],
-            "comparison_group": job[
-                "comparison_group"
-            ],
+            "comparison_group": job["comparison_group"],
             "suite": suite_name,
             "git_commit": git_commit,
             "target": job["target"],

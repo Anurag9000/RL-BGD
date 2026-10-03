@@ -61,80 +61,28 @@ def test_suite_manifest_contains_complete_job_metadata(
 
 
 def test_explicit_comparison_groups_prevent_cross_family_pairing() -> None:
-    stationary = SUITES[
-        "stationary_core"
-    ].jobs
-    by_id = {
-        job.job_id: job
-        for job in stationary
-    }
-    assert by_id[
-        "stationary_sac_adam"
-    ].comparison_group == "stationary_sac"
-    assert by_id[
-        "stationary_sac_bgd"
-    ].comparison_group == "stationary_sac"
-    assert by_id[
-        "stationary_ppo_adam"
-    ].comparison_group == "stationary_ppo"
-    assert by_id[
-        "stationary_ppo_bgd"
-    ].comparison_group == "stationary_ppo"
+    stationary = SUITES["stationary_core"].jobs
+    by_id = {job.job_id: job for job in stationary}
+    assert by_id["stationary_sac_adam"].comparison_group == "stationary_sac"
+    assert by_id["stationary_sac_bgd"].comparison_group == "stationary_sac"
+    assert by_id["stationary_ppo_adam"].comparison_group == "stationary_ppo"
+    assert by_id["stationary_ppo_bgd"].comparison_group == "stationary_ppo"
 
-    carl = SUITES[
-        "carl_core"
-    ].jobs
+    carl = SUITES["carl_core"].jobs
     for mode in (
         "abrupt",
         "smooth",
         "recurring",
     ):
-        jobs = [
-            job
-            for job in carl
-            if job.job_id.startswith(
-                f"carl_{mode}_"
-            )
-        ]
-        assert len(
-            jobs
-        ) == 3
-        assert {
-            job.comparison_group
-            for job in jobs
-        } == {
-            f"carl_{mode}"
-        }
+        jobs = [job for job in carl if job.job_id.startswith(f"carl_{mode}_")]
+        assert len(jobs) == 3
+        assert {job.comparison_group for job in jobs} == {f"carl_{mode}"}
 
-    baseline = SUITES[
-        "baseline_core"
-    ].jobs
-    sac_jobs = [
-        job
-        for job in baseline
-        if job.algorithm.startswith(
-            "SAC"
-        )
-    ]
-    ppo_jobs = [
-        job
-        for job in baseline
-        if job.algorithm.startswith(
-            "PPO"
-        )
-    ]
-    assert {
-        job.comparison_group
-        for job in sac_jobs
-    } == {
-        "baseline_sac_regularization"
-    }
-    assert {
-        job.comparison_group
-        for job in ppo_jobs
-    } == {
-        "baseline_ppo_ucl"
-    }
+    baseline = SUITES["baseline_core"].jobs
+    sac_jobs = [job for job in baseline if job.algorithm.startswith("SAC")]
+    ppo_jobs = [job for job in baseline if job.algorithm.startswith("PPO")]
+    assert {job.comparison_group for job in sac_jobs} == {"baseline_sac_regularization"}
+    assert {job.comparison_group for job in ppo_jobs} == {"baseline_ppo_ucl"}
 
 
 def test_comparison_and_ablation_jobs_are_atomic() -> None:
@@ -274,19 +222,13 @@ def test_external_baseline_suite_has_full_method_coverage() -> None:
 
 
 def test_carl_and_cw_metric_declarations_match_runner_contracts() -> None:
-    carl_jobs = SUITES[
-        "carl_core"
-    ].jobs
+    carl_jobs = SUITES["carl_core"].jobs
     for job in carl_jobs:
-        optimizer = job.kwargs[
-            "optimizer"
-        ]
+        optimizer = job.kwargs["optimizer"]
         if optimizer == "adam":
             assert job.secondary_metrics == ()
         elif optimizer == "bgd":
-            assert job.secondary_metrics == (
-                "training.last_update_metrics.critic1_sigma_mean",
-            )
+            assert job.secondary_metrics == ("training.last_update_metrics.critic1_sigma_mean",)
         else:
             assert optimizer == "adaptive_bgd"
             assert job.secondary_metrics == (
@@ -294,51 +236,29 @@ def test_carl_and_cw_metric_declarations_match_runner_contracts() -> None:
                 "training.last_update_metrics.retention_lambda",
             )
 
-    cw10_jobs = {
-        job.job_id: job
-        for job in SUITES[
-            "cw10_core"
-        ].jobs
-    }
+    cw10_jobs = {job.job_id: job for job in SUITES["cw10_core"].jobs}
     for job_id in (
         "cw10_recurrent_adam",
         "cw10_recurrent_bgd",
         "cw10_recurrent_adaptive_bgd",
     ):
         assert not any(
-            metric.startswith(
-                "recurrence_summary."
-            )
-            for metric in cw10_jobs[
-                job_id
-            ].secondary_metrics
+            metric.startswith("recurrence_summary.")
+            for metric in cw10_jobs[job_id].secondary_metrics
         )
     assert (
         "training.last_update_metrics.critic1_sigma_mean"
-        in cw10_jobs[
-            "cw10_ta_bgd"
-        ].secondary_metrics
+        in cw10_jobs["cw10_ta_bgd"].secondary_metrics
     )
     assert (
         "training.last_update_metrics.critic1_sigma_mean"
-        in cw10_jobs[
-            "cw10_recurrent_bgd"
-        ].secondary_metrics
+        in cw10_jobs["cw10_recurrent_bgd"].secondary_metrics
     )
 
-    cw20_jobs = {
-        job.job_id: job
-        for job in SUITES[
-            "cw20_final"
-        ].jobs
-    }
+    cw20_jobs = {job.job_id: job for job in SUITES["cw20_final"].jobs}
     assert not any(
-        metric.startswith(
-            "recurrence_summary."
-        )
-        for metric in cw20_jobs[
-            "cw20_canonical_adam"
-        ].secondary_metrics
+        metric.startswith("recurrence_summary.")
+        for metric in cw20_jobs["cw20_canonical_adam"].secondary_metrics
     )
     recurrence_metrics = {
         "recurrence_summary.reference_success",
@@ -358,22 +278,14 @@ def test_carl_and_cw_metric_declarations_match_runner_contracts() -> None:
         "cw20_recurrent_bgd",
         "cw20_recurrent_adaptive",
     ):
-        assert recurrence_metrics <= set(
-            cw20_jobs[
-                job_id
-            ].secondary_metrics
-        )
+        assert recurrence_metrics <= set(cw20_jobs[job_id].secondary_metrics)
 
 
 def test_cw10_regularization_baselines_are_matched_and_boundary_free() -> None:
     jobs = [
         job
-        for job in SUITES[
-            "cw10_core"
-        ].jobs
-        if job.kwargs.get(
-            "optimizer"
-        )
+        for job in SUITES["cw10_core"].jobs
+        if job.kwargs.get("optimizer")
         in {
             "ewc",
             "online_ewc",
@@ -381,21 +293,13 @@ def test_cw10_regularization_baselines_are_matched_and_boundary_free() -> None:
             "mas",
         }
     ]
-    assert {
-        job.kwargs[
-            "optimizer"
-        ]
-        for job in jobs
-    } == {
+    assert {job.kwargs["optimizer"] for job in jobs} == {
         "ewc",
         "online_ewc",
         "si",
         "mas",
     }
-    assert {
-        job.seeds
-        for job in jobs
-    } == {
+    assert {job.seeds for job in jobs} == {
         (
             0,
             1,
@@ -404,80 +308,19 @@ def test_cw10_regularization_baselines_are_matched_and_boundary_free() -> None:
             4,
         )
     }
-    assert {
-        int(
-            job.kwargs[
-                "steps_per_task"
-            ]
-        )
-        for job in jobs
-    } == {
-        1_000_000
-    }
-    assert {
-        int(
-            job.kwargs[
-                "evaluation_episodes"
-            ]
-        )
-        for job in jobs
-    } == {
-        5
-    }
-    assert {
-        int(
-            job.kwargs[
-                "consolidation_interval_updates"
-            ]
-        )
-        for job in jobs
-    } == {
-        50_000
-    }
-    assert {
-        job.kwargs[
-            "regularization_target"
-        ]
-        for job in jobs
-    } == {
-        "actor_and_critic"
-    }
-    assert {
-        job.protocol
-        for job in jobs
-    } == {
-        "strict_task_agnostic"
-    }
-    assert {
-        job.comparison_group
-        for job in jobs
-    } == {
-        "cw10_task_agnostic_feedforward"
-    }
-    assert all(
-        "no ground-truth task boundary"
-        in job.notes
-        for job in jobs
-    )
+    assert {int(job.kwargs["steps_per_task"]) for job in jobs} == {1_000_000}
+    assert {int(job.kwargs["evaluation_episodes"]) for job in jobs} == {5}
+    assert {int(job.kwargs["consolidation_interval_updates"]) for job in jobs} == {50_000}
+    assert {job.kwargs["regularization_target"] for job in jobs} == {"actor_and_critic"}
+    assert {job.protocol for job in jobs} == {"strict_task_agnostic"}
+    assert {job.comparison_group for job in jobs} == {"cw10_task_agnostic_feedforward"}
+    assert all("no ground-truth task boundary" in job.notes for job in jobs)
 
 
 def test_cw10_has_matched_feedforward_and_recurrent_families() -> None:
-    jobs = SUITES[
-        "cw10_core"
-    ].jobs
-    feedforward = [
-        job
-        for job in jobs
-        if job.target.endswith(
-            ":run_ta_continual_world_sac"
-        )
-    ]
-    assert {
-        job.kwargs[
-            "optimizer"
-        ]
-        for job in feedforward
-    } == {
+    jobs = SUITES["cw10_core"].jobs
+    feedforward = [job for job in jobs if job.target.endswith(":run_ta_continual_world_sac")]
+    assert {job.kwargs["optimizer"] for job in feedforward} == {
         "adam",
         "bgd",
         "ewc",
@@ -485,22 +328,9 @@ def test_cw10_has_matched_feedforward_and_recurrent_families() -> None:
         "si",
         "mas",
     }
-    assert {
-        job.protocol
-        for job in feedforward
-    } == {
-        "strict_task_agnostic"
-    }
-    assert {
-        job.comparison_group
-        for job in feedforward
-    } == {
-        "cw10_task_agnostic_feedforward"
-    }
-    assert {
-        job.seeds
-        for job in feedforward
-    } == {
+    assert {job.protocol for job in feedforward} == {"strict_task_agnostic"}
+    assert {job.comparison_group for job in feedforward} == {"cw10_task_agnostic_feedforward"}
+    assert {job.seeds for job in feedforward} == {
         (
             0,
             1,
@@ -509,50 +339,19 @@ def test_cw10_has_matched_feedforward_and_recurrent_families() -> None:
             4,
         )
     }
-    assert {
-        int(
-            job.kwargs[
-                "steps_per_task"
-            ]
-        )
-        for job in feedforward
-    } == {
-        1_000_000
-    }
+    assert {int(job.kwargs["steps_per_task"]) for job in feedforward} == {1_000_000}
 
     recurrent = [
-        job
-        for job in jobs
-        if job.target.endswith(
-            ":run_recurrent_ta_continual_world_sac"
-        )
+        job for job in jobs if job.target.endswith(":run_recurrent_ta_continual_world_sac")
     ]
-    assert {
-        job.kwargs[
-            "optimizer"
-        ]
-        for job in recurrent
-    } == {
+    assert {job.kwargs["optimizer"] for job in recurrent} == {
         "adam",
         "bgd",
         "adaptive_bgd",
     }
-    assert {
-        job.protocol
-        for job in recurrent
-    } == {
-        "3RL-style_task_agnostic"
-    }
-    assert {
-        job.comparison_group
-        for job in recurrent
-    } == {
-        "cw10_recurrent"
-    }
-    assert {
-        job.seeds
-        for job in recurrent
-    } == {
+    assert {job.protocol for job in recurrent} == {"3RL-style_task_agnostic"}
+    assert {job.comparison_group for job in recurrent} == {"cw10_recurrent"}
+    assert {job.seeds for job in recurrent} == {
         (
             0,
             1,
@@ -564,22 +363,9 @@ def test_cw10_has_matched_feedforward_and_recurrent_families() -> None:
 
 
 def test_cw20_final_has_matched_task_agnostic_and_recurrent_controls() -> None:
-    jobs = SUITES[
-        "cw20_final"
-    ].jobs
-    task_agnostic = [
-        job
-        for job in jobs
-        if job.target.endswith(
-            ":run_ta_continual_world_sac"
-        )
-    ]
-    assert {
-        job.kwargs[
-            "optimizer"
-        ]
-        for job in task_agnostic
-    } == {
+    jobs = SUITES["cw20_final"].jobs
+    task_agnostic = [job for job in jobs if job.target.endswith(":run_ta_continual_world_sac")]
+    assert {job.kwargs["optimizer"] for job in task_agnostic} == {
         "adam",
         "bgd",
         "ewc",
@@ -587,30 +373,9 @@ def test_cw20_final_has_matched_task_agnostic_and_recurrent_controls() -> None:
         "si",
         "mas",
     }
-    assert {
-        int(
-            job.kwargs[
-                "steps_per_task"
-            ]
-        )
-        for job in task_agnostic
-    } == {
-        1_000_000
-    }
-    assert {
-        int(
-            job.kwargs[
-                "evaluation_episodes"
-            ]
-        )
-        for job in task_agnostic
-    } == {
-        5
-    }
-    assert {
-        job.seeds
-        for job in task_agnostic
-    } == {
+    assert {int(job.kwargs["steps_per_task"]) for job in task_agnostic} == {1_000_000}
+    assert {int(job.kwargs["evaluation_episodes"]) for job in task_agnostic} == {5}
+    assert {job.seeds for job in task_agnostic} == {
         (
             0,
             1,
@@ -619,60 +384,20 @@ def test_cw20_final_has_matched_task_agnostic_and_recurrent_controls() -> None:
             4,
         )
     }
-    assert {
-        job.protocol
-        for job in task_agnostic
-    } == {
-        "strict_task_agnostic"
-    }
-    assert {
-        job.comparison_group
-        for job in task_agnostic
-    } == {
-        "cw20_task_agnostic_feedforward"
-    }
+    assert {job.protocol for job in task_agnostic} == {"strict_task_agnostic"}
+    assert {job.comparison_group for job in task_agnostic} == {"cw20_task_agnostic_feedforward"}
 
     recurrent = [
-        job
-        for job in jobs
-        if job.target.endswith(
-            ":run_recurrent_ta_continual_world_sac"
-        )
+        job for job in jobs if job.target.endswith(":run_recurrent_ta_continual_world_sac")
     ]
-    assert {
-        job.kwargs[
-            "optimizer"
-        ]
-        for job in recurrent
-    } == {
+    assert {job.kwargs["optimizer"] for job in recurrent} == {
         "adam",
         "bgd",
         "adaptive_bgd",
     }
-    assert {
-        int(
-            job.kwargs[
-                "steps_per_task"
-            ]
-        )
-        for job in recurrent
-    } == {
-        1_000_000
-    }
-    assert {
-        int(
-            job.kwargs[
-                "evaluation_episodes"
-            ]
-        )
-        for job in recurrent
-    } == {
-        10
-    }
-    assert {
-        job.seeds
-        for job in recurrent
-    } == {
+    assert {int(job.kwargs["steps_per_task"]) for job in recurrent} == {1_000_000}
+    assert {int(job.kwargs["evaluation_episodes"]) for job in recurrent} == {10}
+    assert {job.seeds for job in recurrent} == {
         (
             0,
             1,
@@ -681,92 +406,48 @@ def test_cw20_final_has_matched_task_agnostic_and_recurrent_controls() -> None:
             4,
         )
     }
-    assert {
-        job.protocol
-        for job in recurrent
-    } == {
-        "3RL-style_task_agnostic"
-    }
-    assert {
-        job.comparison_group
-        for job in recurrent
-    } == {
-        "cw20_recurrent"
-    }
+    assert {job.protocol for job in recurrent} == {"3RL-style_task_agnostic"}
+    assert {job.comparison_group for job in recurrent} == {"cw20_recurrent"}
 
 
 def test_hidden_and_bayesianization_metric_declarations_are_capability_matched() -> None:
     hidden = {
-        str(
-            job.kwargs[
-                "variant"
-            ]
-        ): job
-        for job in SUITES[
-            "dev"
-        ].jobs
-        if job.job_id.startswith(
-            "hidden_context_"
-        )
+        str(job.kwargs["variant"]): job
+        for job in SUITES["dev"].jobs
+        if job.job_id.startswith("hidden_context_")
     }
-    assert hidden[
-        "feedforward_adam"
-    ].secondary_metrics == (
-        "training.mean_episode_return",
-    )
-    assert hidden[
-        "recurrent_adam"
-    ].secondary_metrics == (
-        "training.mean_episode_return",
-    )
+    assert hidden["feedforward_adam"].secondary_metrics == ("training.mean_episode_return",)
+    assert hidden["recurrent_adam"].secondary_metrics == ("training.mean_episode_return",)
     for variant in (
         "feedforward_bgd",
         "recurrent_bgd",
     ):
-        assert hidden[
-            variant
-        ].secondary_metrics == (
+        assert hidden[variant].secondary_metrics == (
             "training.mean_episode_return",
             "training.last_update_metrics.critic1_sigma_mean",
         )
-    assert hidden[
-        "recurrent_adaptive_bgd"
-    ].secondary_metrics == (
+    assert hidden["recurrent_adaptive_bgd"].secondary_metrics == (
         "training.mean_episode_return",
         "training.last_update_metrics.critic1_sigma_mean",
         "training.last_update_metrics.retention_lambda",
     )
 
     ablations = {
-        str(
-            job.kwargs[
-                "bayesianization"
-            ]
-        ): job
-        for job in SUITES[
-            "ablation_core"
-        ].jobs
+        str(job.kwargs["bayesianization"]): job
+        for job in SUITES["ablation_core"].jobs
         if job.hypothesis_id == "G"
     }
-    assert ablations[
-        "critic_only"
-    ].secondary_metrics == (
+    assert ablations["critic_only"].secondary_metrics == (
         "improvement",
         "training.last_update_metrics.critic1_sigma_mean",
         "training.last_update_metrics.critic1_effective_lr_mean",
     )
-    assert ablations[
-        "actor_only"
-    ].secondary_metrics == (
+    assert ablations["actor_only"].secondary_metrics == (
         "improvement",
         "training.last_update_metrics.actor_sigma_mean",
         "training.last_update_metrics.actor_effective_lr_mean",
     )
-    assert set(
-        ablations[
-            "actor_and_critic"
-        ].secondary_metrics
-    ) == {
+    assert set(ablations["actor_and_critic"].secondary_metrics) == {
         "improvement",
         "training.last_update_metrics.critic1_sigma_mean",
         "training.last_update_metrics.critic1_effective_lr_mean",
@@ -776,41 +457,15 @@ def test_hidden_and_bayesianization_metric_declarations_are_capability_matched()
 
 
 def test_mc_sample_ablation_has_matched_k_support() -> None:
-    jobs = [
-        job
-        for job in SUITES[
-            "ablation_core"
-        ].jobs
-        if job.hypothesis_id
-        == "MC-K"
-    ]
-    assert {
-        int(
-            job.kwargs[
-                "mc_samples"
-            ]
-        )
-        for job in jobs
-    } == {
+    jobs = [job for job in SUITES["ablation_core"].jobs if job.hypothesis_id == "MC-K"]
+    assert {int(job.kwargs["mc_samples"]) for job in jobs} == {
         1,
         2,
         4,
         8,
     }
-    assert {
-        int(
-            job.kwargs[
-                "steps"
-            ]
-        )
-        for job in jobs
-    } == {
-        600
-    }
-    assert {
-        job.seeds
-        for job in jobs
-    } == {
+    assert {int(job.kwargs["steps"]) for job in jobs} == {600}
+    assert {job.seeds for job in jobs} == {
         (
             0,
             1,
@@ -819,30 +474,13 @@ def test_mc_sample_ablation_has_matched_k_support() -> None:
             4,
         )
     }
-    assert {
-        job.kwargs[
-            "bayesianization"
-        ]
-        for job in jobs
-    } == {
-        "critic_only"
-    }
-    assert {
-        job.comparison_group
-        for job in jobs
-    } == {
-        "mc_samples"
-    }
+    assert {job.kwargs["bayesianization"] for job in jobs} == {"critic_only"}
+    assert {job.comparison_group for job in jobs} == {"mc_samples"}
 
 
 def test_compute_suite_has_matched_factorized_controls() -> None:
-    jobs = SUITES[
-        "compute_analysis"
-    ].jobs
-    assert {
-        job.job_id
-        for job in jobs
-    } == {
+    jobs = SUITES["compute_analysis"].jobs
+    assert {job.job_id for job in jobs} == {
         "compute_sac_adam",
         "compute_bgd_critic_only",
         "compute_bgd_actor_only",
@@ -852,44 +490,17 @@ def test_compute_suite_has_matched_factorized_controls() -> None:
         "compute_bgd_k4",
         "compute_bgd_k8",
     }
-    assert {
-        int(
-            job.kwargs[
-                "steps"
-            ]
-        )
-        for job in jobs
-    } == {
-        600
-    }
-    assert {
-        job.seeds
-        for job in jobs
-    } == {
+    assert {int(job.kwargs["steps"]) for job in jobs} == {600}
+    assert {job.seeds for job in jobs} == {
         (
             0,
             1,
             2,
         )
     }
-    assert {
-        job.environment
-        for job in jobs
-    } == {
-        "synthetic_lqr"
-    }
-    assert {
-        job.protocol
-        for job in jobs
-    } == {
-        "stationary_compute"
-    }
-    assert {
-        job.primary_metric
-        for job in jobs
-    } == {
-        "duration_seconds"
-    }
+    assert {job.environment for job in jobs} == {"synthetic_lqr"}
+    assert {job.protocol for job in jobs} == {"stationary_compute"}
+    assert {job.primary_metric for job in jobs} == {"duration_seconds"}
     assert all(
         job.secondary_metrics
         == (
@@ -900,73 +511,38 @@ def test_compute_suite_has_matched_factorized_controls() -> None:
     )
 
     bayesianization_jobs = [
-        job
-        for job in jobs
-        if job.comparison_group
-        == "compute_bayesianization"
+        job for job in jobs if job.comparison_group == "compute_bayesianization"
     ]
-    assert {
-        job.job_id
-        for job in bayesianization_jobs
-    } == {
+    assert {job.job_id for job in bayesianization_jobs} == {
         "compute_sac_adam",
         "compute_bgd_critic_only",
         "compute_bgd_actor_only",
         "compute_bgd_actor_and_critic",
     }
     bgd_modes = {
-        str(
-            job.kwargs[
-                "bayesianization"
-            ]
-        ): job
+        str(job.kwargs["bayesianization"]): job
         for job in bayesianization_jobs
-        if job.job_id
-        != "compute_sac_adam"
+        if job.job_id != "compute_sac_adam"
     }
-    assert set(
-        bgd_modes
-    ) == {
+    assert set(bgd_modes) == {
         "critic_only",
         "actor_only",
         "actor_and_critic",
     }
-    assert {
-        int(
-            job.kwargs[
-                "mc_samples"
-            ]
-        )
-        for job in bgd_modes.values()
-    } == {
-        2
-    }
+    assert {int(job.kwargs["mc_samples"]) for job in bgd_modes.values()} == {2}
 
     compute_mc_jobs = {
-        int(
-            job.kwargs[
-                "mc_samples"
-            ]
-        ): job
+        int(job.kwargs["mc_samples"]): job
         for job in jobs
-        if job.comparison_group
-        == "compute_mc_samples"
+        if job.comparison_group == "compute_mc_samples"
     }
-    assert set(
-        compute_mc_jobs
-    ) == {
+    assert set(compute_mc_jobs) == {
         1,
         2,
         4,
         8,
     }
-    assert all(
-        job.kwargs[
-            "bayesianization"
-        ]
-        == "critic_only"
-        for job in compute_mc_jobs.values()
-    )
+    assert all(job.kwargs["bayesianization"] == "critic_only" for job in compute_mc_jobs.values())
 
 
 def test_ucl_structured_outputs_are_not_declared_as_scalar_metrics() -> None:
@@ -976,78 +552,30 @@ def test_ucl_structured_outputs_are_not_declared_as_scalar_metrics() -> None:
             "dev",
             "baseline_core",
         )
-        for job in SUITES[
-            suite_name
-        ].jobs
-        if (
-            "ucl_ppo_lqr"
-            in job.target
-        )
+        for job in SUITES[suite_name].jobs
+        if ("ucl_ppo_lqr" in job.target)
     ]
     assert ucl_jobs
-    assert all(
-        job.secondary_metrics
-        == ()
-        for job in ucl_jobs
-    )
+    assert all(job.secondary_metrics == () for job in ucl_jobs)
 
 
 def test_uncertainty_suite_separates_detection_and_retention_comparisons() -> None:
-    all_jobs = SUITES[
-        "uncertainty_analysis"
-    ].jobs
+    all_jobs = SUITES["uncertainty_analysis"].jobs
 
     detection_jobs = [
-        job
-        for job in all_jobs
-        if job.comparison_group
-        == "surprise_source_detection"
+        job for job in all_jobs if job.comparison_group == "surprise_source_detection"
     ]
-    by_source = {
-        str(
-            job.kwargs[
-                "surprise_source"
-            ]
-        ): job
-        for job in detection_jobs
-    }
-    assert set(
-        by_source
-    ) == {
+    by_source = {str(job.kwargs["surprise_source"]): job for job in detection_jobs}
+    assert set(by_source) == {
         "none",
         "td",
         "ensemble",
         "predictive",
     }
-    assert all(
-        job.primary_metric
-        == "change_detection.f1"
-        for job in detection_jobs
-    )
-    assert {
-        int(
-            job.kwargs[
-                "total_steps"
-            ]
-        )
-        for job in detection_jobs
-    } == {
-        900
-    }
-    assert {
-        int(
-            job.kwargs[
-                "phase_steps"
-            ]
-        )
-        for job in detection_jobs
-    } == {
-        300
-    }
-    assert {
-        job.seeds
-        for job in detection_jobs
-    } == {
+    assert all(job.primary_metric == "change_detection.f1" for job in detection_jobs)
+    assert {int(job.kwargs["total_steps"]) for job in detection_jobs} == {900}
+    assert {int(job.kwargs["phase_steps"]) for job in detection_jobs} == {300}
+    assert {job.seeds for job in detection_jobs} == {
         (
             0,
             1,
@@ -1056,100 +584,46 @@ def test_uncertainty_suite_separates_detection_and_retention_comparisons() -> No
             4,
         )
     }
-    assert {
-        job.environment
-        for job in detection_jobs
-    } == {
-        "recurring_lqr"
-    }
-    assert {
-        job.protocol
-        for job in detection_jobs
-    } == {
-        "strict_task_agnostic"
-    }
+    assert {job.environment for job in detection_jobs} == {"recurring_lqr"}
+    assert {job.protocol for job in detection_jobs} == {"strict_task_agnostic"}
     for source in (
         "td",
         "ensemble",
         "predictive",
     ):
         assert (
-            "training.last_update_metrics.retention_lambda"
-            in by_source[
-                source
-            ].secondary_metrics
+            "training.last_update_metrics.retention_lambda" in by_source[source].secondary_metrics
         )
-        assert (
-            "surprise_auroc"
-            in by_source[
-                source
-            ].secondary_metrics
-        )
+        assert "surprise_auroc" in by_source[source].secondary_metrics
     assert (
-        "training.last_update_metrics.retention_lambda"
-        not in by_source[
-            "none"
-        ].secondary_metrics
+        "training.last_update_metrics.retention_lambda" not in by_source["none"].secondary_metrics
     )
     assert (
         "training.last_update_metrics.predictive_model_loss"
-        in by_source[
-            "predictive"
-        ].secondary_metrics
+        in by_source["predictive"].secondary_metrics
     )
 
     retention_jobs = [
-        job
-        for job in all_jobs
-        if job.comparison_group
-        == "recurring_retention_policy"
+        job for job in all_jobs if job.comparison_group == "recurring_retention_policy"
     ]
-    assert {
-        str(
-            job.kwargs[
-                "surprise_source"
-            ]
-        )
-        for job in retention_jobs
-    } == {
+    assert {str(job.kwargs["surprise_source"]) for job in retention_jobs} == {
         "none",
         "td",
         "ensemble",
         "predictive",
     }
-    assert len(
-        retention_jobs
-    ) == 5
+    assert len(retention_jobs) == 5
     assert {
-        float(
-            job.kwargs[
-                "fixed_retention"
-            ]
-        )
+        float(job.kwargs["fixed_retention"])
         for job in retention_jobs
-        if job.kwargs[
-            "surprise_source"
-        ]
-        == "none"
+        if job.kwargs["surprise_source"] == "none"
     } == {
         1.0,
         0.97,
     }
-    assert all(
-        job.primary_metric
-        == "training.final_10_mean_return"
-        for job in retention_jobs
-    )
-    assert {
-        job.protocol
-        for job in retention_jobs
-    } == {
-        "strict_task_agnostic_retention_policy"
-    }
-    assert {
-        job.seeds
-        for job in retention_jobs
-    } == {
+    assert all(job.primary_metric == "training.final_10_mean_return" for job in retention_jobs)
+    assert {job.protocol for job in retention_jobs} == {"strict_task_agnostic_retention_policy"}
+    assert {job.seeds for job in retention_jobs} == {
         (
             0,
             1,
@@ -1158,34 +632,12 @@ def test_uncertainty_suite_separates_detection_and_retention_comparisons() -> No
             4,
         )
     }
-    assert {
-        int(
-            job.kwargs[
-                "total_steps"
-            ]
-        )
-        for job in retention_jobs
-    } == {
-        900
-    }
-    assert {
-        int(
-            job.kwargs[
-                "phase_steps"
-            ]
-        )
-        for job in retention_jobs
-    } == {
-        300
-    }
+    assert {int(job.kwargs["total_steps"]) for job in retention_jobs} == {900}
+    assert {int(job.kwargs["phase_steps"]) for job in retention_jobs} == {300}
 
 
 def test_mechanistic_and_detection_metrics_are_scalar_safe() -> None:
-    mechanism = SUITES[
-        "mechanism_analysis"
-    ].jobs[
-        0
-    ]
+    mechanism = SUITES["mechanism_analysis"].jobs[0]
     assert mechanism.secondary_metrics == (
         "perturbation_precision_spearman",
         "curvature_signal_mean_relative_error",
@@ -1195,24 +647,14 @@ def test_mechanistic_and_detection_metrics_are_scalar_safe() -> None:
     )
 
     adaptive = next(
-        job
-        for job in SUITES[
-            "uncertainty_analysis"
-        ].jobs
-        if job.job_id
-        == "adaptive_timeline"
+        job for job in SUITES["uncertainty_analysis"].jobs if job.job_id == "adaptive_timeline"
     )
-    assert (
-        "change_detection.mean_detection_delay"
-        not in adaptive.secondary_metrics
-    )
+    assert "change_detection.mean_detection_delay" not in adaptive.secondary_metrics
     assert {
         "change_detection.precision",
         "change_detection.recall",
         "change_detection.false_alarms_per_million_steps",
-    } <= set(
-        adaptive.secondary_metrics
-    )
+    } <= set(adaptive.secondary_metrics)
 
 
 def _tiny_suite(
@@ -1266,15 +708,9 @@ def test_execute_suite_writes_strict_artifacts(
     metadata = json.loads((run_dir / "run_metadata.json").read_text(encoding="utf-8"))
     assert metadata["strict_artifacts"] is True
     assert metadata["job_id"] == "tiny_smoke"
-    assert metadata[
-        "comparison_group"
-    ] == "tiny_smoke_group"
-    assert loaded.manifest.metadata[
-        "comparison_group"
-    ] == "tiny_smoke_group"
-    assert loaded.manifest.metadata[
-        "suite_revision"
-    ] == 2
+    assert metadata["comparison_group"] == "tiny_smoke_group"
+    assert loaded.manifest.metadata["comparison_group"] == "tiny_smoke_group"
+    assert loaded.manifest.metadata["suite_revision"] == 2
 
 
 def test_execute_suite_fails_closed_on_missing_primary_metric(
@@ -1298,11 +734,7 @@ def test_execute_suite_fails_closed_on_missing_primary_metric(
     assert "declared primary metric" in metadata["artifact_error"]
     failed_manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
     assert failed_manifest["status"] == "failed"
-    assert failed_manifest[
-        "metadata"
-    ][
-        "comparison_group"
-    ] == "tiny_smoke_group"
+    assert failed_manifest["metadata"]["comparison_group"] == "tiny_smoke_group"
     with pytest.raises(
         ValueError,
         match="refuses incomplete",

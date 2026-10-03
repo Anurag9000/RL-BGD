@@ -37,20 +37,10 @@ class ChoresArchiveReport:
             "trajectory_count": len(self.trajectories),
             "image_files_checked": self.image_files_checked,
             "splits": {
-                split: sum(
-                    ref.split == split
-                    for ref in self.trajectories
-                )
-                for split in sorted(
-                    {
-                        ref.split
-                        for ref in self.trajectories
-                    }
-                )
+                split: sum(ref.split == split for ref in self.trajectories)
+                for split in sorted({ref.split for ref in self.trajectories})
             },
-            "metadata_files": list(
-                CHORES_METADATA_FILES
-            ),
+            "metadata_files": list(CHORES_METADATA_FILES),
         }
 
 
@@ -67,79 +57,60 @@ def load_chores_trajectory_refs(
 ) -> tuple[ChoresTrajectoryRef, ...]:
     """Load every train/valid_seen demo referenced by pinned CORA metadata."""
 
-    root = Path(
-        metadata_root
-    )
-    refs: list[
-        ChoresTrajectoryRef
-    ] = []
+    root = Path(metadata_root)
+    refs: list[ChoresTrajectoryRef] = []
     for filename in CHORES_METADATA_FILES:
         path = root / filename
         if not path.is_file():
-            raise FileNotFoundError(
-                f"missing CORA CHORES metadata file: {path}"
-            )
-        payload = _load_json(
-            path
-        )
+            raise FileNotFoundError(f"missing CORA CHORES metadata file: {path}")
+        payload = _load_json(path)
         if not isinstance(
             payload,
             list,
         ):
-            raise TypeError(
-                f"{path} must contain a list"
-            )
-        for task_index, task in enumerate(
-            payload
-        ):
+            raise TypeError(f"{path} must contain a list")
+        for task_index, task in enumerate(payload):
             if not isinstance(
                 task,
                 Mapping,
             ):
-                raise TypeError(
-                    f"{path} task {task_index} must be a mapping"
+                raise TypeError(f"{path} task {task_index} must be a mapping")
+            task_name_raw = task.get("name")
+            if (
+                not isinstance(
+                    task_name_raw,
+                    str,
                 )
-            task_name_raw = task.get(
-                "name"
-            )
-            if not isinstance(
-                task_name_raw,
-                str,
-            ) or not task_name_raw:
-                raise TypeError(
-                    f"{path} task {task_index} has no valid name"
-                )
+                or not task_name_raw
+            ):
+                raise TypeError(f"{path} task {task_index} has no valid name")
             for split in (
                 "train",
                 "valid_seen",
             ):
-                demos = task.get(
-                    split
-                )
+                demos = task.get(split)
                 if demos is None:
                     continue
-                if (
-                    isinstance(
-                        demos,
-                        (str, bytes),
-                    )
-                    or not isinstance(
-                        demos,
-                        Sequence,
-                    )
+                if isinstance(
+                    demos,
+                    (str, bytes),
+                ) or not isinstance(
+                    demos,
+                    Sequence,
                 ):
                     raise TypeError(
-                        f"{path} task {task_name_raw!r} split {split!r} "
-                        "must be a sequence"
+                        f"{path} task {task_name_raw!r} split {split!r} must be a sequence"
                     )
                 for demo in demos:
-                    if not isinstance(
-                        demo,
-                        str,
-                    ) or not demo:
+                    if (
+                        not isinstance(
+                            demo,
+                            str,
+                        )
+                        or not demo
+                    ):
                         raise TypeError(
-                            f"{path} task {task_name_raw!r} contains "
-                            f"an invalid {split} demo"
+                            f"{path} task {task_name_raw!r} contains an invalid {split} demo"
                         )
                     refs.append(
                         ChoresTrajectoryRef(
@@ -157,69 +128,33 @@ def load_chores_trajectory_refs(
         )
         for ref in refs
     }
-    if len(
-        unique
-    ) != len(
-        refs
-    ):
-        raise ValueError(
-            "CORA CHORES metadata contains duplicate split/demo references"
-        )
+    if len(unique) != len(refs):
+        raise ValueError("CORA CHORES metadata contains duplicate split/demo references")
     if not refs:
-        raise ValueError(
-            "CORA CHORES metadata references no trajectories"
-        )
-    return tuple(
-        refs
-    )
+        raise ValueError("CORA CHORES metadata references no trajectories")
+    return tuple(refs)
 
 
 def find_chores_archive_root(
     search_root: str | Path,
-    refs: Sequence[
-        ChoresTrajectoryRef
-    ],
+    refs: Sequence[ChoresTrajectoryRef],
 ) -> Path:
     """Locate the extracted archive root from a known referenced trajectory."""
 
     if not refs:
-        raise ValueError(
-            "at least one trajectory reference is required"
-        )
-    root = Path(
-        search_root
-    )
-    first = refs[
-        0
-    ]
-    suffix = (
-        Path(
-            first.split
-        )
-        / first.demo
-        / "traj_data.json"
-    )
-    matches = tuple(
-        root.rglob(
-            str(
-                suffix
-            )
-        )
-    )
-    if len(
-        matches
-    ) != 1:
+        raise ValueError("at least one trajectory reference is required")
+    root = Path(search_root)
+    first = refs[0]
+    suffix = Path(first.split) / first.demo / "traj_data.json"
+    matches = tuple(root.rglob(str(suffix)))
+    if len(matches) != 1:
         raise FileNotFoundError(
             "expected exactly one extracted CORA CHORES archive root for "
             f"{suffix}, found {len(matches)}"
         )
-    candidate = matches[
-        0
-    ]
+    candidate = matches[0]
     for _ in suffix.parts:
-        candidate = (
-            candidate.parent
-        )
+        candidate = candidate.parent
     return candidate
 
 
@@ -228,33 +163,18 @@ def _validate_trajectory(
     archive_root: Path,
     ref: ChoresTrajectoryRef,
 ) -> int:
-    demo_dir = (
-        archive_root
-        / ref.split
-        / ref.demo
-    )
-    traj_path = (
-        demo_dir
-        / "traj_data.json"
-    )
+    demo_dir = archive_root / ref.split / ref.demo
+    traj_path = demo_dir / "traj_data.json"
     if not traj_path.is_file():
-        raise FileNotFoundError(
-            f"missing CORA CHORES trajectory JSON: {traj_path}"
-        )
-    payload = _load_json(
-        traj_path
-    )
+        raise FileNotFoundError(f"missing CORA CHORES trajectory JSON: {traj_path}")
+    payload = _load_json(traj_path)
     if not isinstance(
         payload,
         Mapping,
     ):
-        raise TypeError(
-            f"{traj_path} must contain a mapping"
-        )
+        raise TypeError(f"{traj_path} must contain a mapping")
 
-    images = payload.get(
-        "images"
-    )
+    images = payload.get("images")
     if (
         isinstance(
             images,
@@ -266,23 +186,15 @@ def _validate_trajectory(
         )
         or not images
     ):
-        raise ValueError(
-            f"{traj_path} contains no usable images"
-        )
+        raise ValueError(f"{traj_path} contains no usable images")
 
-    plan = payload.get(
-        "plan"
-    )
+    plan = payload.get("plan")
     if not isinstance(
         plan,
         Mapping,
     ):
-        raise ValueError(
-            f"{traj_path} contains no plan mapping"
-        )
-    low_actions = plan.get(
-        "low_actions"
-    )
+        raise ValueError(f"{traj_path} contains no plan mapping")
+    low_actions = plan.get("low_actions")
     if (
         isinstance(
             low_actions,
@@ -294,46 +206,30 @@ def _validate_trajectory(
         )
         or not low_actions
     ):
-        raise ValueError(
-            f"{traj_path} contains no low_actions"
-        )
+        raise ValueError(f"{traj_path} contains no low_actions")
 
-    raw_images = (
-        demo_dir
-        / "raw_images"
-    )
+    raw_images = demo_dir / "raw_images"
     if not raw_images.is_dir():
-        raise FileNotFoundError(
-            f"missing CORA CHORES raw_images directory: {raw_images}"
-        )
+        raise FileNotFoundError(f"missing CORA CHORES raw_images directory: {raw_images}")
 
     checked = 0
-    for image_index, image in enumerate(
-        images
-    ):
+    for image_index, image in enumerate(images):
         if not isinstance(
             image,
             Mapping,
         ):
-            raise TypeError(
-                f"{traj_path} image {image_index} must be a mapping"
+            raise TypeError(f"{traj_path} image {image_index} must be a mapping")
+        image_name = image.get("image_name")
+        low_idx = image.get("low_idx")
+        high_idx = image.get("high_idx")
+        if (
+            not isinstance(
+                image_name,
+                str,
             )
-        image_name = image.get(
-            "image_name"
-        )
-        low_idx = image.get(
-            "low_idx"
-        )
-        high_idx = image.get(
-            "high_idx"
-        )
-        if not isinstance(
-            image_name,
-            str,
-        ) or not image_name:
-            raise TypeError(
-                f"{traj_path} image {image_index} has no image_name"
-            )
+            or not image_name
+        ):
+            raise TypeError(f"{traj_path} image {image_index} has no image_name")
         if (
             isinstance(
                 low_idx,
@@ -344,14 +240,9 @@ def _validate_trajectory(
                 int,
             )
             or low_idx < 0
-            or low_idx
-            >= len(
-                low_actions
-            )
+            or low_idx >= len(low_actions)
         ):
-            raise ValueError(
-                f"{traj_path} image {image_index} has invalid low_idx"
-            )
+            raise ValueError(f"{traj_path} image {image_index} has invalid low_idx")
         if (
             isinstance(
                 high_idx,
@@ -363,23 +254,11 @@ def _validate_trajectory(
             )
             or high_idx < 0
         ):
-            raise ValueError(
-                f"{traj_path} image {image_index} has invalid high_idx"
-            )
+            raise ValueError(f"{traj_path} image {image_index} has invalid high_idx")
 
-        image_path = (
-            raw_images
-            / (
-                Path(
-                    image_name
-                ).stem
-                + ".png"
-            )
-        )
+        image_path = raw_images / (Path(image_name).stem + ".png")
         if not image_path.is_file():
-            raise FileNotFoundError(
-                f"missing CORA CHORES raw image: {image_path}"
-            )
+            raise FileNotFoundError(f"missing CORA CHORES raw image: {image_path}")
         checked += 1
 
     return checked
@@ -392,12 +271,8 @@ def validate_chores_archive(
 ) -> ChoresArchiveReport:
     """Validate all trajectories and raw goal images referenced by CORA."""
 
-    refs = load_chores_trajectory_refs(
-        metadata_root
-    )
-    root = Path(
-        archive_root
-    )
+    refs = load_chores_trajectory_refs(metadata_root)
+    root = Path(archive_root)
     image_files_checked = sum(
         _validate_trajectory(
             archive_root=root,
@@ -408,7 +283,5 @@ def validate_chores_archive(
     return ChoresArchiveReport(
         archive_root=root,
         trajectories=refs,
-        image_files_checked=(
-            image_files_checked
-        ),
+        image_files_checked=(image_files_checked),
     )

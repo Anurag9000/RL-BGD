@@ -164,7 +164,6 @@ def test_identity_wrapper_and_canonical_stream_propagate_close() -> None:
     assert second.close_count == 1
 
 
-
 def test_repeated_sequence_recurrence_summary() -> None:
     summary = repeated_sequence_recurrence_summary(
         (
@@ -201,31 +200,11 @@ def test_repeated_sequence_recurrence_summary() -> None:
         ),
     )
 
-    assert summary[
-        "reference_success"
-    ] == pytest.approx(
-        0.75
-    )
-    assert summary[
-        "zero_shot_success"
-    ] == pytest.approx(
-        0.675
-    )
-    assert summary[
-        "recovered_success"
-    ] == pytest.approx(
-        0.965
-    )
-    assert summary[
-        "pre_revisit_change"
-    ] == pytest.approx(
-        -0.075
-    )
-    assert summary[
-        "relearning_gain"
-    ] == pytest.approx(
-        0.29
-    )
+    assert summary["reference_success"] == pytest.approx(0.75)
+    assert summary["zero_shot_success"] == pytest.approx(0.675)
+    assert summary["recovered_success"] == pytest.approx(0.965)
+    assert summary["pre_revisit_change"] == pytest.approx(-0.075)
+    assert summary["relearning_gain"] == pytest.approx(0.29)
 
 
 def test_recurrence_summary_rejects_nonrepeated_sequence() -> None:

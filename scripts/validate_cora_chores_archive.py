@@ -52,9 +52,7 @@ def _parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = _parser().parse_args()
-    refs = load_chores_trajectory_refs(
-        args.metadata_root
-    )
+    refs = load_chores_trajectory_refs(args.metadata_root)
     if len(refs) != args.expected_trajectories:
         raise ValueError(
             "CORA CHORES metadata trajectory count mismatch: "
@@ -69,9 +67,7 @@ def main() -> None:
         metadata_root=args.metadata_root,
     )
     if args.root_only:
-        print(
-            report.archive_root
-        )
+        print(report.archive_root)
         return
     print(
         json.dumps(

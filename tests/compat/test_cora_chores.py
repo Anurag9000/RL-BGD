@@ -24,9 +24,7 @@ def _write_json(
         exist_ok=True,
     )
     path.write_text(
-        json.dumps(
-            payload
-        ),
+        json.dumps(payload),
         encoding="utf-8",
     )
 
@@ -38,90 +36,46 @@ def _fixture_tree(
     Path,
     str,
 ]:
-    metadata_root = (
-        tmp_path
-        / "metadata"
-    )
+    metadata_root = tmp_path / "metadata"
     demo = (
-        "pick_and_place_simple-"
-        "ToiletPaper-None-"
-        "ToiletPaperHanger-402/"
-        "trial_T20210817_071626_357261"
+        "pick_and_place_simple-ToiletPaper-None-ToiletPaperHanger-402/trial_T20210817_071626_357261"
     )
     _write_json(
-        metadata_root
-        / "vary_tasks.json",
+        metadata_root / "vary_tasks.json",
         [
             {
-                "name": (
-                    "hang_toilet_paper"
-                ),
-                "train": [
-                    demo
-                ],
+                "name": ("hang_toilet_paper"),
+                "train": [demo],
             }
         ],
     )
-    for filename in (
-        set(
-            CHORES_METADATA_FILES
-        )
-        - {
-            "vary_tasks.json"
-        }
-    ):
+    for filename in set(CHORES_METADATA_FILES) - {"vary_tasks.json"}:
         _write_json(
-            metadata_root
-            / filename,
+            metadata_root / filename,
             [],
         )
 
-    archive_root = (
-        tmp_path
-        / "extracted"
-        / "cora_trajs"
-    )
-    demo_root = (
-        archive_root
-        / "train"
-        / demo
-    )
+    archive_root = tmp_path / "extracted" / "cora_trajs"
+    demo_root = archive_root / "train" / demo
     _write_json(
-        demo_root
-        / "traj_data.json",
+        demo_root / "traj_data.json",
         {
             "images": [
                 {
-                    "image_name": (
-                        "000000000.png"
-                    ),
+                    "image_name": ("000000000.png"),
                     "low_idx": 0,
                     "high_idx": 0,
                 }
             ],
-            "plan": {
-                "low_actions": [
-                    {
-                        "api_action": {}
-                    }
-                ]
-            },
+            "plan": {"low_actions": [{"api_action": {}}]},
         },
     )
-    raw_images = (
-        demo_root
-        / "raw_images"
-    )
+    raw_images = demo_root / "raw_images"
     raw_images.mkdir(
         parents=True,
         exist_ok=True,
     )
-    (
-        raw_images
-        / "000000000.png"
-    ).write_bytes(
-        b"synthetic"
-    )
+    (raw_images / "000000000.png").write_bytes(b"synthetic")
     return (
         metadata_root,
         archive_root,
@@ -136,61 +90,27 @@ def test_chores_archive_discovery_and_validation(
         metadata_root,
         archive_root,
         demo,
-    ) = _fixture_tree(
-        tmp_path
-    )
-    refs = (
-        load_chores_trajectory_refs(
-            metadata_root
-        )
-    )
-    assert len(
-        refs
-    ) == 1
-    assert refs[
-        0
-    ].demo == demo
+    ) = _fixture_tree(tmp_path)
+    refs = load_chores_trajectory_refs(metadata_root)
+    assert len(refs) == 1
+    assert refs[0].demo == demo
 
-    discovered = (
-        find_chores_archive_root(
-            tmp_path
-            / "extracted",
-            refs,
-        )
+    discovered = find_chores_archive_root(
+        tmp_path / "extracted",
+        refs,
     )
-    assert (
-        discovered
-        == archive_root
-    )
+    assert discovered == archive_root
 
-    report = (
-        validate_chores_archive(
-            archive_root=discovered,
-            metadata_root=metadata_root,
-        )
+    report = validate_chores_archive(
+        archive_root=discovered,
+        metadata_root=metadata_root,
     )
-    assert (
-        report.archive_root
-        == archive_root
-    )
-    assert len(
-        report.trajectories
-    ) == 1
-    assert (
-        report.image_files_checked
-        == 1
-    )
-    payload = (
-        report.to_dict()
-    )
-    assert payload[
-        "trajectory_count"
-    ] == 1
-    assert payload[
-        "splits"
-    ] == {
-        "train": 1
-    }
+    assert report.archive_root == archive_root
+    assert len(report.trajectories) == 1
+    assert report.image_files_checked == 1
+    payload = report.to_dict()
+    assert payload["trajectory_count"] == 1
+    assert payload["splits"] == {"train": 1}
 
 
 def test_chores_archive_rejects_missing_raw_image(
@@ -200,16 +120,8 @@ def test_chores_archive_rejects_missing_raw_image(
         metadata_root,
         archive_root,
         demo,
-    ) = _fixture_tree(
-        tmp_path
-    )
-    (
-        archive_root
-        / "train"
-        / demo
-        / "raw_images"
-        / "000000000.png"
-    ).unlink()
+    ) = _fixture_tree(tmp_path)
+    (archive_root / "train" / demo / "raw_images" / "000000000.png").unlink()
 
     with pytest.raises(
         FileNotFoundError,
@@ -228,15 +140,8 @@ def test_chores_archive_rejects_missing_referenced_trajectory(
         metadata_root,
         archive_root,
         demo,
-    ) = _fixture_tree(
-        tmp_path
-    )
-    (
-        archive_root
-        / "train"
-        / demo
-        / "traj_data.json"
-    ).unlink()
+    ) = _fixture_tree(tmp_path)
+    (archive_root / "train" / demo / "traj_data.json").unlink()
 
     with pytest.raises(
         FileNotFoundError,
@@ -255,29 +160,14 @@ def test_chores_archive_root_requires_unique_match(
         metadata_root,
         archive_root,
         demo,
-    ) = _fixture_tree(
-        tmp_path
-    )
-    refs = (
-        load_chores_trajectory_refs(
-            metadata_root
-        )
-    )
-    duplicate = (
-        tmp_path
-        / "extracted"
-        / "duplicate"
-        / "train"
-        / demo
-    )
+    ) = _fixture_tree(tmp_path)
+    refs = load_chores_trajectory_refs(metadata_root)
+    duplicate = tmp_path / "extracted" / "duplicate" / "train" / demo
     duplicate.mkdir(
         parents=True,
         exist_ok=True,
     )
-    (
-        duplicate
-        / "traj_data.json"
-    ).write_text(
+    (duplicate / "traj_data.json").write_text(
         "{}",
         encoding="utf-8",
     )
@@ -287,8 +177,7 @@ def test_chores_archive_root_requires_unique_match(
         match="exactly one",
     ):
         find_chores_archive_root(
-            tmp_path
-            / "extracted",
+            tmp_path / "extracted",
             refs,
         )
 

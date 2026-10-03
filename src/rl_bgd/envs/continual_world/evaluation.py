@@ -109,9 +109,7 @@ def evaluate_tasks(
 
 def repeated_sequence_recurrence_summary(
     task_names: Sequence[str],
-    performance_matrix: Sequence[
-        Sequence[float]
-    ],
+    performance_matrix: Sequence[Sequence[float]],
 ) -> dict[str, float]:
     """Summarize zero-shot retention and relearning for an exact repeated sequence.
 
@@ -120,25 +118,11 @@ def repeated_sequence_recurrence_summary(
     This is evaluator-only bookkeeping and is never exposed to the learner.
     """
 
-    names = tuple(
-        task_names
-    )
-    if (
-        len(names) < 2
-        or len(names) % 2 != 0
-    ):
-        raise ValueError(
-            "repeated-sequence recurrence requires an even nontrivial task order"
-        )
+    names = tuple(task_names)
+    if len(names) < 2 or len(names) % 2 != 0:
+        raise ValueError("repeated-sequence recurrence requires an even nontrivial task order")
     half = len(names) // 2
-    if (
-        names[
-            :half
-        ]
-        != names[
-            half:
-        ]
-    ):
+    if names[:half] != names[half:]:
         raise ValueError(
             "recurrence summary requires the second half to repeat the first half exactly"
         )
@@ -147,44 +131,17 @@ def repeated_sequence_recurrence_summary(
         performance_matrix,
         dtype=np.float64,
     )
-    expected = len(
-        names
-    )
-    if (
-        matrix.ndim != 2
-        or matrix.shape[
-            0
-        ] < expected
-        or matrix.shape[
-            1
-        ] != expected
-    ):
-        raise ValueError(
-            "recurrence summary requires a complete stage-by-occurrence matrix"
-        )
-    if not np.isfinite(
-        matrix
-    ).all():
-        raise ValueError(
-            "recurrence matrix must be finite"
-        )
+    expected = len(names)
+    if matrix.ndim != 2 or matrix.shape[0] < expected or matrix.shape[1] != expected:
+        raise ValueError("recurrence summary requires a complete stage-by-occurrence matrix")
+    if not np.isfinite(matrix).all():
+        raise ValueError("recurrence matrix must be finite")
 
-    references: list[
-        float
-    ] = []
-    zero_shot: list[
-        float
-    ] = []
-    recovered: list[
-        float
-    ] = []
-    for first_index in range(
-        half
-    ):
-        revisit_index = (
-            half
-            + first_index
-        )
+    references: list[float] = []
+    zero_shot: list[float] = []
+    recovered: list[float] = []
+    for first_index in range(half):
+        revisit_index = half + first_index
         references.append(
             float(
                 matrix[
@@ -210,39 +167,15 @@ def repeated_sequence_recurrence_summary(
             )
         )
 
-    reference_mean = float(
-        np.mean(
-            references
-        )
-    )
-    zero_shot_mean = float(
-        np.mean(
-            zero_shot
-        )
-    )
-    recovered_mean = float(
-        np.mean(
-            recovered
-        )
-    )
+    reference_mean = float(np.mean(references))
+    zero_shot_mean = float(np.mean(zero_shot))
+    recovered_mean = float(np.mean(recovered))
     return {
-        "reference_success": (
-            reference_mean
-        ),
-        "zero_shot_success": (
-            zero_shot_mean
-        ),
-        "recovered_success": (
-            recovered_mean
-        ),
-        "pre_revisit_change": (
-            zero_shot_mean
-            - reference_mean
-        ),
-        "relearning_gain": (
-            recovered_mean
-            - zero_shot_mean
-        ),
+        "reference_success": (reference_mean),
+        "zero_shot_success": (zero_shot_mean),
+        "recovered_success": (recovered_mean),
+        "pre_revisit_change": (zero_shot_mean - reference_mean),
+        "relearning_gain": (recovered_mean - zero_shot_mean),
     }
 
 

@@ -139,9 +139,7 @@ def run_ta_continual_world_sac(
                     method=methods[optimizer],
                     target=regularization_target,
                     strength=regularization_strength,
-                    consolidation_interval_updates=(
-                        consolidation_interval_updates
-                    ),
+                    consolidation_interval_updates=(consolidation_interval_updates),
                     importance_samples=importance_samples,
                     online_ewc_decay=0.95,
                     si_damping=0.1,
