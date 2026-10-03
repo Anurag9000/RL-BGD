@@ -204,6 +204,7 @@ def download_chores_archive(
     expected_sha256: str | None = None,
     timeout: float = 60.0,
     max_bytes: int = DEFAULT_MAX_ARCHIVE_BYTES,
+    attempts_per_url: int = 3,
     opener: OpenUrl | None = None,
 ) -> ChoresArchiveDownloadReport:
     """Download the first valid ZIP candidate and atomically publish it."""
@@ -215,6 +216,11 @@ def download_chores_archive(
     if max_bytes < 1:
         raise ValueError(
             "max_bytes must be positive"
+        )
+
+    if attempts_per_url < 1:
+        raise ValueError(
+            "attempts_per_url must be positive"
         )
 
     candidates = tuple(
@@ -277,65 +283,83 @@ def download_chores_archive(
     for candidate_index, url in enumerate(
         candidates
     ):
-        temporary = target.with_name(
-            (
-                f".{target.name}.candidate-"
-                f"{candidate_index}.tmp"
-            )
-        )
-        try:
-            bytes_written = (
-                _download_candidate(
-                    url=url,
-                    destination=temporary,
-                    timeout=timeout,
-                    max_bytes=max_bytes,
-                    opener=open_url,
+        for attempt_index in range(
+            attempts_per_url
+        ):
+            temporary = target.with_name(
+                (
+                    f".{target.name}.candidate-"
+                    f"{candidate_index}-attempt-"
+                    f"{attempt_index}.tmp"
                 )
             )
-            digest = _sha256_file(
-                temporary
-            )
-            if (
-                expected is not None
-                and digest != expected
-            ):
-                raise ChoresArchiveDownloadError(
-                    "archive SHA-256 mismatch: "
-                    f"expected {expected}, found {digest}"
+            try:
+                bytes_written = (
+                    _download_candidate(
+                        url=url,
+                        destination=temporary,
+                        timeout=timeout,
+                        max_bytes=max_bytes,
+                        opener=open_url,
+                    )
                 )
+                digest = _sha256_file(
+                    temporary
+                )
+                if (
+                    expected is not None
+                    and digest != expected
+                ):
+                    raise ChoresArchiveDownloadError(
+                        "archive SHA-256 mismatch: "
+                        f"expected {expected}, found {digest}"
+                    )
 
-            os.replace(
-                temporary,
-                target,
-            )
-            return (
-                ChoresArchiveDownloadReport(
-                    source_url=url,
-                    destination=(
-                        target.resolve()
-                    ),
-                    sha256=digest,
-                    bytes_written=(
-                        bytes_written
-                    ),
-                    candidate_failures=tuple(
-                        failures
-                    ),
+                os.replace(
+                    temporary,
+                    target,
                 )
-            )
-        except (
-            OSError,
-            ChoresArchiveDownloadError,
-            zipfile.BadZipFile,
-        ) as exc:
-            failures.append(
-                f"{url}: {exc}"
-            )
-        finally:
-            temporary.unlink(
-                missing_ok=True
-            )
+                return (
+                    ChoresArchiveDownloadReport(
+                        source_url=url,
+                        destination=(
+                            target.resolve()
+                        ),
+                        sha256=digest,
+                        bytes_written=(
+                            bytes_written
+                        ),
+                        candidate_failures=tuple(
+                            failures
+                        ),
+                    )
+                )
+            except OSError as exc:
+                failures.append(
+                    (
+                        f"{url} attempt "
+                        f"{attempt_index + 1}/"
+                        f"{attempts_per_url}: "
+                        f"network error: {exc}"
+                    )
+                )
+                if (
+                    attempt_index + 1
+                    >= attempts_per_url
+                ):
+                    break
+            except (
+                ChoresArchiveDownloadError,
+                zipfile.BadZipFile,
+            ) as exc:
+                failures.append(
+                    f"{url}: {exc}"
+                )
+                break
+            finally:
+                temporary.unlink(
+                    missing_ok=True
+                )
 
     raise ChoresArchiveDownloadError(
         "no CORA CHORES archive candidate validated:\n"
