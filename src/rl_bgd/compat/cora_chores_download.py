@@ -30,7 +30,7 @@ class _Response(Protocol):
         amount: int = -1,
     ) -> bytes: ...
 
-    def __enter__(self) -> "_Response": ...
+    def __enter__(self) -> _Response: ...
 
     def __exit__(
         self,
@@ -287,11 +287,9 @@ def download_chores_archive(
             attempts_per_url
         ):
             temporary = target.with_name(
-                (
-                    f".{target.name}.candidate-"
-                    f"{candidate_index}-attempt-"
-                    f"{attempt_index}.tmp"
-                )
+                f".{target.name}.candidate-"
+                f"{candidate_index}-attempt-"
+                f"{attempt_index}.tmp"
             )
             try:
                 bytes_written = (
