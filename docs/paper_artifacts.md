@@ -20,6 +20,9 @@ Every completed run is authoritative only when its directory contains:
 
 The strict loader validates schema versions, run IDs, completion state, source
 files, and provenance hashes before a run can enter paper aggregation.
+`config.yaml` also records the fully resolved runner call (including signature
+defaults), making the executed call contract inspectable independently of any
+referenced configuration template.
 stdout.json, stderr.log, and execution metadata may also exist for debugging,
 but they are not scientific inputs to tables or figures.
 
