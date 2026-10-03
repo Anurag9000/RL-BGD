@@ -44,7 +44,7 @@ def test_suite_manifest_contains_complete_job_metadata(
     saved = json.loads(path.read_text(encoding="utf-8"))
     assert saved["schema_version"] == 1
     assert saved["suite"] == "smoke"
-    assert saved["suite_revision"] == SUITES["smoke"].revision == 2
+    assert saved["suite_revision"] == SUITES["smoke"].revision == 3
     assert saved["jobs"]
     for job in saved["jobs"]:
         assert job["suite_revision"] == saved["suite_revision"]
@@ -56,6 +56,8 @@ def test_suite_manifest_contains_complete_job_metadata(
         assert job["protocol"]
         assert job["primary_metric"]
         assert "comparison_group" in job
+        assert job["resolved_call_kwargs"]
+        assert job["resolved_call_kwargs"]["seed"] == job["seed"]
         assert job["command"]
         assert job["run_dir"]
 
@@ -136,6 +138,30 @@ def test_paper_suites_cover_every_execution_hypothesis() -> None:
         "UCL",
     } <= hypothesis_ids
     assert "I-J" in hypothesis_ids
+
+
+def test_stationary_suite_has_exact_matched_optimizer_controls() -> None:
+    jobs = {
+        job.job_id: job
+        for job in SUITES["stationary_core"].jobs
+    }
+
+    sac_adam = jobs["stationary_sac_adam"].kwargs
+    sac_bgd = jobs["stationary_sac_bgd"].kwargs
+    for key, value in sac_adam.items():
+        assert sac_bgd[key] == value
+    assert sac_bgd["bayesianization"] == "critic_only"
+    assert sac_bgd["mc_samples"] == 2
+    assert sac_adam["evaluation_seed"] == sac_bgd["evaluation_seed"] == 20_000
+
+    ppo_adam = jobs["stationary_ppo_adam"].kwargs
+    ppo_bgd = jobs["stationary_ppo_bgd"].kwargs
+    for key, value in ppo_adam.items():
+        assert ppo_bgd[key] == value
+    assert ppo_bgd["bayesianization"] == "actor_and_value"
+    assert ppo_bgd["mc_samples"] == 2
+    assert ppo_adam["update_epochs"] == ppo_bgd["update_epochs"] == 4
+    assert ppo_adam["evaluation_seed"] == ppo_bgd["evaluation_seed"] == 30_000
 
 
 def test_stationary_and_mechanism_suites_have_replicate_coverage() -> None:
@@ -544,6 +570,17 @@ def test_compute_suite_has_matched_factorized_controls() -> None:
     }
     assert all(job.kwargs["bayesianization"] == "critic_only" for job in compute_mc_jobs.values())
 
+    stationary_sac = {
+        job.job_id: job
+        for job in SUITES["stationary_core"].jobs
+    }["stationary_sac_adam"].kwargs
+    shared_keys = set(stationary_sac)
+    for job in jobs:
+        for key in shared_keys:
+            expected = 600 if key == "steps" else stationary_sac[key]
+            assert job.kwargs[key] == expected
+    assert {int(job.kwargs["evaluation_seed"]) for job in jobs} == {20_000}
+
 
 def test_ucl_structured_outputs_are_not_declared_as_scalar_metrics() -> None:
     ucl_jobs = [
@@ -711,9 +748,9 @@ def test_execute_suite_writes_strict_artifacts(
     assert metadata["strict_artifacts"] is True
     assert metadata["job_id"] == "tiny_smoke"
     assert metadata["comparison_group"] == "tiny_smoke_group"
-    assert metadata["suite_revision"] == 2
+    assert metadata["suite_revision"] == 3
     assert loaded.manifest.metadata["comparison_group"] == "tiny_smoke_group"
-    assert loaded.manifest.metadata["suite_revision"] == 2
+    assert loaded.manifest.metadata["suite_revision"] == 3
 
 
 def test_execute_suite_filters_one_seed_without_touching_other_runs(
