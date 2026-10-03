@@ -25,6 +25,24 @@ def run_ppo_lqr(
     steps: int = 800,
     seed: int = 19,
     device: str = "auto",
+    horizon: int = 30,
+    hidden_dims: tuple[int, ...] = (32, 32),
+    gamma: float = 0.99,
+    gae_lambda: float = 0.95,
+    clip_ratio: float = 0.2,
+    value_clip_ratio: float | None = 0.2,
+    actor_lr: float = 1e-3,
+    value_lr: float = 1e-3,
+    entropy_coef: float = 0.0,
+    value_coef: float = 0.5,
+    update_epochs: int = 6,
+    minibatch_size: int = 64,
+    gradient_clip_norm: float = 0.5,
+    normalize_advantages: bool = True,
+    target_kl: float | None = None,
+    rollout_steps: int = 128,
+    evaluation_episodes: int = 5,
+    evaluation_seed: int = 30_000,
 ) -> dict[str, object]:
     seed_everything(
         seed,
@@ -32,7 +50,7 @@ def run_ppo_lqr(
     )
     resolved = resolve_device(device)
     env = LinearQuadraticControlEnv(
-        horizon=30,
+        horizon=horizon,
         device=resolved,
     )
     agent = PPOAgent(
@@ -40,36 +58,44 @@ def run_ppo_lqr(
         1,
         action_low=env.action_space.low,
         action_high=env.action_space.high,
-        hidden_dims=(32, 32),
+        hidden_dims=hidden_dims,
         config=PPOConfig(
-            actor_lr=1e-3,
-            value_lr=1e-3,
-            update_epochs=6,
-            minibatch_size=64,
-            gradient_clip_norm=0.5,
+            gamma=gamma,
+            gae_lambda=gae_lambda,
+            clip_ratio=clip_ratio,
+            value_clip_ratio=value_clip_ratio,
+            actor_lr=actor_lr,
+            value_lr=value_lr,
+            entropy_coef=entropy_coef,
+            value_coef=value_coef,
+            update_epochs=update_epochs,
+            minibatch_size=minibatch_size,
+            gradient_clip_norm=gradient_clip_norm,
+            normalize_advantages=normalize_advantages,
+            target_kl=target_kl,
         ),
         device=resolved,
     )
     pre_return = evaluate_ppo(
         env,
         agent,
-        episodes=5,
-        seed=30_000,
+        episodes=evaluation_episodes,
+        seed=evaluation_seed,
     )
     summary = train_ppo(
         env,
         agent,
         config=PPOTrainConfig(
             total_steps=steps,
-            rollout_steps=128,
+            rollout_steps=rollout_steps,
             seed=seed,
         ),
     )
     post_return = evaluate_ppo(
         env,
         agent,
-        episodes=5,
-        seed=30_000,
+        episodes=evaluation_episodes,
+        seed=evaluation_seed,
     )
     return {
         "steps": steps,
