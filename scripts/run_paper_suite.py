@@ -35,6 +35,25 @@ def main() -> None:
         action="store_true",
         help="rerun even strict successful jobs whose saved contract still matches",
     )
+    parser.add_argument(
+        "--job-id",
+        action="append",
+        default=[],
+        help="execute only this suite job ID; repeat to select multiple jobs",
+    )
+    parser.add_argument(
+        "--seed",
+        action="append",
+        type=int,
+        default=[],
+        help="execute only this seed; repeat to select multiple seeds",
+    )
+    parser.add_argument(
+        "--run-id",
+        action="append",
+        default=[],
+        help="execute only this expanded run ID; repeat to select multiple runs",
+    )
     args = parser.parse_args()
     if args.execute:
         result = execute_suite(
@@ -42,6 +61,24 @@ def main() -> None:
             args.output_root,
             continue_on_error=args.continue_on_error,
             resume=not args.no_resume,
+            job_ids=(
+                tuple(
+                    args.job_id
+                )
+                or None
+            ),
+            seeds=(
+                tuple(
+                    args.seed
+                )
+                or None
+            ),
+            run_ids=(
+                tuple(
+                    args.run_id
+                )
+                or None
+            ),
         )
     else:
         result = materialize_suite(
