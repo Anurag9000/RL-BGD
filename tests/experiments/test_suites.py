@@ -198,6 +198,104 @@ def test_stationary_and_mechanism_suites_have_replicate_coverage() -> None:
     assert mechanisms[0].seed_kwarg == "seed"
 
 
+
+
+def _resolved_jobs_by_id(
+    manifest: dict[str, object],
+) -> dict[str, dict[str, object]]:
+    jobs = manifest["jobs"]
+    assert isinstance(jobs, list)
+    output: dict[str, dict[str, object]] = {}
+    for raw_job in jobs:
+        assert isinstance(raw_job, dict)
+        job_id = raw_job["job_id"]
+        resolved = raw_job["resolved_call_kwargs"]
+        assert isinstance(job_id, str)
+        assert isinstance(resolved, dict)
+        output[job_id] = resolved
+    return output
+
+
+def _without_keys(
+    payload: dict[str, object],
+    keys: set[str],
+) -> dict[str, object]:
+    return {
+        key: value
+        for key, value in payload.items()
+        if key not in keys
+    }
+
+
+def test_stationary_resolved_controls_are_matched(
+    tmp_path: Path,
+) -> None:
+    manifest = materialize_suite(
+        "stationary_core",
+        tmp_path,
+    )
+    jobs = _resolved_jobs_by_id(manifest)
+
+    sac_adam = jobs["stationary_sac_adam"]
+    sac_bgd = jobs["stationary_sac_bgd"]
+    assert _without_keys(
+        sac_bgd,
+        {
+            "bayesianization",
+            "evidence_temperature",
+            "temper_retention",
+            "replay_evidence_mode",
+            "mc_samples",
+            "posterior_std",
+            "sigma_min",
+            "sigma_max",
+            "bgd_eta",
+        },
+    ) == sac_adam
+
+    ppo_adam = jobs["stationary_ppo_adam"]
+    ppo_bgd = jobs["stationary_ppo_bgd"]
+    assert _without_keys(
+        ppo_bgd,
+        {
+            "bayesianization",
+            "posterior_std",
+            "evidence_mode",
+            "bgd_eta",
+            "mc_samples",
+        },
+    ) == ppo_adam
+
+
+def test_compute_resolved_controls_are_matched(
+    tmp_path: Path,
+) -> None:
+    manifest = materialize_suite(
+        "compute_analysis",
+        tmp_path,
+    )
+    jobs = _resolved_jobs_by_id(manifest)
+    adam = jobs["compute_sac_adam"]
+    for job_id in (
+        "compute_bgd_critic_only",
+        "compute_bgd_actor_only",
+        "compute_bgd_actor_and_critic",
+    ):
+        assert _without_keys(
+            jobs[job_id],
+            {
+                "bayesianization",
+                "evidence_temperature",
+                "temper_retention",
+                "replay_evidence_mode",
+                "mc_samples",
+                "posterior_std",
+                "sigma_min",
+                "sigma_max",
+                "bgd_eta",
+            },
+        ) == adam
+
 def test_external_baseline_suite_has_full_method_coverage() -> None:
     jobs = SUITES["baseline_core"].jobs
     regularized = [job for job in jobs if job.target.endswith(":run_regularized_sac_recurring_lqr")]
