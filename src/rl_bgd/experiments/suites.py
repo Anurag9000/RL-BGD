@@ -2022,7 +2022,7 @@ def _completed_run_matches_job(
     if not isinstance(raw, dict):
         return False
     expected = {
-        "schema_version": 2,
+        "schema_version": 3,
         "run_id": job["run_id"],
         "job_id": job["job_id"],
         "comparison_group": job["comparison_group"],
@@ -2192,7 +2192,7 @@ def execute_suite(
             )
 
         metadata = {
-            "schema_version": 2,
+            "schema_version": 3,
             "run_id": job["run_id"],
             "job_id": job["job_id"],
             "comparison_group": job["comparison_group"],
