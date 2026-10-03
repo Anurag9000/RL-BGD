@@ -267,11 +267,23 @@ def test_parallel_suite_assigns_each_child_to_worker_gpu(
         "2",
         "7",
     }
+    summary_path = Path(
+        str(
+            summary[
+                "summary_path"
+            ]
+        )
+    )
+    assert summary_path.is_file()
     assert (
-        tmp_path
-        / "smoke"
-        / "parallel_execution_summary.json"
-    ).is_file()
+        summary_path.parent.name
+        == "parallel_execution_summaries"
+    )
+    assert (
+        summary_path.name.startswith(
+            "selection_"
+        )
+    )
 
 
 def test_parallel_suite_cpu_fallback_hides_cuda(
