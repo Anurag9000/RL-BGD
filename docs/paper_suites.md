@@ -53,6 +53,13 @@ Successful jobs are converted into the canonical Phase-15 schema:
 - metrics.csv
 - summary.json
 
+The suite manifest and `config.yaml` record both the explicitly supplied kwargs
+and `resolved_call_kwargs`, obtained by binding the target function signature
+and applying defaults. The resolved call is the authoritative call-level
+contract used for resume/provenance checks. A referenced YAML file is retained
+as supporting configuration context rather than assumed to be identical to
+runtime defaults.
+
 Raw stdout/stderr are retained only for debugging. Failed jobs receive an
 explicit failed manifest; downstream paper aggregation refuses such a results
 root rather than silently omitting failures.
