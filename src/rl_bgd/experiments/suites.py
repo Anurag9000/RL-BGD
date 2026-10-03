@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from rl_bgd.artifacts import load_run_directory
 from rl_bgd.artifacts.suite import (
     parse_runner_stdout,
     record_completed_suite_run,
@@ -1760,11 +1761,69 @@ def materialize_suite(
     return manifest
 
 
+def _completed_run_matches_job(
+    run_dir: Path,
+    *,
+    suite_name: str,
+    git_commit: str,
+    job: dict[str, Any],
+) -> bool:
+    """Return whether a strict completed run exactly matches this job contract."""
+
+    metadata_path = run_dir / "run_metadata.json"
+    if not metadata_path.is_file():
+        return False
+    try:
+        raw = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    if not isinstance(raw, dict):
+        return False
+    expected = {
+        "schema_version": 2,
+        "run_id": job["run_id"],
+        "job_id": job["job_id"],
+        "comparison_group": job["comparison_group"],
+        "suite": suite_name,
+        "git_commit": git_commit,
+        "target": job["target"],
+        "kwargs": job["kwargs"],
+        "seed": job["seed"],
+        "algorithm": job["algorithm"],
+        "environment": job["environment"],
+        "protocol": job["protocol"],
+        "hypothesis_id": job["hypothesis_id"],
+        "config_path": job["config_path"],
+        "primary_metric": job["primary_metric"],
+        "secondary_metrics": list(job["secondary_metrics"]),
+        "optional_extra": job["optional_extra"],
+        "runtime_class": job["runtime_class"],
+        "status": "success",
+        "returncode": 0,
+        "strict_artifacts": True,
+    }
+    for key, value in expected.items():
+        if raw.get(key) != value:
+            return False
+    try:
+        loaded = load_run_directory(
+            run_dir,
+            require_completed=True,
+        )
+    except (OSError, TypeError, ValueError):
+        return False
+    return (
+        loaded.manifest.run_id == job["run_id"]
+        and loaded.manifest.git_commit == git_commit
+    )
+
+
 def execute_suite(
     suite_name: str,
     output_root: str | Path,
     *,
     continue_on_error: bool = False,
+    resume: bool = True,
 ) -> dict[str, Any]:
     manifest = materialize_suite(
         suite_name,
@@ -1775,12 +1834,23 @@ def execute_suite(
         raise RuntimeError("suite execution requires a concrete git commit for provenance")
 
     failures: list[str] = []
+    skipped: list[str] = []
+    executed: list[str] = []
     for job in manifest["jobs"]:
         run_dir = Path(job["run_dir"])
         run_dir.mkdir(
             parents=True,
             exist_ok=True,
         )
+        if resume and _completed_run_matches_job(
+            run_dir,
+            suite_name=suite_name,
+            git_commit=git_commit,
+            job=job,
+        ):
+            skipped.append(str(job["run_id"]))
+            continue
+        executed.append(str(job["run_id"]))
         metadata_path = run_dir / "run_metadata.json"
         stdout_path = run_dir / "stdout.json"
         stderr_path = run_dir / "stderr.log"
@@ -1888,6 +1958,10 @@ def execute_suite(
         "suite": suite_name,
         "manifest_path": manifest["manifest_path"],
         "jobs_declared": len(manifest["jobs"]),
+        "jobs_executed": len(executed),
+        "jobs_skipped": len(skipped),
+        "executed_run_ids": executed,
+        "skipped_run_ids": skipped,
         "failures": failures,
         "status": "success" if not failures else "failed",
     }
