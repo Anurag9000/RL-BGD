@@ -713,6 +713,79 @@ def test_execute_suite_writes_strict_artifacts(
     assert loaded.manifest.metadata["suite_revision"] == 2
 
 
+def test_execute_suite_resumes_matching_strict_success(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    suite = _tiny_suite("final_abs_mean")
+    monkeypatch.setitem(
+        SUITES,
+        suite.name,
+        suite,
+    )
+    first = execute_suite(
+        suite.name,
+        tmp_path,
+    )
+    assert first["jobs_executed"] == 1
+    assert first["jobs_skipped"] == 0
+
+    run_dir = tmp_path / suite.name / "smoke__tiny_smoke__seed_0"
+    stdout_path = run_dir / "stdout.json"
+    stdout_path.write_text(
+        "resume-sentinel",
+        encoding="utf-8",
+    )
+
+    second = execute_suite(
+        suite.name,
+        tmp_path,
+    )
+    assert second["status"] == "success"
+    assert second["jobs_executed"] == 0
+    assert second["jobs_skipped"] == 1
+    assert second["skipped_run_ids"] == [
+        "smoke__tiny_smoke__seed_0"
+    ]
+    assert stdout_path.read_text(
+        encoding="utf-8"
+    ) == "resume-sentinel"
+
+
+def test_execute_suite_can_force_rerun_of_matching_success(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    suite = _tiny_suite("final_abs_mean")
+    monkeypatch.setitem(
+        SUITES,
+        suite.name,
+        suite,
+    )
+    execute_suite(
+        suite.name,
+        tmp_path,
+    )
+    run_dir = tmp_path / suite.name / "smoke__tiny_smoke__seed_0"
+    stdout_path = run_dir / "stdout.json"
+    stdout_path.write_text(
+        "force-rerun-sentinel",
+        encoding="utf-8",
+    )
+
+    result = execute_suite(
+        suite.name,
+        tmp_path,
+        resume=False,
+    )
+    assert result["status"] == "success"
+    assert result["jobs_executed"] == 1
+    assert result["jobs_skipped"] == 0
+    assert stdout_path.read_text(
+        encoding="utf-8"
+    ) != "force-rerun-sentinel"
+
+
 def test_execute_suite_fails_closed_on_missing_primary_metric(
     tmp_path: Path,
     monkeypatch,
