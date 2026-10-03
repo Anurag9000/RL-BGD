@@ -147,6 +147,57 @@ def test_download_falls_back_after_html_and_records_provenance(
     )
 
 
+def test_download_retries_transient_network_failures(
+    tmp_path: Path,
+) -> None:
+    archive_bytes = _zip_payload(
+        {
+            "data/traj_data.json": b"{}"
+        }
+    )
+    attempts = 0
+
+    def opener(
+        request: Request,
+        timeout: float,
+    ) -> _FakeResponse:
+        nonlocal attempts
+        del request, timeout
+        attempts += 1
+        if attempts < 3:
+            raise OSError(
+                "transient network failure"
+            )
+        return _FakeResponse(
+            archive_bytes,
+            content_type="application/zip",
+        )
+
+    report = download_chores_archive(
+        destination=(
+            tmp_path
+            / "archive.zip"
+        ),
+        urls=(
+            "https://mirror.example/archive",
+        ),
+        attempts_per_url=3,
+        opener=opener,
+    )
+
+    assert attempts == 3
+    assert len(
+        report.candidate_failures
+    ) == 2
+    assert all(
+        "network error"
+        in failure
+        for failure in (
+            report.candidate_failures
+        )
+    )
+
+
 def test_download_rejects_non_https_candidate(
     tmp_path: Path,
 ) -> None:
