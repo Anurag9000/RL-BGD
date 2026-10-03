@@ -39,7 +39,7 @@ class _FakeResponse:
 
     def __enter__(
         self,
-    ) -> "_FakeResponse":
+    ) -> _FakeResponse:
         return self
 
     def __exit__(
