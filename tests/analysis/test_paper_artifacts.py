@@ -898,6 +898,7 @@ def _write_paired_contract_run(
                 "suite": "paired_contract_suite",
                 "suite_revision": suite_revision,
                 "job_id": job_id,
+                "comparison_group": "paired_contract",
                 "hypothesis_id": "TEST",
                 "target": f"module:{job_id}",
                 "primary_metric": primary_metric,
