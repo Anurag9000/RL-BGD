@@ -53,8 +53,9 @@ bootstrap confidence intervals; paired method comparisons resample matched seed
 differences; task-within-seed measurements use hierarchical seed-then-task
 bootstrap instead of pretending correlated task scores are independent.
 
-Suite revision 2 makes pairwise comparison opt-in through a declared
-`comparison_group`. Before pairing, Phase 15 requires the same suite,
+Suite revision 3 makes pairwise comparison opt-in through a declared
+`comparison_group` and records fully resolved runner-call defaults as part of
+the execution contract. Before pairing, Phase 15 requires the same suite,
 comparison group, protocol, benchmark, seed set, primary outcome, suite
 revision, git revision, evaluator-owned information privileges, and task order.
 Jobs without a comparison group are aggregate-only. Raw run IDs, comparison
