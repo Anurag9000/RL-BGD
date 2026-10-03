@@ -114,3 +114,11 @@ For GPU arrays, launch one filtered process per assigned GPU/process and leave
 the job's `device: auto` setting intact; process-level CUDA visibility can be
 set by the scheduler. This avoids hidden in-process GPU contention while
 preserving the same runner code and canonical artifacts.
+
+Superseded or forced-rerun results are never overwritten in place. Before a
+rerun starts, an existing run directory is moved intact to the sibling
+`<output_root>_archives/<suite>/<run_id>/...` tree. The replacement run's
+metadata records the archive path and the execution summary lists archived
+runs. The archive tree remains outside the active results root, so ordinary
+paper aggregation sees only current canonical runs unless an archive is
+explicitly selected as an input.
