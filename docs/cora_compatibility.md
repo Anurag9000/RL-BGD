@@ -59,7 +59,13 @@ construction, reset, action sampling, step, finite reward, and close behavior.
   the expected 27 unique train/valid_seen trajectory references, validates every
   referenced `traj_data.json`, validates the low-action/image indices consumed
   by `crl_alfred`, and requires every raw goal image named by those trajectories.
-  Only after that complete archive gate passes does the workflow run the exact
+  The recovery workflow now defaults to CORA's official historical OneDrive URL
+  and uses a repository-owned downloader that rejects HTML/login responses,
+  empty/non-ZIP payloads, oversized archives, unsafe ZIP paths, and optional
+  SHA-256 mismatches before extraction. An authoritative replacement mirror can
+  be supplied without code changes and its exact source URL, byte count, and
+  SHA-256 are emitted as provenance. Only after that download gate and the
+  complete 27-trajectory archive validator pass does the workflow run the exact
   published CORA trajectory under Xvfb.
 
 These live smokes establish runtime compatibility; they do not reproduce
