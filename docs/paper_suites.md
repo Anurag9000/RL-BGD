@@ -37,6 +37,15 @@ Execution:
 
     python scripts/run_paper_suite.py smoke --output-root artifacts/suites --execute
 
+Execution resumes strict matching successes by default. Use `--no-resume` to
+force reruns. Large suites can be partitioned across independent workers by
+repeating `--job-id`, `--seed`, or exact expanded `--run-id` filters. The
+filters intersect and are validated before training begins; unknown selectors
+fail closed. Each filtered invocation writes a selection-specific execution
+summary, while the complete suite manifest is written atomically. This allows
+Slurm arrays or one-process-per-GPU launchers to share an output root without
+mixing run directories or overwriting the full-suite summary.
+
 Successful jobs are converted into the canonical Phase-15 schema:
 
 - manifest.json
