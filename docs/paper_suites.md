@@ -21,8 +21,9 @@ Registered suites:
 Each job records its hypothesis ID, callable target, exact kwargs, seeds,
 algorithm, environment, information protocol, source config where applicable,
 primary/secondary metrics, explicit comparison group, optional dependency extra,
-runtime class, and notes. Suite revision 2 makes paired statistics opt-in:
-jobs are paired only when they deliberately share the same comparison group,
+runtime class, and notes. Suite revision 3 also records fully resolved
+runner-call defaults and makes paired statistics opt-in: jobs are paired only
+when they deliberately share the same comparison group,
 protocol, benchmark, seed set, and primary outcome. Jobs without a declared
 comparison family remain aggregate-only and cannot be cross-paired implicitly.
 Hidden-context methods and evidence-temperature values are separate jobs, so
