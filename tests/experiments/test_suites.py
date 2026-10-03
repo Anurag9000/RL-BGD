@@ -659,6 +659,8 @@ def test_mechanistic_and_detection_metrics_are_scalar_safe() -> None:
 
 def _tiny_suite(
     primary_metric: str,
+    *,
+    seeds: tuple[int, ...] = (0,),
 ) -> ExperimentSuite:
     return ExperimentSuite(
         name="smoke",
@@ -672,7 +674,7 @@ def _tiny_suite(
                     "steps": 4,
                     "device": "cpu",
                 },
-                seeds=(0,),
+                seeds=seeds,
                 algorithm="BGD-smoke",
                 environment="quadratic",
                 protocol="stationary",
@@ -712,6 +714,124 @@ def test_execute_suite_writes_strict_artifacts(
     assert metadata["suite_revision"] == 2
     assert loaded.manifest.metadata["comparison_group"] == "tiny_smoke_group"
     assert loaded.manifest.metadata["suite_revision"] == 2
+
+
+def test_execute_suite_filters_one_seed_without_touching_other_runs(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    suite = _tiny_suite(
+        "final_abs_mean",
+        seeds=(
+            0,
+            1,
+        ),
+    )
+    monkeypatch.setitem(
+        SUITES,
+        suite.name,
+        suite,
+    )
+
+    result = execute_suite(
+        suite.name,
+        tmp_path,
+        seeds=(1,),
+    )
+
+    assert result["status"] == "success"
+    assert result["jobs_declared"] == 2
+    assert result["jobs_selected"] == 1
+    assert result["jobs_executed"] == 1
+    assert result["selected_run_ids"] == [
+        "smoke__tiny_smoke__seed_1"
+    ]
+    assert result["selection"] == {
+        "job_ids": [],
+        "seeds": [1],
+        "run_ids": [],
+    }
+    summary_path = Path(
+        result[
+            "summary_path"
+        ]
+    )
+    assert (
+        summary_path.parent.name
+        == "execution_summaries"
+    )
+    assert summary_path.is_file()
+
+    seed_one = (
+        tmp_path
+        / "smoke"
+        / "smoke__tiny_smoke__seed_1"
+    )
+    seed_zero = (
+        tmp_path
+        / "smoke"
+        / "smoke__tiny_smoke__seed_0"
+    )
+    assert (
+        seed_one
+        / "run_metadata.json"
+    ).is_file()
+    assert not (
+        seed_zero
+        / "run_metadata.json"
+    ).exists()
+
+
+def test_execute_suite_filter_validation_is_fail_closed(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    suite = _tiny_suite(
+        "final_abs_mean",
+        seeds=(
+            0,
+            1,
+        ),
+    )
+    monkeypatch.setitem(
+        SUITES,
+        suite.name,
+        suite,
+    )
+
+    with pytest.raises(
+        KeyError,
+        match="unknown suite seeds",
+    ):
+        execute_suite(
+            suite.name,
+            tmp_path,
+            seeds=(2,),
+        )
+
+    with pytest.raises(
+        KeyError,
+        match="unknown suite job IDs",
+    ):
+        execute_suite(
+            suite.name,
+            tmp_path,
+            job_ids=(
+                "missing_job",
+            ),
+        )
+
+    with pytest.raises(
+        KeyError,
+        match="unknown suite run IDs",
+    ):
+        execute_suite(
+            suite.name,
+            tmp_path,
+            run_ids=(
+                "missing_run",
+            ),
+        )
 
 
 def test_execute_suite_resumes_matching_strict_success(
