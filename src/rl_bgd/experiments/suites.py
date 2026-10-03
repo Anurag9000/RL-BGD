@@ -593,6 +593,52 @@ SMOKE = ExperimentSuite(
     ),
 )
 
+
+_STATIONARY_SAC_COMMON: dict[str, Any] = {
+    "steps": 800,
+    "device": "auto",
+    "horizon": 30,
+    "hidden_dims": (32, 32),
+    "gamma": 0.99,
+    "tau": 0.005,
+    "actor_lr": 1e-3,
+    "critic_lr": 1e-3,
+    "alpha_lr": 1e-3,
+    "initial_alpha": 0.2,
+    "automatic_entropy_tuning": True,
+    "target_entropy": None,
+    "gradient_clip_norm": None,
+    "random_steps": 64,
+    "batch_size": 64,
+    "replay_capacity": 2_000,
+    "evaluation_episodes": 10,
+    "evaluation_seed": 20_000,
+}
+
+_STATIONARY_PPO_COMMON: dict[str, Any] = {
+    "steps": 800,
+    "device": "auto",
+    "horizon": 30,
+    "hidden_dims": (32, 32),
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_ratio": 0.2,
+    "value_clip_ratio": 0.2,
+    "actor_lr": 1e-3,
+    "value_lr": 1e-3,
+    "entropy_coef": 0.0,
+    "value_coef": 0.5,
+    "update_epochs": 4,
+    "minibatch_size": 64,
+    "gradient_clip_norm": 0.5,
+    "normalize_advantages": True,
+    "target_kl": None,
+    "rollout_steps": 128,
+    "evaluation_episodes": 5,
+    "evaluation_seed": 30_000,
+}
+
+
 STATIONARY_CORE = ExperimentSuite(
     name="stationary_core",
     description=("Five-seed stationary SAC/PPO Adam-versus-BGD learning confirmation."),
