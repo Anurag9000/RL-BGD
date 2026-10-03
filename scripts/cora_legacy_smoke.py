@@ -10,12 +10,13 @@ from __future__ import annotations
 import json
 from typing import Any
 
+import gym
+import numpy as np
+
 from continual_rl.experiments.tasks.make_atari_task import (
     get_single_atari_task,
 )
 from continual_rl.utils.utils import Utils
-import gym
-import numpy as np
 
 
 def _reset(env: Any) -> Any:
