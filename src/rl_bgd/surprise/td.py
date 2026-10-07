@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Literal
 
 import torch
@@ -61,13 +61,16 @@ class TDSurprise:
 
     def state_dict(self) -> dict[str, object]:
         return {
-            "version": 1,
+            "version": 2,
+            "config": asdict(self.config),
             "normalizer": self.normalizer.state_dict(),
         }
 
     def load_state_dict(self, state: dict[str, object]) -> None:
-        if state.get("version") != 1:
+        if state.get("version") != 2:
             raise ValueError("unsupported TD-surprise checkpoint version")
+        if state.get("config") != asdict(self.config):
+            raise ValueError("TD-surprise checkpoint configuration mismatch")
         normalizer_state = state["normalizer"]
         if not isinstance(normalizer_state, dict):
             raise TypeError("TD-surprise normalizer state must be a dictionary")

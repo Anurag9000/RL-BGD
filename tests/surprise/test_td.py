@@ -53,3 +53,43 @@ def test_surprise_normalizer_checkpoint_rejects_config_mismatch() -> None:
     )
     with pytest.raises(ValueError, match="configuration mismatch"):
         restored.load_state_dict(state)
+
+
+def test_td_surprise_checkpoint_rejects_aggregation_mismatch() -> None:
+    source = TDSurprise(
+        TDSurpriseConfig(
+            aggregation="median_abs",
+            normalizer=EMANormalizerConfig(decay=0.9),
+        )
+    )
+    source.observe(torch.tensor([1.0, 2.0, 3.0]))
+    state = source.state_dict()
+
+    restored = TDSurprise(
+        TDSurpriseConfig(
+            aggregation="mean_abs",
+            normalizer=EMANormalizerConfig(decay=0.9),
+        )
+    )
+    with pytest.raises(ValueError, match="configuration mismatch"):
+        restored.load_state_dict(state)
+
+
+def test_td_surprise_checkpoint_round_trip_preserves_future_statistics() -> None:
+    config = TDSurpriseConfig(
+        aggregation="median_abs",
+        normalizer=EMANormalizerConfig(
+            decay=0.9,
+            smoothing_decay=0.5,
+        ),
+    )
+    source = TDSurprise(config)
+    source.observe(torch.tensor([1.0, 2.0, 3.0]))
+    state = source.state_dict()
+
+    restored = TDSurprise(config)
+    restored.load_state_dict(state)
+
+    expected = source.observe(torch.tensor([4.0, 5.0, 6.0]))
+    actual = restored.observe(torch.tensor([4.0, 5.0, 6.0]))
+    assert actual == expected
