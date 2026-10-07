@@ -35,6 +35,7 @@ _REQUIRED_PATHS = (
     "src/rl_bgd/compat/cora_chores.py",
     "scripts/run_paper_suite.py",
     "scripts/run_paper_suite_parallel.py",
+    "scripts/run_recurrent_stationary_lqr.py",
     "scripts/build_paper_artifacts.py",
     "scripts/run_mechanistic_analysis.py",
     "scripts/cora_legacy_smoke.py",

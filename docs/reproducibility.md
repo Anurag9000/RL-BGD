@@ -46,6 +46,39 @@ and predictive-world-model state use versioned checkpoint paths with round-trip
 tests in their owning components. Resume semantics are tested at the component
 level; exact cross-hardware floating-point identity is not claimed.
 
+## Resumable stationary training
+
+The dependency-light stationary SAC/PPO and BGD-SAC/BGD-PPO script entrypoints
+expose checkpoint, resume, and bounded-per-call controls. Recurrent stationary
+acceptance runs have a single-run CLI so a worker never has to launch all
+recurrent acceptance experiments merely to resume one checkpoint.
+
+Examples:
+
+    python scripts/run_sac_lqr.py \
+        --checkpoint-path artifacts/checkpoints/sac.pt \
+        --checkpoint-interval 100
+
+    python scripts/run_sac_lqr.py \
+        --resume-from artifacts/checkpoints/sac.pt
+
+    python scripts/run_bgd_ppo_lqr.py \
+        --checkpoint-path artifacts/checkpoints/bgd_ppo.pt \
+        --checkpoint-interval-rollouts 1 \
+        --max-rollouts-this-call 2
+
+    python scripts/run_recurrent_stationary_lqr.py \
+        --algorithm bgd_sac \
+        --checkpoint-path artifacts/checkpoints/recurrent_bgd_sac.pt \
+        --checkpoint-interval 100
+
+Training checkpoints bind the saved learner state to the complete training and
+agent configurations. SAC checkpoints also preserve replay contents,
+provenance/evidence-use metadata, replay-sampling RNG, environment state, and
+process RNG state. PPO checkpoints are written only at rollout boundaries;
+recurrent variants also preserve online hidden state and recurrent progress.
+Configuration mismatches fail closed on restore.
+
 ## Paper statistics
 
 Paper aggregation uses matched seed groups. Scalar metrics receive percentile
