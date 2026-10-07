@@ -3,7 +3,7 @@ import torch
 from torch import nn
 
 from rl_bgd.bayes.bgd import BGDConfig, BGDUpdater
-from rl_bgd.bayes.diagonal_gaussian import DiagonalGaussianPosterior
+from rl_bgd.bayes.diagonal_gaussian import DiagonalGaussianPosterior, PosteriorBounds
 
 
 def test_posterior_and_updater_state_round_trip() -> None:
@@ -79,3 +79,31 @@ def test_updater_checkpoint_requires_saved_config() -> None:
 
     with pytest.raises(ValueError, match="missing its configuration"):
         updater.load_state_dict(state)
+
+
+def test_posterior_checkpoint_rejects_bounds_mismatch() -> None:
+    module = nn.Linear(2, 1)
+    source = DiagonalGaussianPosterior.from_module(
+        module,
+        prior_std=0.2,
+        bounds=PosteriorBounds(sigma_min=1e-6, sigma_max=10.0),
+    )
+    state = source.state_dict()
+
+    restored = DiagonalGaussianPosterior.from_module(
+        nn.Linear(2, 1),
+        prior_std=0.2,
+        bounds=PosteriorBounds(sigma_min=1e-5, sigma_max=10.0),
+    )
+    with pytest.raises(ValueError, match="bounds mismatch"):
+        restored.load_state_dict(state)
+
+
+def test_posterior_checkpoint_rejects_parameter_dtype_mismatch() -> None:
+    source_module = nn.Linear(2, 1, dtype=torch.float64)
+    source = DiagonalGaussianPosterior.from_module(source_module, prior_std=0.2)
+    state = source.state_dict()
+
+    restored = DiagonalGaussianPosterior.from_module(nn.Linear(2, 1), prior_std=0.2)
+    with pytest.raises(ValueError, match="parameter dtype mismatch"):
+        restored.load_state_dict(state)

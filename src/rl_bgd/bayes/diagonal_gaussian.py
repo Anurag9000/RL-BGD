@@ -285,6 +285,27 @@ class DiagonalGaussianPosterior(ParameterPosterior):
             raise ValueError("incompatible posterior type")
         if state.get("version") != 1:
             raise ValueError("unsupported posterior checkpoint version")
+
+        saved_dtypes = state.get("parameter_dtypes")
+        if not isinstance(saved_dtypes, Mapping):
+            raise ValueError("posterior checkpoint is missing parameter dtypes")
+        expected_dtypes = {
+            key: str(value).replace("torch.", "")
+            for key, value in self.parameter_dtypes.items()
+        }
+        if dict(saved_dtypes) != expected_dtypes:
+            raise ValueError("posterior checkpoint parameter dtype mismatch")
+
+        saved_bounds = state.get("bounds")
+        if not isinstance(saved_bounds, Mapping):
+            raise ValueError("posterior checkpoint is missing bounds")
+        expected_bounds = {
+            "sigma_min": self.bounds.sigma_min,
+            "sigma_max": self.bounds.sigma_max,
+        }
+        if dict(saved_bounds) != expected_bounds:
+            raise ValueError("posterior checkpoint bounds mismatch")
+
         for field, target in (
             ("means", self.means),
             ("stds", self.stds),
@@ -292,13 +313,18 @@ class DiagonalGaussianPosterior(ParameterPosterior):
             ("prior_stds", self.prior_stds),
         ):
             incoming = state[field]
+            if not isinstance(incoming, Mapping):
+                raise TypeError(f"checkpoint {field} must be a mapping")
             if set(incoming) != set(target):
                 raise ValueError(f"checkpoint {field} keys do not match posterior")
             for name in target:
-                if incoming[name].shape != target[name].shape:
+                value = incoming[name]
+                if not isinstance(value, Tensor):
+                    raise TypeError(f"checkpoint {field}/{name} must be a tensor")
+                if value.shape != target[name].shape:
                     raise ValueError(f"checkpoint shape mismatch for {name}")
                 target[name].copy_(
-                    incoming[name].to(
+                    value.to(
                         device=target[name].device,
                         dtype=torch.float32,
                     )
