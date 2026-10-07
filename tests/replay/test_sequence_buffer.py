@@ -1,3 +1,4 @@
+import pytest
 import torch
 
 from rl_bgd.replay.sequence_buffer import (
@@ -178,3 +179,33 @@ def test_sequence_replay_checkpoint_round_trip() -> None:
         restored.usage_counts,
         buffer.usage_counts,
     )
+
+
+def test_sequence_replay_checkpoint_rejects_inconsistent_provenance() -> None:
+    buffer = SequenceReplayBuffer(6, 1, 1)
+    for index in range(3):
+        add_transition(
+            buffer,
+            index,
+            episode_start=(index == 0),
+        )
+    state = buffer.state_dict()
+    state["next_transition_id"] = 9
+    with pytest.raises(ValueError, match="next transition ID is inconsistent"):
+        SequenceReplayBuffer(6, 1, 1).load_state_dict(state)
+
+
+def test_sequence_replay_checkpoint_rejects_freshness_usage_disagreement() -> None:
+    buffer = SequenceReplayBuffer(6, 1, 1)
+    for index in range(3):
+        add_transition(
+            buffer,
+            index,
+            episode_start=(index == 0),
+        )
+    state = buffer.state_dict()
+    usage = state["usage_counts"]
+    assert isinstance(usage, torch.Tensor)
+    usage[0, 0] = 1
+    with pytest.raises(ValueError, match="freshness disagrees"):
+        SequenceReplayBuffer(6, 1, 1).load_state_dict(state)

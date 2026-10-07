@@ -403,6 +403,44 @@ class SequenceReplayBuffer:
                     dtype=target.dtype,
                 )
             )
+        position = state["position"]
+        next_transition_id = state["next_transition_id"]
+        if isinstance(position, bool) or not isinstance(position, int):
+            raise TypeError("sequence replay position must be an integer")
+        if isinstance(next_transition_id, bool) or not isinstance(
+            next_transition_id,
+            int,
+        ):
+            raise TypeError("sequence replay next transition id must be an integer")
+        if not 0 <= position < self.capacity:
+            raise ValueError("invalid sequence replay position")
+        if size < self.capacity and position != size:
+            raise ValueError("sequence replay position is inconsistent with size")
+        if next_transition_id < 0:
+            raise ValueError("sequence replay next transition id must be non-negative")
+
+        usage = self.usage_counts[:size]
+        fresh = self._fresh[:size]
+        if torch.any(usage < 0):
+            raise ValueError("sequence replay contains negative usage counts")
+        if not torch.equal(
+            fresh,
+            usage == 0,
+        ):
+            raise ValueError("sequence replay freshness disagrees with usage counts")
+
+        if size:
+            transition_ids = self.transition_ids[:size, 0]
+            if torch.any(transition_ids < 0):
+                raise ValueError("sequence replay contains negative transition IDs")
+            if torch.unique(transition_ids).numel() != size:
+                raise ValueError("sequence replay contains duplicate transition IDs")
+            expected_next = int(transition_ids.max().item()) + 1
+        else:
+            expected_next = 0
+        if next_transition_id != expected_next:
+            raise ValueError("sequence replay next transition ID is inconsistent")
+
         self._size = size
-        self._position = int(state["position"])
-        self._next_transition_id = int(state["next_transition_id"])
+        self._position = position
+        self._next_transition_id = next_transition_id

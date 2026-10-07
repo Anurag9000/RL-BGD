@@ -1,3 +1,4 @@
+import pytest
 import torch
 
 from rl_bgd.replay.buffer import ReplayBuffer
@@ -48,3 +49,50 @@ def test_replay_checkpoint_round_trip() -> None:
         torch.tensor([0.25]),
     )
     assert restored.truncated[0, 0]
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("position", 3, "position is inconsistent"),
+        ("next_transition_id", 4, "next transition ID is inconsistent"),
+    ],
+)
+def test_replay_checkpoint_rejects_inconsistent_provenance(
+    field: str,
+    value: int,
+    message: str,
+) -> None:
+    source = ReplayBuffer(4, 1, 1)
+    source.add(
+        torch.tensor([1.0]),
+        torch.tensor([0.0]),
+        1.0,
+        torch.tensor([2.0]),
+        terminated=False,
+        truncated=False,
+        insertion_step=0,
+    )
+    state = source.state_dict()
+    state[field] = value
+    with pytest.raises(ValueError, match=message):
+        ReplayBuffer(4, 1, 1).load_state_dict(state)
+
+
+def test_replay_checkpoint_rejects_freshness_usage_disagreement() -> None:
+    source = ReplayBuffer(4, 1, 1)
+    source.add(
+        torch.tensor([1.0]),
+        torch.tensor([0.0]),
+        1.0,
+        torch.tensor([2.0]),
+        terminated=False,
+        truncated=False,
+        insertion_step=0,
+    )
+    state = source.state_dict()
+    fresh = state["fresh"]
+    assert isinstance(fresh, torch.Tensor)
+    fresh[0, 0] = False
+    with pytest.raises(ValueError, match="freshness disagrees"):
+        ReplayBuffer(4, 1, 1).load_state_dict(state)

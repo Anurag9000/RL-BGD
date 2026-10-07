@@ -206,12 +206,44 @@ class ReplayBuffer:
                     dtype=target.dtype,
                 )
             )
-        self._size = size
-        self._position = _checkpoint_int(
+        position = _checkpoint_int(
             state["position"],
             name="replay position",
         )
-        self._next_transition_id = _checkpoint_int(
+        if not 0 <= position < self.capacity:
+            raise ValueError("invalid replay checkpoint position")
+        if size < self.capacity and position != size:
+            raise ValueError("replay checkpoint position is inconsistent with size")
+
+        next_transition_id = _checkpoint_int(
             state["next_transition_id"],
             name="next transition id",
         )
+        if next_transition_id < 0:
+            raise ValueError("next transition id must be non-negative")
+
+        usage = self.usage_counts[:size]
+        fresh = self._fresh[:size]
+        if torch.any(usage < 0):
+            raise ValueError("replay checkpoint contains negative usage counts")
+        if not torch.equal(
+            fresh,
+            usage == 0,
+        ):
+            raise ValueError("replay checkpoint freshness disagrees with usage counts")
+
+        if size:
+            transition_ids = self.transition_ids[:size, 0]
+            if torch.any(transition_ids < 0):
+                raise ValueError("replay checkpoint contains negative transition IDs")
+            if torch.unique(transition_ids).numel() != size:
+                raise ValueError("replay checkpoint contains duplicate transition IDs")
+            expected_next = int(transition_ids.max().item()) + 1
+        else:
+            expected_next = 0
+        if next_transition_id != expected_next:
+            raise ValueError("replay checkpoint next transition ID is inconsistent")
+
+        self._size = size
+        self._position = position
+        self._next_transition_id = next_transition_id
