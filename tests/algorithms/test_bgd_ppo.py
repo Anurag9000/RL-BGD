@@ -160,3 +160,28 @@ def test_bgd_ppo_evidence_reuse_weight_is_explicit(
     )
     metrics = agent.update(make_rollout(agent))
     assert metrics["uncertainty_evidence_weight_mean"] == pytest.approx(expected_weight)
+
+
+def test_bgd_ppo_checkpoint_rejects_bayesian_config_mismatch() -> None:
+    agent = make_agent("actor_and_value")
+    state = agent.state_dict()
+    restored = BGDPPOAgent(
+        2,
+        1,
+        action_low=torch.tensor([-1.0]),
+        action_high=torch.tensor([1.0]),
+        hidden_dims=(16, 16),
+        ppo_config=PPOConfig(
+            update_epochs=2,
+            minibatch_size=8,
+        ),
+        bgd_config=BGDPPOConfig(
+            bayesianization="actor_and_value",
+            posterior_std=0.2,
+            evidence_mode="first_epoch_only",
+            actor_bgd=BGDConfig(eta=0.1, mc_samples=2, antithetic=True),
+            value_bgd=BGDConfig(eta=0.1, mc_samples=2, antithetic=True),
+        ),
+    )
+    with pytest.raises(ValueError, match="BGD-PPO checkpoint configuration mismatch"):
+        restored.load_state_dict(state)

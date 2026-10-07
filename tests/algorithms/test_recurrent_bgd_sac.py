@@ -141,3 +141,38 @@ def test_bgd_recurrent_sac_checkpoint_round_trip() -> None:
             restored.actor_posterior.stds[name],
             agent.actor_posterior.stds[name],
         )
+
+
+def test_bgd_recurrent_sac_checkpoint_rejects_bayesian_config_mismatch() -> None:
+    recurrent = RecurrentSACConfig(
+        recurrent_hidden_dim=8,
+        encoder_hidden_dims=(8,),
+        q_hidden_dims=(8,),
+    )
+    base = BGDSACConfig(
+        bayesianization="critic_only",
+        posterior_std=0.1,
+        critic_bgd=BGDConfig(eta=0.1, mc_samples=2, antithetic=True),
+    )
+    state = BGDRecurrentSACAgent(
+        2,
+        1,
+        action_low=torch.tensor([-1.0]),
+        action_high=torch.tensor([1.0]),
+        recurrent_config=recurrent,
+        bgd_config=base,
+    ).state_dict()
+    restored = BGDRecurrentSACAgent(
+        2,
+        1,
+        action_low=torch.tensor([-1.0]),
+        action_high=torch.tensor([1.0]),
+        recurrent_config=recurrent,
+        bgd_config=BGDSACConfig(
+            bayesianization="critic_only",
+            posterior_std=0.2,
+            critic_bgd=BGDConfig(eta=0.1, mc_samples=2, antithetic=True),
+        ),
+    )
+    with pytest.raises(ValueError, match="BGD recurrent SAC checkpoint configuration mismatch"):
+        restored.load_state_dict(state)

@@ -1,3 +1,4 @@
+import pytest
 import torch
 
 from rl_bgd.agents.ppo.agent import PPOConfig
@@ -65,3 +66,35 @@ def test_recurrent_bgd_ppo_checkpoint_preserves_posteriors_and_hidden_state() ->
             restored.value_posterior.stds[name],
             agent.value_posterior.stds[name],
         )
+
+
+def test_recurrent_bgd_ppo_checkpoint_rejects_bayesian_config_mismatch() -> None:
+    agent = make_agent()
+    state = agent.state_dict()
+    restored = BGDRecurrentPPOAgent(
+        2,
+        1,
+        action_low=torch.tensor([-1.0]),
+        action_high=torch.tensor([1.0]),
+        ppo_config=PPOConfig(
+            update_epochs=2,
+            minibatch_size=4,
+        ),
+        recurrent_config=RecurrentPPOConfig(
+            recurrent_hidden_dim=8,
+            sequence_length=4,
+            encoder_hidden_dims=(8,),
+        ),
+        bgd_config=BGDPPOConfig(
+            bayesianization="actor_and_value",
+            posterior_std=0.2,
+            evidence_mode="first_epoch_only",
+            actor_bgd=BGDConfig(eta=0.1, mc_samples=2, antithetic=True),
+            value_bgd=BGDConfig(eta=0.1, mc_samples=2, antithetic=True),
+        ),
+    )
+    with pytest.raises(
+        ValueError,
+        match="BGD recurrent PPO checkpoint configuration mismatch",
+    ):
+        restored.load_state_dict(state)

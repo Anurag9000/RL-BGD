@@ -1,5 +1,6 @@
 import math
 
+import pytest
 import torch
 
 from rl_bgd.agents.sac.agent import SACConfig
@@ -82,6 +83,11 @@ def test_task_aware_sac_update_is_finite_and_checkpointable() -> None:
         action_low=torch.tensor([-1.0]),
         action_high=torch.tensor([1.0]),
         hidden_dims=(16, 16),
+        config=SACConfig(
+            actor_lr=1e-3,
+            critic_lr=1e-3,
+            alpha_lr=1e-3,
+        ),
     )
     restored.load_state_dict(state)
     observation = torch.tensor([0.25, 1.0, 0.0])
@@ -96,3 +102,24 @@ def test_task_aware_sac_update_is_finite_and_checkpointable() -> None:
         ),
     )
     assert restored.optimizer_reset_count == 1
+
+
+def test_task_aware_sac_checkpoint_rejects_config_mismatch() -> None:
+    kwargs = dict(
+        observation_dim=3,
+        action_dim=1,
+        num_tasks=2,
+        action_low=torch.tensor([-1.0]),
+        action_high=torch.tensor([1.0]),
+        hidden_dims=(8,),
+    )
+    state = TaskAwareSACAgent(
+        **kwargs,
+        config=SACConfig(tau=0.01),
+    ).state_dict()
+    restored = TaskAwareSACAgent(
+        **kwargs,
+        config=SACConfig(tau=0.005),
+    )
+    with pytest.raises(ValueError, match="configuration mismatch"):
+        restored.load_state_dict(state)

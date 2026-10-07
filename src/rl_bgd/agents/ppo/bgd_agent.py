@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any, Literal
 
 import torch
@@ -418,7 +418,8 @@ class BGDPPOAgent(PPOAgent):
         self,
     ) -> dict[str, Any]:
         state = super().state_dict()
-        state["bgd_ppo_version"] = 2
+        state["bgd_ppo_version"] = 3
+        state["bgd_config"] = asdict(self.bgd_config)
         state["bayesianization"] = self.bgd_config.bayesianization
         state["evidence_mode"] = self.bgd_config.evidence_mode
         if self.actor_bgd is not None:
@@ -437,8 +438,10 @@ class BGDPPOAgent(PPOAgent):
                 0,
             )
         )
-        if version not in {1, 2}:
+        if version != 3:
             raise ValueError("unsupported BGD-PPO checkpoint version")
+        if state.get("bgd_config") != asdict(self.bgd_config):
+            raise ValueError("BGD-PPO checkpoint configuration mismatch")
         if state.get("bayesianization") != self.bgd_config.bayesianization:
             raise ValueError("BGD-PPO checkpoint Bayesianization mode mismatch")
         checkpoint_evidence_mode = state.get(

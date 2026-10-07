@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Literal
 
 import torch
@@ -528,7 +528,8 @@ class BGDSACAgent(SACAgent):
 
     def state_dict(self) -> dict[str, object]:
         state = super().state_dict()
-        state["bgd_sac_version"] = 1
+        state["bgd_sac_version"] = 2
+        state["bgd_config"] = asdict(self.bgd_config)
         state["bayesianization"] = self.bgd_config.bayesianization
         state["replay_evidence_mode"] = self.bgd_config.replay_evidence.mode
         state["adaptive_td_retention"] = self.bgd_config.adaptive_td_retention is not None
@@ -561,8 +562,10 @@ class BGDSACAgent(SACAgent):
         self,
         state: dict[str, object],
     ) -> None:
-        if state.get("bgd_sac_version") != 1:
+        if state.get("bgd_sac_version") != 2:
             raise ValueError("unsupported BGD-SAC checkpoint version")
+        if state.get("bgd_config") != asdict(self.bgd_config):
+            raise ValueError("BGD-SAC checkpoint configuration mismatch")
         if state.get("bayesianization") != self.bgd_config.bayesianization:
             raise ValueError("BGD-SAC checkpoint Bayesianization mode mismatch")
         if state.get("replay_evidence_mode", "all_replay") != self.bgd_config.replay_evidence.mode:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import asdict
 from typing import Any
 
 import torch
@@ -398,7 +399,8 @@ class BGDRecurrentPPOAgent(RecurrentPPOAgent):
         self,
     ) -> dict[str, Any]:
         state = super().state_dict()
-        state["bgd_recurrent_ppo_version"] = 1
+        state["bgd_recurrent_ppo_version"] = 2
+        state["bgd_config"] = asdict(self.bgd_config)
         state["bayesianization"] = self.bgd_config.bayesianization
         state["evidence_mode"] = self.bgd_config.evidence_mode
         if self.actor_bgd is not None:
@@ -411,8 +413,10 @@ class BGDRecurrentPPOAgent(RecurrentPPOAgent):
         self,
         state: dict[str, Any],
     ) -> None:
-        if state.get("bgd_recurrent_ppo_version") != 1:
+        if state.get("bgd_recurrent_ppo_version") != 2:
             raise ValueError("unsupported BGD recurrent PPO checkpoint version")
+        if state.get("bgd_config") != asdict(self.bgd_config):
+            raise ValueError("BGD recurrent PPO checkpoint configuration mismatch")
         if state.get("bayesianization") != self.bgd_config.bayesianization:
             raise ValueError("BGD recurrent PPO Bayesianization mode mismatch")
         if state.get("evidence_mode") != self.bgd_config.evidence_mode:

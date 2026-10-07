@@ -124,3 +124,27 @@ def test_bgd_sac_checkpoint_round_trip() -> None:
             restored.actor_posterior.stds[name],
             agent.actor_posterior.stds[name],
         )
+
+
+def test_bgd_sac_checkpoint_rejects_bayesian_config_mismatch() -> None:
+    agent = make_agent("actor_and_critic")
+    state = agent.state_dict()
+    restored = BGDSACAgent(
+        2,
+        1,
+        action_low=torch.tensor([-1.0]),
+        action_high=torch.tensor([1.0]),
+        hidden_dims=(16, 16),
+        sac_config=SACConfig(
+            actor_lr=1e-3,
+            critic_lr=1e-3,
+        ),
+        bgd_config=BGDSACConfig(
+            bayesianization="actor_and_critic",
+            posterior_std=0.2,
+            actor_bgd=BGDConfig(eta=0.1, mc_samples=2, antithetic=True),
+            critic_bgd=BGDConfig(eta=0.1, mc_samples=2, antithetic=True),
+        ),
+    )
+    with pytest.raises(ValueError, match="BGD-SAC checkpoint configuration mismatch"):
+        restored.load_state_dict(state)

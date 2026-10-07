@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from dataclasses import asdict
 from typing import Any
 
 import torch
@@ -246,7 +247,9 @@ class TaskAwareSACAgent:
 
     def state_dict(self) -> dict[str, Any]:
         return {
-            "checkpoint_version": 1,
+            "checkpoint_version": 2,
+            "config": asdict(self.config),
+            "num_tasks": self.num_tasks,
             "actor": self.actor.state_dict(),
             "critic1": self.critic1.state_dict(),
             "critic2": self.critic2.state_dict(),
@@ -264,8 +267,12 @@ class TaskAwareSACAgent:
         self,
         state: dict[str, Any],
     ) -> None:
-        if state.get("checkpoint_version") != 1:
+        if state.get("checkpoint_version") != 2:
             raise ValueError("unsupported task-aware SAC checkpoint version")
+        if state.get("config") != asdict(self.config):
+            raise ValueError("task-aware SAC checkpoint configuration mismatch")
+        if state.get("num_tasks") != self.num_tasks:
+            raise ValueError("task-aware SAC checkpoint task-count mismatch")
         for name in (
             "actor",
             "critic1",
