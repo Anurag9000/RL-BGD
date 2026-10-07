@@ -142,10 +142,7 @@ def test_paper_suites_cover_every_execution_hypothesis() -> None:
 
 
 def test_stationary_suite_has_exact_matched_optimizer_controls() -> None:
-    jobs = {
-        job.job_id: job
-        for job in SUITES["stationary_core"].jobs
-    }
+    jobs = {job.job_id: job for job in SUITES["stationary_core"].jobs}
 
     sac_adam = jobs["stationary_sac_adam"].kwargs
     sac_bgd = jobs["stationary_sac_bgd"].kwargs
@@ -220,11 +217,7 @@ def _without_keys(
     payload: dict[str, object],
     keys: set[str],
 ) -> dict[str, object]:
-    return {
-        key: value
-        for key, value in payload.items()
-        if key not in keys
-    }
+    return {key: value for key, value in payload.items() if key not in keys}
 
 
 def test_stationary_resolved_controls_are_matched(
@@ -238,33 +231,39 @@ def test_stationary_resolved_controls_are_matched(
 
     sac_adam = jobs["stationary_sac_adam"]
     sac_bgd = jobs["stationary_sac_bgd"]
-    assert _without_keys(
-        sac_bgd,
-        {
-            "bayesianization",
-            "evidence_temperature",
-            "temper_retention",
-            "replay_evidence_mode",
-            "mc_samples",
-            "posterior_std",
-            "sigma_min",
-            "sigma_max",
-            "bgd_eta",
-        },
-    ) == sac_adam
+    assert (
+        _without_keys(
+            sac_bgd,
+            {
+                "bayesianization",
+                "evidence_temperature",
+                "temper_retention",
+                "replay_evidence_mode",
+                "mc_samples",
+                "posterior_std",
+                "sigma_min",
+                "sigma_max",
+                "bgd_eta",
+            },
+        )
+        == sac_adam
+    )
 
     ppo_adam = jobs["stationary_ppo_adam"]
     ppo_bgd = jobs["stationary_ppo_bgd"]
-    assert _without_keys(
-        ppo_bgd,
-        {
-            "bayesianization",
-            "posterior_std",
-            "evidence_mode",
-            "bgd_eta",
-            "mc_samples",
-        },
-    ) == ppo_adam
+    assert (
+        _without_keys(
+            ppo_bgd,
+            {
+                "bayesianization",
+                "posterior_std",
+                "evidence_mode",
+                "bgd_eta",
+                "mc_samples",
+            },
+        )
+        == ppo_adam
+    )
 
 
 def test_compute_resolved_controls_are_matched(
@@ -281,20 +280,23 @@ def test_compute_resolved_controls_are_matched(
         "compute_bgd_actor_only",
         "compute_bgd_actor_and_critic",
     ):
-        assert _without_keys(
-            jobs[job_id],
-            {
-                "bayesianization",
-                "evidence_temperature",
-                "temper_retention",
-                "replay_evidence_mode",
-                "mc_samples",
-                "posterior_std",
-                "sigma_min",
-                "sigma_max",
-                "bgd_eta",
-            },
-        ) == adam
+        assert (
+            _without_keys(
+                jobs[job_id],
+                {
+                    "bayesianization",
+                    "evidence_temperature",
+                    "temper_retention",
+                    "replay_evidence_mode",
+                    "mc_samples",
+                    "posterior_std",
+                    "sigma_min",
+                    "sigma_max",
+                    "bgd_eta",
+                },
+            )
+            == adam
+        )
 
 def test_external_baseline_suite_has_full_method_coverage() -> None:
     jobs = SUITES["baseline_core"].jobs
@@ -669,10 +671,9 @@ def test_compute_suite_has_matched_factorized_controls() -> None:
     }
     assert all(job.kwargs["bayesianization"] == "critic_only" for job in compute_mc_jobs.values())
 
-    stationary_sac = {
-        job.job_id: job
-        for job in SUITES["stationary_core"].jobs
-    }["stationary_sac_adam"].kwargs
+    stationary_sac = {job.job_id: job for job in SUITES["stationary_core"].jobs}[
+        "stationary_sac_adam"
+    ].kwargs
     shared_keys = set(stationary_sac)
     for job in jobs:
         for key in shared_keys:

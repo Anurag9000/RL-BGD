@@ -20,55 +20,37 @@ from rl_bgd.experiments.suites import (
 
 
 def test_parse_gpu_ids_rejects_duplicates_and_non_numeric() -> None:
-    assert parse_gpu_ids(
-        "0, 2,7"
-    ) == (
+    assert parse_gpu_ids("0, 2,7") == (
         "0",
         "2",
         "7",
     )
-    assert parse_gpu_ids(
-        ""
-    ) == ()
+    assert parse_gpu_ids("") == ()
     with pytest.raises(
         ValueError,
         match="unique",
     ):
-        parse_gpu_ids(
-            "0,0"
-        )
+        parse_gpu_ids("0,0")
     with pytest.raises(
         ValueError,
         match="integer",
     ):
-        parse_gpu_ids(
-            "GPU-a"
-        )
+        parse_gpu_ids("GPU-a")
 
 
 def test_detect_gpu_ids_prefers_explicit_then_visible_environment() -> None:
     assert detect_gpu_ids(
         explicit="3,4",
-        environment={
-            "CUDA_VISIBLE_DEVICES": "8,9"
-        },
+        environment={"CUDA_VISIBLE_DEVICES": "8,9"},
     ) == (
         "3",
         "4",
     )
-    assert detect_gpu_ids(
-        environment={
-            "CUDA_VISIBLE_DEVICES": "8,9"
-        }
-    ) == (
+    assert detect_gpu_ids(environment={"CUDA_VISIBLE_DEVICES": "8,9"}) == (
         "8",
         "9",
     )
-    assert detect_gpu_ids(
-        environment={
-            "CUDA_VISIBLE_DEVICES": "-1"
-        }
-    ) == ()
+    assert detect_gpu_ids(environment={"CUDA_VISIBLE_DEVICES": "-1"}) == ()
 
 
 def test_worker_slots_are_gpu_first_with_cpu_fallback() -> None:
@@ -142,12 +124,7 @@ def test_parallel_suite_assigns_each_child_to_worker_gpu(
         jobs,
         list,
     )
-    selected_run_ids = tuple(
-        str(job["run_id"])
-        for job in jobs[
-            :2
-        ]
-    )
+    selected_run_ids = tuple(str(job["run_id"]) for job in jobs[:2])
 
     calls: list[
         tuple[
@@ -155,9 +132,7 @@ def test_parallel_suite_assigns_each_child_to_worker_gpu(
             dict[str, str],
         ]
     ] = []
-    barrier = threading.Barrier(
-        2
-    )
+    barrier = threading.Barrier(2)
 
     def fake_runner(
         command: Any,
@@ -181,16 +156,12 @@ def test_parallel_suite_assigns_each_child_to_worker_gpu(
             stderr="",
         )
 
-    seen_states: list[
-        str
-    ] = []
+    seen_states: list[str] = []
 
     def state_reader(
         gpu_id: str,
     ) -> GpuState:
-        seen_states.append(
-            gpu_id
-        )
+        seen_states.append(gpu_id)
         return GpuState(
             gpu_id=gpu_id,
             memory_total_mb=24_000,
@@ -213,77 +184,32 @@ def test_parallel_suite_assigns_each_child_to_worker_gpu(
         state_reader=state_reader,
     )
 
-    assert summary[
-        "status"
-    ] == "success"
-    assert summary[
-        "runs_selected"
-    ] == 2
-    assert set(
-        seen_states
-    ) == {
+    assert summary["status"] == "success"
+    assert summary["runs_selected"] == 2
+    assert set(seen_states) == {
         "2",
         "7",
     }
-    assert len(
-        calls
-    ) == 2
+    assert len(calls) == 2
 
     called_run_ids = set()
     visible_devices = set()
     for command, environment in calls:
-        assert (
-            "scripts/run_paper_suite.py"
-            in command
-        )
-        run_index = (
-            command.index(
-                "--run-id"
-            )
-            + 1
-        )
-        called_run_ids.add(
-            command[
-                run_index
-            ]
-        )
-        visible_devices.add(
-            environment[
-                "CUDA_VISIBLE_DEVICES"
-            ]
-        )
-        assert (
-            environment[
-                "RL_BGD_WORKER_SLOT"
-            ].startswith(
-                "gpu-"
-            )
-        )
+        assert "scripts/run_paper_suite.py" in command
+        run_index = command.index("--run-id") + 1
+        called_run_ids.add(command[run_index])
+        visible_devices.add(environment["CUDA_VISIBLE_DEVICES"])
+        assert environment["RL_BGD_WORKER_SLOT"].startswith("gpu-")
 
-    assert called_run_ids == set(
-        selected_run_ids
-    )
+    assert called_run_ids == set(selected_run_ids)
     assert visible_devices == {
         "2",
         "7",
     }
-    summary_path = Path(
-        str(
-            summary[
-                "summary_path"
-            ]
-        )
-    )
+    summary_path = Path(str(summary["summary_path"]))
     assert summary_path.is_file()
-    assert (
-        summary_path.parent.name
-        == "parallel_execution_summaries"
-    )
-    assert (
-        summary_path.name.startswith(
-            "selection_"
-        )
-    )
+    assert summary_path.parent.name == "parallel_execution_summaries"
+    assert summary_path.name.startswith("selection_")
 
 
 def test_parallel_suite_default_pressure_policy_does_not_poll_gpu(
@@ -311,15 +237,8 @@ def test_parallel_suite_default_pressure_policy_does_not_poll_gpu(
     def fake_runner(
         command: Any,
         environment: Any,
-    ) -> subprocess.CompletedProcess[
-        str
-    ]:
-        assert (
-            environment[
-                "CUDA_VISIBLE_DEVICES"
-            ]
-            == "3"
-        )
+    ) -> subprocess.CompletedProcess[str]:
+        assert environment["CUDA_VISIBLE_DEVICES"] == "3"
         return subprocess.CompletedProcess(
             args=list(command),
             returncode=0,
@@ -330,24 +249,15 @@ def test_parallel_suite_default_pressure_policy_does_not_poll_gpu(
     def forbidden_state_reader(
         gpu_id: str,
     ) -> GpuState:
-        raise AssertionError(
-            "no-op pressure policy must not poll GPU state: "
-            f"{gpu_id}"
-        )
+        raise AssertionError(f"no-op pressure policy must not poll GPU state: {gpu_id}")
 
     summary = run_suite_parallel(
         "smoke",
         tmp_path,
-        run_ids=(
-            run_id,
-        ),
-        gpu_ids=(
-            "3",
-        ),
+        run_ids=(run_id,),
+        gpu_ids=("3",),
         command_runner=fake_runner,
-        state_reader=(
-            forbidden_state_reader
-        ),
+        state_reader=(forbidden_state_reader),
     )
 
     assert summary[
@@ -369,28 +279,14 @@ def test_parallel_suite_cpu_fallback_hides_cuda(
         jobs,
         list,
     )
-    run_id = str(
-        jobs[
-            0
-        ][
-            "run_id"
-        ]
-    )
-    environments: list[
-        dict[str, str]
-    ] = []
+    run_id = str(jobs[0]["run_id"])
+    environments: list[dict[str, str]] = []
 
     def fake_runner(
         command: Any,
         environment: Any,
-    ) -> subprocess.CompletedProcess[
-        str
-    ]:
-        environments.append(
-            dict(
-                environment
-            )
-        )
+    ) -> subprocess.CompletedProcess[str]:
+        environments.append(dict(environment))
         return subprocess.CompletedProcess(
             args=list(command),
             returncode=0,
@@ -409,17 +305,9 @@ def test_parallel_suite_cpu_fallback_hides_cuda(
         command_runner=fake_runner,
     )
 
-    assert summary[
-        "status"
-    ] == "success"
-    assert len(
-        environments
-    ) == 1
-    assert environments[
-        0
-    ][
-        "CUDA_VISIBLE_DEVICES"
-    ] == ""
+    assert summary["status"] == "success"
+    assert len(environments) == 1
+    assert environments[0]["CUDA_VISIBLE_DEVICES"] == ""
 
 
 def test_parallel_suite_records_worker_exception_as_failure(
@@ -451,9 +339,7 @@ def test_parallel_suite_records_worker_exception_as_failure(
         str
     ]:
         del command, environment
-        raise RuntimeError(
-            "synthetic worker failure"
-        )
+        raise RuntimeError("synthetic worker failure")
 
     summary = run_suite_parallel(
         "smoke",
@@ -462,39 +348,18 @@ def test_parallel_suite_records_worker_exception_as_failure(
             run_id,
         ),
         gpu_ids=(),
-        command_runner=(
-            failing_runner
-        ),
+        command_runner=(failing_runner),
     )
 
-    assert summary[
-        "status"
-    ] == "failed"
-    assert summary[
-        "failures"
-    ] == [
-        run_id
-    ]
-    results = summary[
-        "results"
-    ]
+    assert summary["status"] == "failed"
+    assert summary["failures"] == [run_id]
+    results = summary["results"]
     assert isinstance(
         results,
         list,
     )
-    assert results[
-        0
-    ][
-        "returncode"
-    ] == -1
-    assert (
-        "synthetic worker failure"
-        in results[
-            0
-        ][
-            "stderr"
-        ]
-    )
+    assert results[0]["returncode"] == -1
+    assert "synthetic worker failure" in results[0]["stderr"]
 
 
 def test_parallel_suite_rejects_unknown_run_selection(
@@ -507,8 +372,6 @@ def test_parallel_suite_rejects_unknown_run_selection(
         run_suite_parallel(
             "smoke",
             tmp_path,
-            run_ids=(
-                "does-not-exist",
-            ),
+            run_ids=("does-not-exist",),
             gpu_ids=(),
         )
