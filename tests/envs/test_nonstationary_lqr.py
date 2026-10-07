@@ -1,3 +1,4 @@
+import pytest
 import torch
 
 from rl_bgd.continual.schedules import ContextSchedule, ContextScheduleConfig
@@ -81,3 +82,63 @@ def test_scheduled_lqr_checkpoint_restores_stream_position() -> None:
     actual = restored.step(torch.zeros(1))
     torch.testing.assert_close(actual[0], expected[0])
     assert actual[1:] == expected[1:]
+
+
+@pytest.mark.parametrize("field", ["dynamics", "control_gain", "action_cost", "process_noise"])
+def test_lqr_checkpoint_rejects_nonfinite_mutable_parameters(field: str) -> None:
+    env = LinearQuadraticControlEnv()
+    env.reset(seed=3)
+    state = env.state_dict()
+    current = state["current_parameters"]
+    assert isinstance(current, dict)
+    current[field] = float("nan")
+
+    with pytest.raises(ValueError, match="nonfinite mutable parameters"):
+        LinearQuadraticControlEnv().load_state_dict(state)
+
+
+def test_scheduled_lqr_checkpoint_rejects_context_base_mismatch() -> None:
+    config = ContextScheduleConfig(
+        mode="recurring",
+        anchors=(
+            {"dynamics": 0.9},
+            {"dynamics": 0.2},
+        ),
+        phase_steps=1,
+    )
+    env = ScheduledLQREnv(
+        LinearQuadraticControlEnv(horizon=10),
+        ContextSchedule(config),
+    )
+    env.reset(seed=4)
+    state = env.state_dict()
+    current = state["current_context"]
+    assert isinstance(current, dict)
+    current["dynamics"] = 0.7
+
+    with pytest.raises(ValueError, match="disagrees with base environment"):
+        ScheduledLQREnv(
+            LinearQuadraticControlEnv(horizon=10),
+            ContextSchedule(config),
+        ).load_state_dict(state)
+
+
+def test_scheduled_lqr_checkpoint_rejects_context_key_mismatch() -> None:
+    config = ContextScheduleConfig(
+        mode="abrupt",
+        anchors=({"dynamics": 0.9},),
+    )
+    env = ScheduledLQREnv(
+        LinearQuadraticControlEnv(),
+        ContextSchedule(config),
+    )
+    state = env.state_dict()
+    current = state["current_context"]
+    assert isinstance(current, dict)
+    current["control_gain"] = 0.5
+
+    with pytest.raises(ValueError, match="context keys do not match"):
+        ScheduledLQREnv(
+            LinearQuadraticControlEnv(),
+            ContextSchedule(config),
+        ).load_state_dict(state)

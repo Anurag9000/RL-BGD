@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import asdict
 from typing import Any
 
@@ -72,7 +73,6 @@ class ScheduledLQREnv:
         self.environment_step += 1
         return observation, reward, terminated, truncated, {}
 
-
     def state_dict(self) -> dict[str, Any]:
         return {
             "version": 1,
@@ -101,9 +101,15 @@ class ScheduledLQREnv:
         if not isinstance(base_state, dict):
             raise TypeError("scheduled-LQR base environment state must be a mapping")
         normalized = {str(key): float(value) for key, value in current_context.items()}
-        if set(normalized) - _ALLOWED_CONTEXT_KEYS:
-            raise ValueError("scheduled-LQR checkpoint contains unsupported context keys")
+        expected_keys = set(self.schedule.config.anchors[0])
+        if set(normalized) != expected_keys:
+            raise ValueError("scheduled-LQR checkpoint context keys do not match the schedule")
+        if not all(math.isfinite(value) for value in normalized.values()):
+            raise ValueError("scheduled-LQR checkpoint context contains nonfinite values")
 
         self.base_env.load_state_dict(base_state)
+        for name, value in normalized.items():
+            if float(getattr(self.base_env, name)) != value:
+                raise ValueError("scheduled-LQR checkpoint context disagrees with base environment")
         self.environment_step = environment_step
         self._current_context = normalized

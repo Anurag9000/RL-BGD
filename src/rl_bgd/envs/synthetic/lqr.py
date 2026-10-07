@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Any
 
@@ -124,7 +125,6 @@ class LinearQuadraticControlEnv:
             {},
         )
 
-
     def state_dict(self) -> dict[str, Any]:
         """Serialize simulator, local RNG, and mutable context parameters."""
 
@@ -172,6 +172,8 @@ class LinearQuadraticControlEnv:
         if set(current) != required:
             raise ValueError("LQR checkpoint current parameters are incomplete")
         values = {name: float(current[name]) for name in required}
+        if not all(math.isfinite(value) for value in values.values()):
+            raise ValueError("LQR checkpoint contains nonfinite mutable parameters")
         if values["action_cost"] <= 0 or values["process_noise"] < 0:
             raise ValueError("LQR checkpoint contains invalid mutable parameters")
 

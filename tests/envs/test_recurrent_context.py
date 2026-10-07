@@ -87,3 +87,24 @@ def test_previous_transition_context_checkpoint_rejects_reward_bound_mismatch() 
     )
     with pytest.raises(ValueError, match="reward bound mismatch"):
         restored.load_state_dict(state)
+
+
+def test_previous_transition_context_checkpoint_round_trip() -> None:
+    source = PreviousTransitionContextEnv(
+        LinearQuadraticControlEnv(process_noise=0.05),
+        reward_bound=10.0,
+    )
+    source.reset(seed=8)
+    source.step(torch.tensor([0.25]))
+    state = source.state_dict()
+    expected = source.step(torch.tensor([-0.5]))
+
+    restored = PreviousTransitionContextEnv(
+        LinearQuadraticControlEnv(process_noise=0.05),
+        reward_bound=10.0,
+    )
+    restored.load_state_dict(state)
+    actual = restored.step(torch.tensor([-0.5]))
+
+    torch.testing.assert_close(actual[0], expected[0])
+    assert actual[1:] == expected[1:]

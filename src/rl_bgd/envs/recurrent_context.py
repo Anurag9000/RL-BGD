@@ -169,7 +169,6 @@ class PreviousTransitionContextEnv:
     def __getattr__(self, name: str) -> Any:
         return getattr(self.env, name)
 
-
     def state_dict(self) -> dict[str, Any]:
         state_fn = getattr(self.env, "state_dict", None)
         if not callable(state_fn):
