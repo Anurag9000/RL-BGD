@@ -131,6 +131,9 @@ def _download_candidate(
                 output.write(chunk)
 
     if bytes_written == 0:
+        raise ChoresArchiveDownloadError("remote source returned an empty file")
+    if not zipfile.is_zipfile(destination):
+        prefix = destination.read_bytes()[:128]
         raise ChoresArchiveDownloadError(
             f"downloaded payload is not a ZIP archive; prefix={prefix!r}"
         )
