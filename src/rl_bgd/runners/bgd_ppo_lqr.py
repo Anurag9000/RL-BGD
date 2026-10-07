@@ -50,6 +50,10 @@ def run_bgd_ppo_lqr(
     rollout_steps: int = 128,
     evaluation_episodes: int = 5,
     evaluation_seed: int = 40_000,
+    checkpoint_path: str | None = None,
+    checkpoint_interval_rollouts: int | None = None,
+    resume_from: str | None = None,
+    max_rollouts_this_call: int | None = None,
 ) -> dict[str, object]:
     seed_everything(
         seed,
@@ -112,6 +116,10 @@ def run_bgd_ppo_lqr(
             rollout_steps=rollout_steps,
             seed=seed,
         ),
+        checkpoint_path=checkpoint_path,
+        checkpoint_interval_rollouts=checkpoint_interval_rollouts,
+        resume_from=resume_from,
+        max_rollouts_this_call=max_rollouts_this_call,
     )
     post_return = evaluate_ppo(
         env,

@@ -49,6 +49,10 @@ def run_recurrent_adam_ppo_lqr(
     steps: int = 2_000,
     seed: int = 100,
     device: str = "auto",
+    checkpoint_path: str | None = None,
+    checkpoint_interval_rollouts: int | None = None,
+    resume_from: str | None = None,
+    max_rollouts_this_call: int | None = None,
 ) -> dict[str, object]:
     """Matched recurrent-Adam control on the PPO acceptance environment."""
 
@@ -110,6 +114,10 @@ def run_recurrent_bgd_ppo_lqr(
     seed: int = 101,
     device: str = "auto",
     bayesianization: str = "actor_only",
+    checkpoint_path: str | None = None,
+    checkpoint_interval_rollouts: int | None = None,
+    resume_from: str | None = None,
+    max_rollouts_this_call: int | None = None,
 ) -> dict[str, object]:
     """Validate recurrent BGD-PPO learning with a selectable Bayesian module."""
 
@@ -186,6 +194,10 @@ def run_recurrent_bgd_sac_lqr(
     steps: int = 800,
     seed: int = 102,
     device: str = "auto",
+    checkpoint_path: str | None = None,
+    checkpoint_interval: int | None = None,
+    resume_from: str | None = None,
+    max_steps_this_call: int | None = None,
 ) -> dict[str, object]:
     """Validate that recurrent critic-BGD SAC learns stationary control."""
 

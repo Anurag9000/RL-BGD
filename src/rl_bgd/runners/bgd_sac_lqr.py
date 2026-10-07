@@ -60,6 +60,10 @@ def run_bgd_sac_lqr(
     replay_capacity: int = 2_000,
     evaluation_episodes: int = 10,
     evaluation_seed: int = 30_000,
+    checkpoint_path: str | None = None,
+    checkpoint_interval: int | None = None,
+    resume_from: str | None = None,
+    max_steps_this_call: int | None = None,
 ) -> dict[str, object]:
     if mc_samples < 1:
         raise ValueError("mc_samples must be positive")
@@ -127,6 +131,10 @@ def run_bgd_sac_lqr(
             replay_capacity=max(replay_capacity, steps),
             seed=seed,
         ),
+        checkpoint_path=checkpoint_path,
+        checkpoint_interval=checkpoint_interval,
+        resume_from=resume_from,
+        max_steps_this_call=max_steps_this_call,
     )
     post_return = evaluate_sac_lqr(
         env,
