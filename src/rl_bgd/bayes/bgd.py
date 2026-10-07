@@ -322,7 +322,10 @@ class BGDUpdater:
         ]
         if mismatches:
             details = ", ".join(
-                f"{name}: checkpoint={checkpoint_config.get(name)!r}, runtime={expected_config[name]!r}"
+                (
+                    f"{name}: checkpoint={checkpoint_config.get(name)!r}, "
+                    f"runtime={expected_config[name]!r}"
+                )
                 for name in mismatches
             )
             raise ValueError(f"BGD updater checkpoint config mismatch: {details}")
