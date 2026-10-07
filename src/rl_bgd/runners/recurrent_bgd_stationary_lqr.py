@@ -91,6 +91,10 @@ def run_recurrent_adam_ppo_lqr(
             rollout_steps=128,
             seed=seed,
         ),
+        checkpoint_path=checkpoint_path,
+        checkpoint_interval_rollouts=checkpoint_interval_rollouts,
+        resume_from=resume_from,
+        max_rollouts_this_call=max_rollouts_this_call,
     )
     post_return = evaluate_recurrent_ppo(
         env,
@@ -171,6 +175,10 @@ def run_recurrent_bgd_ppo_lqr(
             rollout_steps=128,
             seed=seed,
         ),
+        checkpoint_path=checkpoint_path,
+        checkpoint_interval_rollouts=checkpoint_interval_rollouts,
+        resume_from=resume_from,
+        max_rollouts_this_call=max_rollouts_this_call,
     )
     post_return = evaluate_recurrent_ppo(
         env,
@@ -252,6 +260,10 @@ def run_recurrent_bgd_sac_lqr(
             replay_capacity=max(2_000, steps),
             seed=seed,
         ),
+        checkpoint_path=checkpoint_path,
+        checkpoint_interval=checkpoint_interval,
+        resume_from=resume_from,
+        max_steps_this_call=max_steps_this_call,
     )
     post_return = evaluate_recurrent_sac(
         env,
