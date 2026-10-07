@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any
 
 import torch
@@ -499,7 +499,9 @@ class RecurrentSACAgent:
         self,
     ) -> dict[str, Any]:
         return {
-            "checkpoint_version": 1,
+            "checkpoint_version": 2,
+            "sac_config": asdict(self.config),
+            "recurrent_config": asdict(self.recurrent_config),
             "actor": self.actor.state_dict(),
             "critic1": self.critic1.state_dict(),
             "critic2": self.critic2.state_dict(),
@@ -518,8 +520,12 @@ class RecurrentSACAgent:
         self,
         state: dict[str, Any],
     ) -> None:
-        if state.get("checkpoint_version") != 1:
+        if state.get("checkpoint_version") != 2:
             raise ValueError("unsupported recurrent SAC checkpoint version")
+        if state.get("sac_config") != asdict(self.config):
+            raise ValueError("recurrent SAC configuration mismatch")
+        if state.get("recurrent_config") != asdict(self.recurrent_config):
+            raise ValueError("recurrent SAC architecture configuration mismatch")
         for name in (
             "actor",
             "critic1",

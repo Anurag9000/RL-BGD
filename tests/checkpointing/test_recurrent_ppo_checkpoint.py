@@ -1,3 +1,4 @@
+import pytest
 import torch
 
 from rl_bgd.agents.ppo.agent import PPOConfig
@@ -41,3 +42,25 @@ def test_recurrent_ppo_checkpoint_preserves_hidden_state() -> None:
         agent.value_hidden,
     )
     assert restored.recurrent_reset_count == agent.recurrent_reset_count
+
+
+def test_recurrent_ppo_checkpoint_rejects_sequence_config_mismatch() -> None:
+    agent = make_agent()
+    state = agent.state_dict()
+    restored = RecurrentPPOAgent(
+        2,
+        1,
+        action_low=torch.tensor([-1.0]),
+        action_high=torch.tensor([1.0]),
+        ppo_config=PPOConfig(
+            update_epochs=1,
+            minibatch_size=4,
+        ),
+        recurrent_config=RecurrentPPOConfig(
+            recurrent_hidden_dim=8,
+            sequence_length=8,
+            encoder_hidden_dims=(8,),
+        ),
+    )
+    with pytest.raises(ValueError, match="architecture configuration mismatch"):
+        restored.load_state_dict(state)

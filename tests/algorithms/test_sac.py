@@ -1,5 +1,6 @@
 import math
 
+import pytest
 import torch
 
 from rl_bgd.agents.sac.agent import (
@@ -94,3 +95,17 @@ def test_sac_checkpoint_round_trip_preserves_deterministic_action() -> None:
         restored.act(obs, deterministic=True),
         expected,
     )
+
+
+def test_sac_checkpoint_rejects_config_mismatch() -> None:
+    kwargs = dict(
+        observation_dim=2,
+        action_dim=1,
+        action_low=torch.tensor([-1.0]),
+        action_high=torch.tensor([1.0]),
+        hidden_dims=(16, 16),
+    )
+    state = SACAgent(**kwargs, config=SACConfig(gamma=0.95)).state_dict()
+    restored = SACAgent(**kwargs, config=SACConfig(gamma=0.99))
+    with pytest.raises(ValueError, match="configuration mismatch"):
+        restored.load_state_dict(state)

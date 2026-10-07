@@ -1,5 +1,6 @@
 import math
 
+import pytest
 import torch
 
 from rl_bgd.agents.ppo.agent import (
@@ -200,3 +201,17 @@ def test_ppo_rollout_checkpoint_round_trip() -> None:
         restored.returns,
         rollout.returns,
     )
+
+
+def test_ppo_checkpoint_rejects_config_mismatch() -> None:
+    kwargs = dict(
+        observation_dim=2,
+        action_dim=1,
+        action_low=torch.tensor([-1.0]),
+        action_high=torch.tensor([1.0]),
+        hidden_dims=(16, 16),
+    )
+    state = PPOAgent(**kwargs, config=PPOConfig(clip_ratio=0.1)).state_dict()
+    restored = PPOAgent(**kwargs, config=PPOConfig(clip_ratio=0.2))
+    with pytest.raises(ValueError, match="configuration mismatch"):
+        restored.load_state_dict(state)

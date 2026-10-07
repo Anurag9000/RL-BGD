@@ -1,3 +1,4 @@
+import pytest
 import torch
 
 from rl_bgd.agents.sac.agent import (
@@ -117,3 +118,27 @@ def test_recurrent_sac_post_step_observer_runs_each_step() -> None:
         post_step_observer=lambda step, _: observed.append(step),
     )
     assert observed == list(range(1, 13))
+
+
+def test_recurrent_sac_checkpoint_rejects_config_mismatch() -> None:
+    kwargs = dict(
+        observation_dim=2,
+        action_dim=1,
+        action_low=torch.tensor([-1.0]),
+        action_high=torch.tensor([1.0]),
+        recurrent_config=RecurrentSACConfig(
+            recurrent_hidden_dim=8,
+            encoder_hidden_dims=(8,),
+            q_hidden_dims=(8,),
+        ),
+    )
+    state = RecurrentSACAgent(
+        **kwargs,
+        sac_config=SACConfig(tau=0.01),
+    ).state_dict()
+    restored = RecurrentSACAgent(
+        **kwargs,
+        sac_config=SACConfig(tau=0.005),
+    )
+    with pytest.raises(ValueError, match="configuration mismatch"):
+        restored.load_state_dict(state)

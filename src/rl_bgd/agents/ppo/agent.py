@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any
 
 import torch
@@ -291,7 +291,8 @@ class PPOAgent:
 
     def state_dict(self) -> dict[str, Any]:
         return {
-            "checkpoint_version": 1,
+            "checkpoint_version": 2,
+            "config": asdict(self.config),
             "actor": self.actor.state_dict(),
             "value": self.value.state_dict(),
             "actor_optimizer": (self.actor_optimizer.state_dict()),
@@ -303,8 +304,10 @@ class PPOAgent:
         self,
         state: dict[str, Any],
     ) -> None:
-        if state.get("checkpoint_version") != 1:
+        if state.get("checkpoint_version") != 2:
             raise ValueError("unsupported PPO checkpoint version")
+        if state.get("config") != asdict(self.config):
+            raise ValueError("PPO checkpoint configuration mismatch")
         self.actor.load_state_dict(state["actor"])
         self.value.load_state_dict(state["value"])
         self.actor_optimizer.load_state_dict(state["actor_optimizer"])

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any
 
 import torch
@@ -391,7 +391,9 @@ class RecurrentPPOAgent:
         self,
     ) -> dict[str, Any]:
         return {
-            "checkpoint_version": 1,
+            "checkpoint_version": 2,
+            "ppo_config": asdict(self.config),
+            "recurrent_config": asdict(self.recurrent_config),
             "actor": self.actor.state_dict(),
             "value": self.value.state_dict(),
             "actor_optimizer": self.actor_optimizer.state_dict(),
@@ -406,8 +408,12 @@ class RecurrentPPOAgent:
         self,
         state: dict[str, Any],
     ) -> None:
-        if state.get("checkpoint_version") != 1:
+        if state.get("checkpoint_version") != 2:
             raise ValueError("unsupported recurrent PPO checkpoint version")
+        if state.get("ppo_config") != asdict(self.config):
+            raise ValueError("recurrent PPO configuration mismatch")
+        if state.get("recurrent_config") != asdict(self.recurrent_config):
+            raise ValueError("recurrent PPO architecture configuration mismatch")
         self.actor.load_state_dict(state["actor"])
         self.value.load_state_dict(state["value"])
         self.actor_optimizer.load_state_dict(state["actor_optimizer"])

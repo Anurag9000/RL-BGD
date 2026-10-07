@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import copy
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any
 
 import torch
@@ -226,7 +226,8 @@ class SACAgent:
 
     def state_dict(self) -> dict[str, Any]:
         return {
-            "checkpoint_version": 1,
+            "checkpoint_version": 2,
+            "config": asdict(self.config),
             "actor": self.actor.state_dict(),
             "critic1": self.critic1.state_dict(),
             "critic2": self.critic2.state_dict(),
@@ -240,8 +241,10 @@ class SACAgent:
         }
 
     def load_state_dict(self, state: dict[str, Any]) -> None:
-        if state.get("checkpoint_version") != 1:
+        if state.get("checkpoint_version") != 2:
             raise ValueError("unsupported SAC checkpoint version")
+        if state.get("config") != asdict(self.config):
+            raise ValueError("SAC checkpoint configuration mismatch")
         for name in (
             "actor",
             "critic1",
