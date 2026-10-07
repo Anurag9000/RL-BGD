@@ -778,13 +778,9 @@ def run_suite_parallel(
             suite_dir
             / "parallel_execution_summary.json"
         )
-    temporary = (
-        summary_path.with_name(
-            (
-                f".{summary_path.name}."
-                f"{os.getpid()}.tmp"
-            )
-        )
+    temporary = summary_path.with_name(
+        f".{summary_path.name}."
+        f"{os.getpid()}.tmp"
     )
     try:
         temporary.write_text(
