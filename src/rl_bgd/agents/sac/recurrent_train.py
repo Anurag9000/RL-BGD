@@ -226,9 +226,7 @@ def train_recurrent_sac(
                 "environment": _environment_state_dict(env),
                 "observation": observation.detach().clone(),
                 "episode_start": episode_start,
-                "episode_history": [
-                    item.detach().clone() for item in episode_history
-                ],
+                "episode_history": [item.detach().clone() for item in episode_history],
                 "episode_return": episode_return,
                 "completed_returns": list(completed_returns),
                 "last_metrics": dict(last_metrics),

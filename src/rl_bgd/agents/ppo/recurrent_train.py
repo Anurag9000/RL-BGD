@@ -176,10 +176,7 @@ def train_recurrent_ppo(
 
     rollouts_this_call = 0
     while steps < config.total_steps:
-        if (
-            max_rollouts_this_call is not None
-            and rollouts_this_call >= max_rollouts_this_call
-        ):
+        if max_rollouts_this_call is not None and rollouts_this_call >= max_rollouts_this_call:
             break
 
         horizon = min(

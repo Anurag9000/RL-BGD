@@ -18,9 +18,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "suite",
-        choices=tuple(
-            SUITES
-        ),
+        choices=tuple(SUITES),
     )
     parser.add_argument(
         "--output-root",
@@ -90,31 +88,15 @@ def main() -> None:
     summary = run_suite_parallel(
         args.suite,
         args.output_root,
-        job_ids=tuple(
-            args.job_id
-        ),
-        seeds=tuple(
-            args.seed
-        ),
-        run_ids=tuple(
-            args.run_id
-        ),
+        job_ids=tuple(args.job_id),
+        seeds=tuple(args.seed),
+        run_ids=tuple(args.run_id),
         gpu_ids=gpu_ids,
-        workers_per_gpu=(
-            args.workers_per_gpu
-        ),
-        cpu_workers=(
-            args.cpu_workers
-        ),
-        min_free_vram_mb=(
-            args.min_free_vram_mb
-        ),
-        max_gpu_utilization=(
-            args.max_gpu_utilization
-        ),
-        poll_seconds=(
-            args.poll_seconds
-        ),
+        workers_per_gpu=(args.workers_per_gpu),
+        cpu_workers=(args.cpu_workers),
+        min_free_vram_mb=(args.min_free_vram_mb),
+        max_gpu_utilization=(args.max_gpu_utilization),
+        poll_seconds=(args.poll_seconds),
         resume=not args.no_resume,
     )
     print(
@@ -124,12 +106,7 @@ def main() -> None:
             sort_keys=True,
         )
     )
-    if (
-        summary[
-            "status"
-        ]
-        != "success"
-    ):
+    if summary["status"] != "success":
         raise SystemExit(1)
 
 

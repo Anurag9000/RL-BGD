@@ -64,37 +64,20 @@ def _parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = _parser().parse_args()
-    urls = (
-        tuple(args.urls)
-        if args.urls
-        else (
-            OFFICIAL_CHORES_ARCHIVE_URL,
-        )
-    )
+    urls = tuple(args.urls) if args.urls else (OFFICIAL_CHORES_ARCHIVE_URL,)
     report = download_chores_archive(
         destination=args.destination,
         urls=urls,
-        expected_sha256=(
-            args.expected_sha256
-        ),
+        expected_sha256=(args.expected_sha256),
         timeout=args.timeout,
-        attempts_per_url=(
-            args.attempts_per_url
-        ),
+        attempts_per_url=(args.attempts_per_url),
     )
     payload = report.to_dict()
-    if (
-        args.extract_dir
-        is not None
-    ):
-        payload[
-            "extract_dir"
-        ] = str(
+    if args.extract_dir is not None:
+        payload["extract_dir"] = str(
             extract_chores_archive(
                 archive=report.destination,
-                destination=(
-                    args.extract_dir
-                ),
+                destination=(args.extract_dir),
             )
         )
     print(
