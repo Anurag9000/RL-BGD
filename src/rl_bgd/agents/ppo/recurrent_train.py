@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Any
 
 import torch
 
 from rl_bgd.agents.ppo.recurrent_agent import RecurrentPPOAgent
 from rl_bgd.agents.ppo.recurrent_rollout import RecurrentRolloutBuffer
 from rl_bgd.envs.protocols import ContinuousTensorEnv
+from rl_bgd.utils.randomness import load_random_state_dict, random_state_dict
+
+_RECURRENT_PPO_TRAINING_CHECKPOINT_VERSION = 1
 
 
 @dataclass(frozen=True)
@@ -18,16 +23,83 @@ class RecurrentPPOTrainConfig:
     seed: int = 0
 
 
+def _environment_state_dict(env: ContinuousTensorEnv) -> dict[str, Any]:
+    state_fn = getattr(env, "state_dict", None)
+    if not callable(state_fn):
+        raise TypeError("environment does not support checkpointing")
+    state = state_fn()
+    if not isinstance(state, dict):
+        raise TypeError("environment state_dict must return a dictionary")
+    return state
+
+
+def _load_environment_state(
+    env: ContinuousTensorEnv,
+    state: object,
+) -> None:
+    load_fn = getattr(env, "load_state_dict", None)
+    if not callable(load_fn):
+        raise TypeError("environment does not support checkpoint restore")
+    if not isinstance(state, dict):
+        raise TypeError("environment checkpoint state must be a dictionary")
+    load_fn(state)
+
+
+def _save_training_checkpoint(
+    path: str | Path,
+    state: dict[str, Any],
+) -> None:
+    destination = Path(path)
+    destination.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    temporary = destination.with_name(f".{destination.name}.tmp")
+    try:
+        torch.save(
+            state,
+            temporary,
+        )
+        temporary.replace(destination)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
+def _load_training_checkpoint(
+    path: str | Path,
+    *,
+    device: torch.device,
+) -> dict[str, Any]:
+    payload = torch.load(
+        Path(path),
+        map_location=device,
+        weights_only=False,
+    )
+    if not isinstance(payload, dict):
+        raise TypeError("recurrent PPO training checkpoint must contain a dictionary")
+    return payload
+
+
 def train_recurrent_ppo(
     env: ContinuousTensorEnv,
     agent: RecurrentPPOAgent,
     *,
     config: RecurrentPPOTrainConfig,
+    checkpoint_path: str | Path | None = None,
+    checkpoint_interval_rollouts: int | None = None,
+    resume_from: str | Path | None = None,
+    max_rollouts_this_call: int | None = None,
 ) -> dict[str, object]:
     if config.total_steps < 1 or config.rollout_steps < 1:
         raise ValueError("recurrent PPO training budgets must be positive")
-    observation, _ = env.reset(seed=config.seed)
-    agent.reset_recurrent_state()
+    if checkpoint_interval_rollouts is not None and checkpoint_interval_rollouts < 1:
+        raise ValueError("checkpoint_interval_rollouts must be positive")
+    if checkpoint_interval_rollouts is not None and checkpoint_path is None:
+        raise ValueError("checkpoint_interval_rollouts requires checkpoint_path")
+    if max_rollouts_this_call is not None and max_rollouts_this_call < 1:
+        raise ValueError("max_rollouts_this_call must be positive")
+
     episode_start = True
     episode_return = 0.0
     completed_returns: list[float] = []
@@ -35,7 +107,81 @@ def train_recurrent_ppo(
     steps = 0
     rollout_index = 0
 
+    if resume_from is None:
+        observation, _ = env.reset(seed=config.seed)
+        agent.reset_recurrent_state()
+    else:
+        checkpoint = _load_training_checkpoint(
+            resume_from,
+            device=agent.device,
+        )
+        if checkpoint.get("version") != _RECURRENT_PPO_TRAINING_CHECKPOINT_VERSION:
+            raise ValueError("unsupported recurrent PPO training checkpoint version")
+        if checkpoint.get("train_config") != asdict(config):
+            raise ValueError("recurrent PPO training checkpoint configuration mismatch")
+        agent_state = checkpoint.get("agent")
+        if not isinstance(agent_state, dict):
+            raise TypeError("recurrent PPO checkpoint agent state must be a dictionary")
+        agent.load_state_dict(agent_state)
+        _load_environment_state(
+            env,
+            checkpoint.get("environment"),
+        )
+        observation = checkpoint.get("observation")
+        if not isinstance(observation, torch.Tensor):
+            raise TypeError("recurrent PPO checkpoint observation must be a tensor")
+        observation = observation.to(
+            agent.device,
+            dtype=torch.float32,
+        )
+        steps = int(checkpoint["steps"])
+        rollout_index = int(checkpoint["rollout_index"])
+        if not 0 <= steps <= config.total_steps or rollout_index < 0:
+            raise ValueError("recurrent PPO checkpoint progress is invalid")
+        episode_start = bool(checkpoint["episode_start"])
+        episode_return = float(checkpoint["episode_return"])
+        raw_returns = checkpoint.get("completed_returns")
+        if not isinstance(raw_returns, list):
+            raise TypeError("recurrent PPO completed_returns must be a list")
+        completed_returns = [float(value) for value in raw_returns]
+        raw_metrics = checkpoint.get("last_metrics")
+        if not isinstance(raw_metrics, dict):
+            raise TypeError("recurrent PPO last_metrics must be a dictionary")
+        last_metrics = {str(key): float(value) for key, value in raw_metrics.items()}
+        process_rng = checkpoint.get("process_rng")
+        if not isinstance(process_rng, dict):
+            raise TypeError("recurrent PPO process RNG state must be a dictionary")
+        load_random_state_dict(process_rng)
+
+    def save() -> None:
+        if checkpoint_path is None:
+            return
+        _save_training_checkpoint(
+            checkpoint_path,
+            {
+                "version": _RECURRENT_PPO_TRAINING_CHECKPOINT_VERSION,
+                "train_config": asdict(config),
+                "steps": steps,
+                "rollout_index": rollout_index,
+                "agent": agent.state_dict(),
+                "environment": _environment_state_dict(env),
+                "observation": observation.detach().clone(),
+                "episode_start": episode_start,
+                "episode_return": episode_return,
+                "completed_returns": list(completed_returns),
+                "last_metrics": dict(last_metrics),
+                "process_rng": random_state_dict(),
+            },
+        )
+
+    rollouts_this_call = 0
     while steps < config.total_steps:
+        if (
+            max_rollouts_this_call is not None
+            and rollouts_this_call >= max_rollouts_this_call
+        ):
+            break
+
         horizon = min(
             config.rollout_steps,
             config.total_steps - steps,
@@ -92,9 +238,21 @@ def train_recurrent_ppo(
         if not last_transition_done:
             agent.refresh_recurrent_state(rollout)
         rollout_index += 1
+        rollouts_this_call += 1
+        if (
+            checkpoint_path is not None
+            and checkpoint_interval_rollouts is not None
+            and rollout_index % checkpoint_interval_rollouts == 0
+        ):
+            save()
+
+    if checkpoint_path is not None:
+        save()
 
     return {
         "steps": steps,
+        "target_steps": config.total_steps,
+        "completed": steps >= config.total_steps,
         "rollouts": rollout_index,
         "episodes": len(completed_returns),
         "mean_episode_return": (
