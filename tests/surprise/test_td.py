@@ -3,6 +3,7 @@ import torch
 
 from rl_bgd.surprise.base import (
     EMANormalizerConfig,
+    EMASurpriseNormalizer,
     RetentionMappingConfig,
     surprise_to_retention,
 )
@@ -32,3 +33,23 @@ def test_td_surprise_spike_increases_normalized_surprise() -> None:
     spike = estimator.observe(torch.tensor([4.0, 4.0, 4.0]))
     assert stable.normalized == pytest.approx(0.0)
     assert spike.normalized > 5.0
+
+
+def test_surprise_normalizer_checkpoint_rejects_config_mismatch() -> None:
+    source = EMASurpriseNormalizer(
+        EMANormalizerConfig(
+            decay=0.9,
+            smoothing_decay=0.5,
+        )
+    )
+    source.observe(1.0)
+    state = source.state_dict()
+
+    restored = EMASurpriseNormalizer(
+        EMANormalizerConfig(
+            decay=0.8,
+            smoothing_decay=0.5,
+        )
+    )
+    with pytest.raises(ValueError, match="configuration mismatch"):
+        restored.load_state_dict(state)

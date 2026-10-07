@@ -29,6 +29,7 @@ class PreviousTransitionContextEnv:
         if reward_bound <= 0:
             raise ValueError("reward_bound must be positive")
         self.env = env
+        self.reward_bound = float(reward_bound)
         self.action_space = env.action_space
         observation_low = env.observation_space.low
         observation_high = env.observation_space.high
@@ -174,13 +175,16 @@ class PreviousTransitionContextEnv:
         if not callable(state_fn):
             raise TypeError("wrapped environment does not support checkpointing")
         return {
-            "version": 1,
+            "version": 2,
+            "reward_bound": self.reward_bound,
             "env": state_fn(),
         }
 
     def load_state_dict(self, state: dict[str, Any]) -> None:
-        if state.get("version") != 1:
+        if state.get("version") != 2:
             raise ValueError("unsupported context-wrapper checkpoint version")
+        if state.get("reward_bound") != self.reward_bound:
+            raise ValueError("context-wrapper checkpoint reward bound mismatch")
         load_fn = getattr(self.env, "load_state_dict", None)
         if not callable(load_fn):
             raise TypeError("wrapped environment does not support checkpoint restore")

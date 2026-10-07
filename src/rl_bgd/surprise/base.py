@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 
 def _checkpoint_int(
@@ -104,9 +104,10 @@ class EMASurpriseNormalizer:
             count=self.count,
         )
 
-    def state_dict(self) -> dict[str, float | int]:
+    def state_dict(self) -> dict[str, object]:
         return {
-            "version": 1,
+            "version": 2,
+            "config": asdict(self.config),
             "count": self.count,
             "center": self.center,
             "variance": self.variance,
@@ -114,8 +115,10 @@ class EMASurpriseNormalizer:
         }
 
     def load_state_dict(self, state: Mapping[str, object]) -> None:
-        if state.get("version") != 1:
+        if state.get("version") != 2:
             raise ValueError("unsupported surprise-normalizer checkpoint version")
+        if state.get("config") != asdict(self.config):
+            raise ValueError("surprise-normalizer checkpoint configuration mismatch")
         count = _checkpoint_int(
             state["count"],
             name="surprise count",

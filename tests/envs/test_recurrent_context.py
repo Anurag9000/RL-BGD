@@ -1,7 +1,8 @@
+import pytest
 import torch
 
 from rl_bgd.envs.recurrent_context import PreviousTransitionContextEnv
-from rl_bgd.envs.synthetic.lqr import TensorBox
+from rl_bgd.envs.synthetic.lqr import LinearQuadraticControlEnv, TensorBox
 
 
 class TinyEnv:
@@ -70,3 +71,19 @@ def test_previous_transition_context_is_exact_and_task_agnostic() -> None:
 
     env.close()
     assert base.close_count == 1
+
+
+def test_previous_transition_context_checkpoint_rejects_reward_bound_mismatch() -> None:
+    source = PreviousTransitionContextEnv(
+        LinearQuadraticControlEnv(),
+        reward_bound=10.0,
+    )
+    source.reset(seed=7)
+    state = source.state_dict()
+
+    restored = PreviousTransitionContextEnv(
+        LinearQuadraticControlEnv(),
+        reward_bound=20.0,
+    )
+    with pytest.raises(ValueError, match="reward bound mismatch"):
+        restored.load_state_dict(state)
