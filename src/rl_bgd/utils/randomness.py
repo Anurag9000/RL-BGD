@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import random
 from collections.abc import Iterator
-from typing import Any
 from contextlib import contextmanager
+from typing import Any
 
 import numpy as np
 import torch
