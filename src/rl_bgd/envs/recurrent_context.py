@@ -167,3 +167,24 @@ class PreviousTransitionContextEnv:
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self.env, name)
+
+
+    def state_dict(self) -> dict[str, Any]:
+        state_fn = getattr(self.env, "state_dict", None)
+        if not callable(state_fn):
+            raise TypeError("wrapped environment does not support checkpointing")
+        return {
+            "version": 1,
+            "env": state_fn(),
+        }
+
+    def load_state_dict(self, state: dict[str, Any]) -> None:
+        if state.get("version") != 1:
+            raise ValueError("unsupported context-wrapper checkpoint version")
+        load_fn = getattr(self.env, "load_state_dict", None)
+        if not callable(load_fn):
+            raise TypeError("wrapped environment does not support checkpoint restore")
+        nested = state.get("env")
+        if not isinstance(nested, dict):
+            raise TypeError("context-wrapper nested checkpoint must be a mapping")
+        load_fn(nested)

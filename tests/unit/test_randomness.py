@@ -4,7 +4,12 @@ import numpy as np
 import pytest
 import torch
 
-from rl_bgd.utils.randomness import preserved_random_state, seed_everything
+from rl_bgd.utils.randomness import (
+    load_random_state_dict,
+    preserved_random_state,
+    random_state_dict,
+    seed_everything,
+)
 
 
 def _draw() -> tuple[float, float, torch.Tensor]:
@@ -39,6 +44,19 @@ def test_preserved_random_state_restores_after_exception() -> None:
 
     seed_everything(456)
     expected = _draw()
+    assert actual[0] == expected[0]
+    assert actual[1] == expected[1]
+    torch.testing.assert_close(actual[2], expected[2])
+
+
+def test_random_state_checkpoint_round_trip() -> None:
+    seed_everything(789)
+    state = random_state_dict()
+    expected = _draw()
+    _draw()
+    load_random_state_dict(state)
+    actual = _draw()
+
     assert actual[0] == expected[0]
     assert actual[1] == expected[1]
     torch.testing.assert_close(actual[2], expected[2])

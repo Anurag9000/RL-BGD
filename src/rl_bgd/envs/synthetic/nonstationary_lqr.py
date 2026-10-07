@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from typing import Any
 
 from torch import Tensor
@@ -70,3 +71,39 @@ class ScheduledLQREnv:
         observation, reward, terminated, truncated, _ = self.base_env.step(action)
         self.environment_step += 1
         return observation, reward, terminated, truncated, {}
+
+
+    def state_dict(self) -> dict[str, Any]:
+        return {
+            "version": 1,
+            "schedule_config": asdict(self.schedule.config),
+            "environment_step": self.environment_step,
+            "current_context": dict(self._current_context),
+            "base_env": self.base_env.state_dict(),
+        }
+
+    def load_state_dict(self, state: dict[str, Any]) -> None:
+        if state.get("version") != 1:
+            raise ValueError("unsupported scheduled-LQR checkpoint version")
+        if state.get("schedule_config") != asdict(self.schedule.config):
+            raise ValueError("scheduled-LQR checkpoint schedule mismatch")
+        environment_step = state.get("environment_step")
+        if (
+            isinstance(environment_step, bool)
+            or not isinstance(environment_step, int)
+            or environment_step < 0
+        ):
+            raise ValueError("scheduled-LQR environment_step is invalid")
+        current_context = state.get("current_context")
+        base_state = state.get("base_env")
+        if not isinstance(current_context, dict):
+            raise TypeError("scheduled-LQR current context must be a mapping")
+        if not isinstance(base_state, dict):
+            raise TypeError("scheduled-LQR base environment state must be a mapping")
+        normalized = {str(key): float(value) for key, value in current_context.items()}
+        if set(normalized) - _ALLOWED_CONTEXT_KEYS:
+            raise ValueError("scheduled-LQR checkpoint contains unsupported context keys")
+
+        self.base_env.load_state_dict(base_state)
+        self.environment_step = environment_step
+        self._current_context = normalized
