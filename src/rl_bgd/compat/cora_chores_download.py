@@ -46,9 +46,7 @@ OpenUrl = Callable[
 ]
 
 
-class ChoresArchiveDownloadError(
-    RuntimeError
-):
+class ChoresArchiveDownloadError(RuntimeError):
     """Raised when no supplied authoritative archive candidate validates."""
 
 
@@ -66,14 +64,8 @@ class ChoresArchiveDownloadReport:
     def to_dict(
         self,
     ) -> dict[str, object]:
-        payload = asdict(
-            self
-        )
-        payload[
-            "destination"
-        ] = str(
-            self.destination
-        )
+        payload = asdict(self)
+        payload["destination"] = str(self.destination)
         return payload
 
 
@@ -81,18 +73,12 @@ def _sha256_file(
     path: Path,
 ) -> str:
     digest = hashlib.sha256()
-    with path.open(
-        "rb"
-    ) as handle:
+    with path.open("rb") as handle:
         for block in iter(
-            lambda: handle.read(
-                1 << 20
-            ),
+            lambda: handle.read(1 << 20),
             b"",
         ):
-            digest.update(
-                block
-            )
+            digest.update(block)
     return digest.hexdigest()
 
 
@@ -107,14 +93,8 @@ def _response_content_type(
     )
     if getter is None:
         return ""
-    value = getter(
-        "Content-Type"
-    )
-    return (
-        str(value).lower()
-        if value is not None
-        else ""
-    )
+    value = getter("Content-Type")
+    return str(value).lower() if value is not None else ""
 
 
 def _download_candidate(
@@ -127,68 +107,32 @@ def _download_candidate(
 ) -> int:
     request = Request(
         url,
-        headers={
-            "User-Agent": (
-                "RL-BGD-CORA-CHORES-Recovery/1"
-            )
-        },
+        headers={"User-Agent": ("RL-BGD-CORA-CHORES-Recovery/1")},
     )
     bytes_written = 0
     with opener(
         request,
         timeout,
     ) as response:
-        content_type = (
-            _response_content_type(
-                response
-            )
-        )
-        if (
-            "text/html"
-            in content_type
-        ):
+        content_type = _response_content_type(response)
+        if "text/html" in content_type:
             raise ChoresArchiveDownloadError(
                 "remote source returned HTML instead of a trajectory archive"
             )
 
-        with destination.open(
-            "wb"
-        ) as output:
+        with destination.open("wb") as output:
             while True:
-                chunk = response.read(
-                    1 << 20
-                )
+                chunk = response.read(1 << 20)
                 if not chunk:
                     break
-                bytes_written += len(
-                    chunk
-                )
-                if (
-                    bytes_written
-                    > max_bytes
-                ):
-                    raise ChoresArchiveDownloadError(
-                        "remote archive exceeds configured size limit"
-                    )
-                output.write(
-                    chunk
-                )
+                bytes_written += len(chunk)
+                if bytes_written > max_bytes:
+                    raise ChoresArchiveDownloadError("remote archive exceeds configured size limit")
+                output.write(chunk)
 
     if bytes_written == 0:
         raise ChoresArchiveDownloadError(
-            "remote source returned an empty file"
-        )
-    if not zipfile.is_zipfile(
-        destination
-    ):
-        prefix = (
-            destination.read_bytes()[
-                :128
-            ]
-        )
-        raise ChoresArchiveDownloadError(
-            "downloaded payload is not a ZIP archive; "
-            f"prefix={prefix!r}"
+            f"downloaded payload is not a ZIP archive; prefix={prefix!r}"
         )
     return bytes_written
 
@@ -196,11 +140,7 @@ def _download_candidate(
 def download_chores_archive(
     *,
     destination: str | Path,
-    urls: Iterable[
-        str
-    ] = (
-        OFFICIAL_CHORES_ARCHIVE_URL,
-    ),
+    urls: Iterable[str] = (OFFICIAL_CHORES_ARCHIVE_URL,),
     expected_sha256: str | None = None,
     timeout: float = 60.0,
     max_bytes: int = DEFAULT_MAX_ARCHIVE_BYTES,
@@ -210,56 +150,26 @@ def download_chores_archive(
     """Download the first valid ZIP candidate and atomically publish it."""
 
     if timeout <= 0:
-        raise ValueError(
-            "timeout must be positive"
-        )
+        raise ValueError("timeout must be positive")
     if max_bytes < 1:
-        raise ValueError(
-            "max_bytes must be positive"
-        )
+        raise ValueError("max_bytes must be positive")
 
     if attempts_per_url < 1:
-        raise ValueError(
-            "attempts_per_url must be positive"
-        )
+        raise ValueError("attempts_per_url must be positive")
 
-    candidates = tuple(
-        dict.fromkeys(
-            url.strip()
-            for url in urls
-            if url.strip()
-        )
-    )
+    candidates = tuple(dict.fromkeys(url.strip() for url in urls if url.strip()))
     if not candidates:
-        raise ValueError(
-            "at least one archive URL is required"
-        )
+        raise ValueError("at least one archive URL is required")
     for url in candidates:
         parsed = urlparse(url)
         if parsed.scheme.lower() != "https" or not parsed.netloc:
-            raise ValueError(
-                "archive URLs must use HTTPS with a network host"
-            )
+            raise ValueError("archive URLs must use HTTPS with a network host")
 
-    expected = (
-        expected_sha256.lower()
-        if expected_sha256
-        else None
-    )
-    if (
-        expected is not None
-        and (
-            len(expected) != 64
-            or any(
-                character
-                not in "0123456789abcdef"
-                for character in expected
-            )
-        )
+    expected = expected_sha256.lower() if expected_sha256 else None
+    if expected is not None and (
+        len(expected) != 64 or any(character not in "0123456789abcdef" for character in expected)
     ):
-        raise ValueError(
-            "expected_sha256 must be a 64-character hexadecimal digest"
-        )
+        raise ValueError("expected_sha256 must be a 64-character hexadecimal digest")
 
     target = Path(
         destination
@@ -277,91 +187,54 @@ def download_chores_archive(
         )
     )
 
-    failures: list[
-        str
-    ] = []
-    for candidate_index, url in enumerate(
-        candidates
-    ):
-        for attempt_index in range(
-            attempts_per_url
-        ):
+    failures: list[str] = []
+    for candidate_index, url in enumerate(candidates):
+        for attempt_index in range(attempts_per_url):
             temporary = target.with_name(
-                f".{target.name}.candidate-"
-                f"{candidate_index}-attempt-"
-                f"{attempt_index}.tmp"
+                f".{target.name}.candidate-{candidate_index}-attempt-{attempt_index}.tmp"
             )
             try:
-                bytes_written = (
-                    _download_candidate(
-                        url=url,
-                        destination=temporary,
-                        timeout=timeout,
-                        max_bytes=max_bytes,
-                        opener=open_url,
-                    )
+                bytes_written = _download_candidate(
+                    url=url,
+                    destination=temporary,
+                    timeout=timeout,
+                    max_bytes=max_bytes,
+                    opener=open_url,
                 )
-                digest = _sha256_file(
-                    temporary
-                )
-                if (
-                    expected is not None
-                    and digest != expected
-                ):
+                digest = _sha256_file(temporary)
+                if expected is not None and digest != expected:
                     raise ChoresArchiveDownloadError(
-                        "archive SHA-256 mismatch: "
-                        f"expected {expected}, found {digest}"
+                        f"archive SHA-256 mismatch: expected {expected}, found {digest}"
                     )
 
                 os.replace(
                     temporary,
                     target,
                 )
-                return (
-                    ChoresArchiveDownloadReport(
-                        source_url=url,
-                        destination=(
-                            target.resolve()
-                        ),
-                        sha256=digest,
-                        bytes_written=(
-                            bytes_written
-                        ),
-                        candidate_failures=tuple(
-                            failures
-                        ),
-                    )
+                return ChoresArchiveDownloadReport(
+                    source_url=url,
+                    destination=(target.resolve()),
+                    sha256=digest,
+                    bytes_written=(bytes_written),
+                    candidate_failures=tuple(failures),
                 )
             except OSError as exc:
                 failures.append(
-                    f"{url} attempt "
-                    f"{attempt_index + 1}/"
-                    f"{attempts_per_url}: "
-                    f"network error: {exc}"
+                    f"{url} attempt {attempt_index + 1}/{attempts_per_url}: network error: {exc}"
                 )
-                if (
-                    attempt_index + 1
-                    >= attempts_per_url
-                ):
+                if attempt_index + 1 >= attempts_per_url:
                     break
             except (
                 ChoresArchiveDownloadError,
                 zipfile.BadZipFile,
             ) as exc:
-                failures.append(
-                    f"{url}: {exc}"
-                )
+                failures.append(f"{url}: {exc}")
                 break
             finally:
-                temporary.unlink(
-                    missing_ok=True
-                )
+                temporary.unlink(missing_ok=True)
 
     raise ChoresArchiveDownloadError(
-        "no CORA CHORES archive candidate validated:\n"
-        + "\n".join(
-            failures
-        )
+        "no CORA CHORES archive candidate validated:\n" + "\n".join(failures)
     )
 
 
@@ -374,19 +247,11 @@ def extract_chores_archive(
     """Extract a validated ZIP with traversal, symlink, and size defenses."""
 
     if max_extracted_bytes < 1:
-        raise ValueError(
-            "max_extracted_bytes must be positive"
-        )
+        raise ValueError("max_extracted_bytes must be positive")
 
-    source = Path(
-        archive
-    )
-    if not zipfile.is_zipfile(
-        source
-    ):
-        raise ChoresArchiveDownloadError(
-            f"not a ZIP archive: {source}"
-        )
+    source = Path(archive)
+    if not zipfile.is_zipfile(source):
+        raise ChoresArchiveDownloadError(f"not a ZIP archive: {source}")
 
     target = Path(
         destination
@@ -395,65 +260,33 @@ def extract_chores_archive(
         parents=True,
         exist_ok=True,
     )
-    target_root = (
-        target.resolve()
-    )
+    target_root = target.resolve()
 
-    with zipfile.ZipFile(
-        source
-    ) as archive_file:
+    with zipfile.ZipFile(source) as archive_file:
         members = archive_file.infolist()
-        total_uncompressed = sum(
-            member.file_size
-            for member in members
-            if not member.is_dir()
-        )
+        total_uncompressed = sum(member.file_size for member in members if not member.is_dir())
         if total_uncompressed > max_extracted_bytes:
             raise ChoresArchiveDownloadError(
                 "archive expands beyond configured extraction size limit"
             )
 
         for member in members:
-            member_path = Path(
-                member.filename
-            )
-            if (
-                member_path.is_absolute()
-                or ".."
-                in member_path.parts
-            ):
+            member_path = Path(member.filename)
+            if member_path.is_absolute() or ".." in member_path.parts:
                 raise ChoresArchiveDownloadError(
-                    "archive contains an unsafe path: "
-                    f"{member.filename}"
+                    f"archive contains an unsafe path: {member.filename}"
                 )
-            unix_mode = (
-                member.external_attr
-                >> 16
-            )
-            if (
-                unix_mode
-                & 0o170000
-            ) == 0o120000:
+            unix_mode = member.external_attr >> 16
+            if (unix_mode & 0o170000) == 0o120000:
                 raise ChoresArchiveDownloadError(
-                    "archive contains a symbolic link: "
-                    f"{member.filename}"
+                    f"archive contains a symbolic link: {member.filename}"
                 )
-            resolved = (
-                target
-                / member_path
-            ).resolve()
-            if (
-                resolved != target_root
-                and target_root
-                not in resolved.parents
-            ):
+            resolved = (target / member_path).resolve()
+            if resolved != target_root and target_root not in resolved.parents:
                 raise ChoresArchiveDownloadError(
-                    "archive member escapes destination: "
-                    f"{member.filename}"
+                    f"archive member escapes destination: {member.filename}"
                 )
 
-        archive_file.extractall(
-            target
-        )
+        archive_file.extractall(target)
 
     return target_root

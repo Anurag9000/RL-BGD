@@ -54,9 +54,7 @@ def _require_mapping(
         value,
         Mapping,
     ):
-        raise ValueError(
-            f"{path} contains no {label} mapping"
-        )
+        raise ValueError(f"{path} contains no {label} mapping")
     return value
 
 
@@ -66,19 +64,14 @@ def _require_sequence(
     path: Path,
     label: str,
 ) -> Sequence[Any]:
-    if (
-        isinstance(
-            value,
-            (str, bytes),
-        )
-        or not isinstance(
-            value,
-            Sequence,
-        )
+    if isinstance(
+        value,
+        (str, bytes),
+    ) or not isinstance(
+        value,
+        Sequence,
     ):
-        raise ValueError(
-            f"{path} contains no usable {label} sequence"
-        )
+        raise ValueError(f"{path} contains no usable {label} sequence")
     return value
 
 
@@ -95,9 +88,7 @@ def _require_nonempty_string(
         )
         or not value
     ):
-        raise ValueError(
-            f"{path} contains no valid {label}"
-        )
+        raise ValueError(f"{path} contains no valid {label}")
     return value
 
 
@@ -113,17 +104,13 @@ def _validate_runtime_trajectory_contract(
     """Validate fields consumed by the pinned crl_alfred reset/step path."""
 
     _require_nonempty_string(
-        payload.get(
-            "task_type"
-        ),
+        payload.get("task_type"),
         path=traj_path,
         label="task_type",
     )
 
     scene = _require_mapping(
-        payload.get(
-            "scene"
-        ),
+        payload.get("scene"),
         path=traj_path,
         label="scene",
     )
@@ -141,51 +128,35 @@ def _validate_runtime_trajectory_contract(
         )
         or scene_num < 1
     ):
-        raise ValueError(
-            f"{traj_path} has invalid scene.scene_num"
-        )
+        raise ValueError(f"{traj_path} has invalid scene.scene_num")
     _require_nonempty_string(
-        scene.get(
-            "floor_plan"
-        ),
+        scene.get("floor_plan"),
         path=traj_path,
         label="scene.floor_plan",
     )
     _require_sequence(
-        scene.get(
-            "object_poses"
-        ),
+        scene.get("object_poses"),
         path=traj_path,
         label="scene.object_poses",
     )
     _require_sequence(
-        scene.get(
-            "object_toggles"
-        ),
+        scene.get("object_toggles"),
         path=traj_path,
         label="scene.object_toggles",
     )
     if not isinstance(
-        scene.get(
-            "dirty_and_empty"
-        ),
+        scene.get("dirty_and_empty"),
         bool,
     ):
-        raise ValueError(
-            f"{traj_path} has invalid scene.dirty_and_empty"
-        )
+        raise ValueError(f"{traj_path} has invalid scene.dirty_and_empty")
     _require_mapping(
-        scene.get(
-            "init_action"
-        ),
+        scene.get("init_action"),
         path=traj_path,
         label="scene.init_action",
     )
 
     pddl = _require_mapping(
-        payload.get(
-            "pddl_params"
-        ),
+        payload.get("pddl_params"),
         path=traj_path,
         label="pddl_params",
     )
@@ -196,131 +167,70 @@ def _validate_runtime_trajectory_contract(
         "mrecep_target",
     ):
         if key not in pddl:
-            raise ValueError(
-                f"{traj_path} is missing pddl_params.{key}"
-            )
-        value = pddl[
-            key
-        ]
-        if (
-            value is not None
-            and not isinstance(
-                value,
-                str,
-            )
+            raise ValueError(f"{traj_path} is missing pddl_params.{key}")
+        value = pddl[key]
+        if value is not None and not isinstance(
+            value,
+            str,
         ):
-            raise ValueError(
-                f"{traj_path} has invalid pddl_params.{key}"
-            )
+            raise ValueError(f"{traj_path} has invalid pddl_params.{key}")
 
     plan = _require_mapping(
-        payload.get(
-            "plan"
-        ),
+        payload.get("plan"),
         path=traj_path,
         label="plan",
     )
     low_actions = _require_sequence(
-        plan.get(
-            "low_actions"
-        ),
+        plan.get("low_actions"),
         path=traj_path,
         label="plan.low_actions",
     )
     if not low_actions:
-        raise ValueError(
-            f"{traj_path} contains no low_actions"
-        )
-    for action_index, action in enumerate(
-        low_actions
-    ):
-        action_mapping = (
-            _require_mapping(
-                action,
-                path=traj_path,
-                label=(
-                    "plan.low_actions"
-                    f"[{action_index}]"
-                ),
-            )
+        raise ValueError(f"{traj_path} contains no low_actions")
+    for action_index, action in enumerate(low_actions):
+        action_mapping = _require_mapping(
+            action,
+            path=traj_path,
+            label=(f"plan.low_actions[{action_index}]"),
         )
         _require_mapping(
-            action_mapping.get(
-                "api_action"
-            ),
+            action_mapping.get("api_action"),
             path=traj_path,
-            label=(
-                "plan.low_actions"
-                f"[{action_index}].api_action"
-            ),
+            label=(f"plan.low_actions[{action_index}].api_action"),
         )
 
     high_pddl = _require_sequence(
-        plan.get(
-            "high_pddl"
-        ),
+        plan.get("high_pddl"),
         path=traj_path,
         label="plan.high_pddl",
     )
     if not high_pddl:
-        raise ValueError(
-            f"{traj_path} contains no high_pddl"
+        raise ValueError(f"{traj_path} contains no high_pddl")
+    high_actions: list[str] = []
+    for action_index, action in enumerate(high_pddl):
+        action_mapping = _require_mapping(
+            action,
+            path=traj_path,
+            label=(f"plan.high_pddl[{action_index}]"),
         )
-    high_actions: list[
-        str
-    ] = []
-    for action_index, action in enumerate(
-        high_pddl
-    ):
-        action_mapping = (
-            _require_mapping(
-                action,
-                path=traj_path,
-                label=(
-                    "plan.high_pddl"
-                    f"[{action_index}]"
-                ),
-            )
-        )
-        planner_action = (
-            _require_mapping(
-                action_mapping.get(
-                    "planner_action"
-                ),
-                path=traj_path,
-                label=(
-                    "plan.high_pddl"
-                    f"[{action_index}].planner_action"
-                ),
-            )
+        planner_action = _require_mapping(
+            action_mapping.get("planner_action"),
+            path=traj_path,
+            label=(f"plan.high_pddl[{action_index}].planner_action"),
         )
         high_actions.append(
             _require_nonempty_string(
-                planner_action.get(
-                    "action"
-                ),
+                planner_action.get("action"),
                 path=traj_path,
-                label=(
-                    "plan.high_pddl"
-                    f"[{action_index}].planner_action.action"
-                ),
+                label=(f"plan.high_pddl[{action_index}].planner_action.action"),
             )
         )
 
-    subgoal_count = len(
-        high_actions
-    )
-    if (
-        high_actions[
-            -1
-        ]
-        == "End"
-    ):
+    subgoal_count = len(high_actions)
+    if high_actions[-1] == "End":
         subgoal_count -= 1
     if subgoal_count < 1:
-        raise ValueError(
-            f"{traj_path} has no executable high-level subgoals"
-        )
+        raise ValueError(f"{traj_path} has no executable high-level subgoals")
 
     return (
         low_actions,
@@ -468,25 +378,19 @@ def _validate_trajectory(
         payload=payload,
     )
     images = _require_sequence(
-        payload.get(
-            "images"
-        ),
+        payload.get("images"),
         path=traj_path,
         label="images",
     )
     if not images:
-        raise ValueError(
-            f"{traj_path} contains no usable images"
-        )
+        raise ValueError(f"{traj_path} contains no usable images")
 
     raw_images = demo_dir / "raw_images"
     if not raw_images.is_dir():
         raise FileNotFoundError(f"missing CORA CHORES raw_images directory: {raw_images}")
 
     checked = 0
-    covered_high_indices: set[
-        int
-    ] = set()
+    covered_high_indices: set[int] = set()
     for image_index, image in enumerate(images):
         if not isinstance(
             image,
@@ -529,31 +433,17 @@ def _validate_trajectory(
             or high_idx < 0
             or high_idx >= subgoal_count
         ):
-            raise ValueError(
-                f"{traj_path} image {image_index} has invalid high_idx"
-            )
-        covered_high_indices.add(
-            high_idx
-        )
+            raise ValueError(f"{traj_path} image {image_index} has invalid high_idx")
+        covered_high_indices.add(high_idx)
 
         image_path = raw_images / (Path(image_name).stem + ".png")
         if not image_path.is_file():
             raise FileNotFoundError(f"missing CORA CHORES raw image: {image_path}")
         checked += 1
 
-    expected_high_indices = set(
-        range(
-            subgoal_count
-        )
-    )
-    if (
-        covered_high_indices
-        != expected_high_indices
-    ):
-        missing = sorted(
-            expected_high_indices
-            - covered_high_indices
-        )
+    expected_high_indices = set(range(subgoal_count))
+    if covered_high_indices != expected_high_indices:
+        missing = sorted(expected_high_indices - covered_high_indices)
         raise ValueError(
             f"{traj_path} images do not cover every executable high-level "
             f"subgoal; missing high_idx={missing}"

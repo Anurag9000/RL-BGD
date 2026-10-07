@@ -1705,9 +1705,7 @@ def _resolved_call_kwargs(
             )
         )
     except TypeError as exc:
-        raise TypeError(
-            f"runner {target} has non-JSON-serializable resolved arguments"
-        ) from exc
+        raise TypeError(f"runner {target} has non-JSON-serializable resolved arguments") from exc
 
 
 def _expanded_jobs(

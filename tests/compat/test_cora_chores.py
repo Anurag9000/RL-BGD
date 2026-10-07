@@ -197,20 +197,9 @@ def test_chores_archive_rejects_missing_scene_contract(
         archive_root,
         demo,
     ) = _fixture_tree(tmp_path)
-    traj_path = (
-        archive_root
-        / "train"
-        / demo
-        / "traj_data.json"
-    )
-    payload = json.loads(
-        traj_path.read_text(
-            encoding="utf-8"
-        )
-    )
-    del payload[
-        "scene"
-    ]
+    traj_path = archive_root / "train" / demo / "traj_data.json"
+    payload = json.loads(traj_path.read_text(encoding="utf-8"))
+    del payload["scene"]
     _write_json(
         traj_path,
         payload,
@@ -234,22 +223,9 @@ def test_chores_archive_rejects_missing_subgoal_image_coverage(
         archive_root,
         demo,
     ) = _fixture_tree(tmp_path)
-    traj_path = (
-        archive_root
-        / "train"
-        / demo
-        / "traj_data.json"
-    )
-    payload = json.loads(
-        traj_path.read_text(
-            encoding="utf-8"
-        )
-    )
-    payload[
-        "plan"
-    ][
-        "high_pddl"
-    ] = [
+    traj_path = archive_root / "train" / demo / "traj_data.json"
+    payload = json.loads(traj_path.read_text(encoding="utf-8"))
+    payload["plan"]["high_pddl"] = [
         {
             "planner_action": {
                 "action": "PickupObject",
