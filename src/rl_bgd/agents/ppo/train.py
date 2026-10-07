@@ -158,10 +158,10 @@ def train_ppo(
             env,
             checkpoint.get("environment"),
         )
-        observation = checkpoint.get("observation")
-        if not isinstance(observation, torch.Tensor):
-            raise TypeError("PPO training checkpoint observation must be a tensor")
-        observation = observation.to(
+        saved_observation = checkpoint.get("observation")
+        if not isinstance(saved_observation, torch.Tensor):
+            raise TypeError("PPO training training checkpoint observation must be a tensor")
+        observation = saved_observation.to(
             agent.device,
             dtype=torch.float32,
         )

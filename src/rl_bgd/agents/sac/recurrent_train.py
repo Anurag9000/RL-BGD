@@ -162,10 +162,10 @@ def train_recurrent_sac(
             env,
             checkpoint.get("environment"),
         )
-        observation = checkpoint.get("observation")
-        if not isinstance(observation, Tensor):
+        saved_observation = checkpoint.get("observation")
+        if not isinstance(saved_observation, Tensor):
             raise TypeError("recurrent SAC checkpoint observation must be a tensor")
-        observation = observation.to(
+        observation = saved_observation.to(
             agent.device,
             dtype=torch.float32,
         )

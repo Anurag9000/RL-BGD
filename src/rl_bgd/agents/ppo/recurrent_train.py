@@ -127,10 +127,10 @@ def train_recurrent_ppo(
             env,
             checkpoint.get("environment"),
         )
-        observation = checkpoint.get("observation")
-        if not isinstance(observation, torch.Tensor):
+        saved_observation = checkpoint.get("observation")
+        if not isinstance(saved_observation, torch.Tensor):
             raise TypeError("recurrent PPO checkpoint observation must be a tensor")
-        observation = observation.to(
+        observation = saved_observation.to(
             agent.device,
             dtype=torch.float32,
         )
