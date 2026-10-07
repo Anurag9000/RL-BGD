@@ -290,23 +290,41 @@ class BGDUpdater:
         self.posterior.sync_module(module)
         return result
 
+    def _config_state(self) -> dict[str, object]:
+        return {
+            "eta": self.config.eta,
+            "mc_samples": self.config.mc_samples,
+            "antithetic": self.config.antithetic,
+            "temper_retention": self.config.temper_retention,
+            "evidence_temperature": self.config.evidence_temperature,
+        }
+
     def state_dict(self) -> dict[str, Any]:
         return {
             "updater_type": "bgd",
             "version": 1,
             "step_count": self.step_count,
-            "config": {
-                "eta": self.config.eta,
-                "mc_samples": self.config.mc_samples,
-                "antithetic": self.config.antithetic,
-                "temper_retention": self.config.temper_retention,
-                "evidence_temperature": self.config.evidence_temperature,
-            },
+            "config": self._config_state(),
             "posterior": self.posterior.state_dict(),
         }
 
     def load_state_dict(self, state: Mapping[str, Any]) -> None:
         if state.get("updater_type") != "bgd" or state.get("version") != 1:
             raise ValueError("incompatible BGD updater checkpoint")
+        checkpoint_config = state.get("config")
+        if not isinstance(checkpoint_config, Mapping):
+            raise ValueError("BGD updater checkpoint is missing its configuration")
+        expected_config = self._config_state()
+        mismatches = [
+            name
+            for name, expected in expected_config.items()
+            if checkpoint_config.get(name) != expected
+        ]
+        if mismatches:
+            details = ", ".join(
+                f"{name}: checkpoint={checkpoint_config.get(name)!r}, runtime={expected_config[name]!r}"
+                for name in mismatches
+            )
+            raise ValueError(f"BGD updater checkpoint config mismatch: {details}")
         self.posterior.load_state_dict(state["posterior"])
         self.step_count = int(state["step_count"])
