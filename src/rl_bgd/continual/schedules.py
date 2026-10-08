@@ -45,11 +45,7 @@ class ContextScheduleConfig:
             raise ValueError("context anchors cannot be empty")
         if any(set(anchor) != keys for anchor in self.anchors):
             raise ValueError("all context anchors must share identical keys")
-        if any(
-            not math.isfinite(value)
-            for anchor in self.anchors
-            for value in anchor.values()
-        ):
+        if any(not math.isfinite(value) for anchor in self.anchors for value in anchor.values()):
             raise ValueError("context anchors must contain finite values")
         if (
             isinstance(self.phase_steps, bool)

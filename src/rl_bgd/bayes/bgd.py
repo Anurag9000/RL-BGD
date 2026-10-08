@@ -332,14 +332,8 @@ class BGDUpdater:
             )
             raise ValueError(f"BGD updater checkpoint config mismatch: {details}")
         step_count = state.get("step_count")
-        if (
-            isinstance(step_count, bool)
-            or not isinstance(step_count, int)
-            or step_count < 0
-        ):
-            raise ValueError(
-                "BGD updater checkpoint step_count must be non-negative integer"
-            )
+        if isinstance(step_count, bool) or not isinstance(step_count, int) or step_count < 0:
+            raise ValueError("BGD updater checkpoint step_count must be non-negative integer")
         saved_posterior = state.get("posterior")
         if not isinstance(saved_posterior, Mapping):
             raise TypeError("BGD updater checkpoint posterior must be a mapping")
