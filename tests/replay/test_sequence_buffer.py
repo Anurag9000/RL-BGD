@@ -221,3 +221,73 @@ def test_sequence_replay_checkpoint_rejects_nonchronological_ring_ids() -> None:
     ids[0, 0], ids[1, 0] = ids[1, 0].item(), ids[0, 0].item()
     with pytest.raises(ValueError, match="chronological transition IDs"):
         SequenceReplayBuffer(4, 1, 1).load_state_dict(state)
+
+
+def test_sequence_replay_checkpoint_preserves_wrapped_ring_and_future_samples() -> None:
+    source = SequenceReplayBuffer(4, 1, 1)
+    for index in range(7):
+        add_transition(source, index, episode_start=(index in {0, 4}))
+    source.sample_sequences(
+        1,
+        burn_in=1,
+        unroll=2,
+        generator=torch.Generator().manual_seed(4),
+    )
+    restored = SequenceReplayBuffer(4, 1, 1)
+    restored.load_state_dict(source.state_dict())
+    torch.testing.assert_close(
+        source.logical_transition_ids(),
+        restored.logical_transition_ids(),
+    )
+    for field in ("observations", "transition_ids", "usage_counts", "fresh"):
+        torch.testing.assert_close(
+            source.state_dict()[field],
+            restored.state_dict()[field],
+        )
+    add_transition(source, 7)
+    add_transition(restored, 7)
+    original = source.sample_sequences(
+        1,
+        burn_in=1,
+        unroll=2,
+        generator=torch.Generator().manual_seed(9),
+    )
+    resumed = restored.sample_sequences(
+        1,
+        burn_in=1,
+        unroll=2,
+        generator=torch.Generator().manual_seed(9),
+    )
+    for field in ("transition_ids", "usage_counts", "fresh", "observations"):
+        torch.testing.assert_close(getattr(original, field), getattr(resumed, field))
+
+
+@pytest.mark.parametrize(
+    ("field", "invalid"),
+    [
+        ("capacity", 4.0),
+        ("observation_dim", True),
+        ("action_dim", "1"),
+        ("size", 0.5),
+        ("size", False),
+    ],
+)
+def test_sequence_replay_checkpoint_rejects_coerced_integer_metadata(
+    field: str,
+    invalid: object,
+) -> None:
+    state = SequenceReplayBuffer(4, 1, 1).state_dict()
+    state[field] = invalid
+    with pytest.raises(TypeError, match=f"{field} must be an integer"):
+        SequenceReplayBuffer(4, 1, 1).load_state_dict(state)
+
+
+def test_sequence_replay_checkpoint_rejects_tensor_dtype_drift() -> None:
+    source = SequenceReplayBuffer(4, 1, 1)
+    add_transition(source, 0, episode_start=True)
+    state = source.state_dict()
+    observations = state["observations"]
+    assert isinstance(observations, torch.Tensor)
+    state["observations"] = observations.double()
+    with pytest.raises(ValueError, match="dtype mismatch for observations"):
+        SequenceReplayBuffer(4, 1, 1).load_state_dict(state)
