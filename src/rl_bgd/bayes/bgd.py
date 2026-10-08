@@ -18,7 +18,6 @@ from rl_bgd.utils.checkpoint_progress import (
     checkpoint_integer,
     checkpoint_nonnegative_integer,
 )
-from rl_bgd.utils.checkpoint_progress import checkpoint_integer
 
 
 @dataclass(frozen=True)
