@@ -47,8 +47,9 @@ tests in their owning components. Resume semantics are tested at the component
 level; exact cross-hardware floating-point identity is not claimed.
 
 Stationary and recurrent replay checkpoint loaders validate integer metadata,
-tensor shapes/dtypes, physical ring chronology, transition IDs, and evidence
-usage/freshness before copying any tensors into the live buffer. Validated
+tensor shapes/dtypes, physical ring chronology, transition IDs, recurrent
+episode-start boundaries, and evidence usage/freshness before copying any
+tensors into the live buffer. Validated
 payload tensors are staged completely on the destination device before live
 storage is touched, so transfer/conversion failures are transactional. Rejected
 payloads therefore leave existing replay state intact; wrapped-ring round-trip

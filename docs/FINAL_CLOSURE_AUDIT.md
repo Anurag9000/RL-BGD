@@ -83,6 +83,7 @@ without claiming any final multi-seed scientific results.
 The audit also validates SAC/replay and PPO/rollout progress alignment,
 including rejection of non-finite saved replay transitions and rollout values,
 transactional staging of replay payloads before live-buffer mutation,
+wrapped recurrent-replay episode-boundary validation,
 strict checkpoint integer and recurrent episode-boundary flags,
 transactional process RNG restore validation across Python, NumPy, PyTorch CPU,
 and CUDA state, and

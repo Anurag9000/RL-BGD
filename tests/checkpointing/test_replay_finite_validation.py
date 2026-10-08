@@ -125,3 +125,37 @@ def test_replay_transfer_failure_does_not_mutate_live_state(recurrent: bool) -> 
 
     _assert_same_state(before, target.state_dict())
 
+def test_sequence_replay_checkpoint_validates_wrapped_episode_boundaries() -> None:
+    source = SequenceReplayBuffer(3, 1, 1)
+    for index in range(5):
+        source.add(
+            torch.tensor([float(index)]),
+            torch.tensor([0.25]),
+            float(index),
+            torch.tensor([float(index + 1)]),
+            terminated=index == 2,
+            truncated=False,
+            episode_start=index in (0, 3),
+            insertion_step=index,
+        )
+
+    valid = source.state_dict()
+    restored = SequenceReplayBuffer(3, 1, 1)
+    restored.load_state_dict(valid)
+    _assert_same_state(valid, restored.state_dict())
+
+    transition_ids = valid["transition_ids"]
+    episode_starts = valid["episode_starts"]
+    assert isinstance(transition_ids, torch.Tensor)
+    assert isinstance(episode_starts, torch.Tensor)
+    corrupt = dict(valid)
+    corrupt_starts = episode_starts.clone()
+    physical_id_three = int(torch.where(transition_ids[:, 0] == 3)[0].item())
+    corrupt_starts[physical_id_three, 0] = False
+    corrupt["episode_starts"] = corrupt_starts
+
+    before = restored.state_dict()
+    with pytest.raises(ValueError, match="episode_start boundary mismatch"):
+        restored.load_state_dict(corrupt)
+    _assert_same_state(before, restored.state_dict())
+
