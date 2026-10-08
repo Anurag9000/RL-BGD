@@ -35,7 +35,9 @@ def checkpoint_ppo_progress(
         name=f"{label} rollout_index",
         limit=expected_rollouts,
     )
-    if rollout_index != expected_rollouts:
+    if rollout_index != expected_rollouts or steps != min(
+        rollout_index * rollout_steps, total_steps
+    ):
         raise ValueError(f"{label} progress is inconsistent with rollout count")
     return steps, rollout_index
 
