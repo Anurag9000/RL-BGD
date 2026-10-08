@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from rl_bgd.agents.sac.agent import SACConfig
 from rl_bgd.agents.sac.regularized_agent import (
@@ -28,6 +29,10 @@ def run_boundary_regularized_sac_recurring_lqr(
     phase_steps: int = 128,
     seed: int = 81,
     device: str = "auto",
+    checkpoint_path: str | Path | None = None,
+    checkpoint_interval: int | None = None,
+    resume_from: str | Path | None = None,
+    max_steps_this_call: int | None = None,
 ) -> dict[str, object]:
     """Run oracle-boundary consolidation without task-ID or head routing."""
 
@@ -94,6 +99,10 @@ def run_boundary_regularized_sac_recurring_lqr(
             updates_per_step=1,
             seed=seed,
         ),
+        checkpoint_path=checkpoint_path,
+        checkpoint_interval=checkpoint_interval,
+        resume_from=resume_from,
+        max_steps_this_call=max_steps_this_call,
     )
     return {
         "method": method,

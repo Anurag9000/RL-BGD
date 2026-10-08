@@ -60,7 +60,14 @@ regression tests compare subsequent seeded samples after restoration.
 The dependency-light stationary SAC/PPO and BGD-SAC/BGD-PPO script entrypoints
 expose checkpoint, resume, and bounded-per-call controls. Recurrent stationary
 acceptance runs have a single-run CLI so a worker never has to launch all
-recurrent acceptance experiments merely to resume one checkpoint.
+recurrent acceptance experiments merely to resume one checkpoint. The
+oracle-boundary regularized SAC trainer also preserves its global replay,
+phase-local replay, both sampling RNG streams, environment state, process RNG,
+consolidation history, and learner state; its resume validator binds phase
+replay progress to the most recent declared consolidation boundary. Canonical
+MetaWorld Continual World training deliberately does not claim exact mid-run
+resume because the current external simulator adapter does not expose a complete
+restorable simulator state.
 
 Examples:
 

@@ -2,13 +2,31 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Any
 
 import torch
 
 from rl_bgd.agents.sac.regularized_agent import RegularizedSACAgent
 from rl_bgd.envs.protocols import ContinuousTensorEnv
 from rl_bgd.replay.buffer import ReplayBuffer
+from rl_bgd.utils.checkpoint_payload import (
+    checkpoint_finite_float,
+    checkpoint_float_list,
+    checkpoint_float_mapping,
+    checkpoint_generator_state,
+    checkpoint_observation,
+)
+from rl_bgd.utils.checkpoint_progress import checkpoint_integer, checkpoint_step
+from rl_bgd.utils.checkpoint_transaction import transactional_state_load
+from rl_bgd.utils.randomness import (
+    load_random_state_dict,
+    preserved_random_state,
+    random_state_dict,
+)
+
+_BOUNDARY_REGULARIZED_SAC_CHECKPOINT_VERSION = 1
 
 
 @dataclass(frozen=True)
@@ -44,15 +62,138 @@ class BoundaryRegularizedSACTrainConfig:
             raise ValueError("consolidation step lies outside the training stream")
 
 
+def _environment_state_dict(env: ContinuousTensorEnv) -> dict[str, Any]:
+    state_fn = getattr(env, "state_dict", None)
+    if not callable(state_fn):
+        raise TypeError("environment does not support checkpointing")
+    state = state_fn()
+    if not isinstance(state, dict):
+        raise TypeError("environment state_dict must return a dictionary")
+    return state
+
+
+def _load_environment_state(
+    env: ContinuousTensorEnv,
+    state: object,
+) -> None:
+    load_fn = getattr(env, "load_state_dict", None)
+    if not callable(load_fn):
+        raise TypeError("environment does not support checkpoint restore")
+    if not isinstance(state, dict):
+        raise TypeError("environment checkpoint state must be a dictionary")
+    load_fn(state)
+
+
+def _save_training_checkpoint(
+    path: str | Path,
+    state: dict[str, Any],
+) -> None:
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_name(f".{destination.name}.tmp")
+    try:
+        torch.save(state, temporary)
+        temporary.replace(destination)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
+def _load_training_checkpoint(
+    path: str | Path,
+    *,
+    device: torch.device,
+) -> dict[str, Any]:
+    payload = torch.load(
+        Path(path),
+        map_location=device,
+        weights_only=False,
+    )
+    if not isinstance(payload, dict):
+        raise TypeError("boundary-regularized SAC checkpoint must contain a dictionary")
+    return payload
+
+
+def _phase_transition_count(
+    completed_steps: int,
+    consolidation_steps: tuple[int, ...],
+) -> int:
+    latest_boundary = 0
+    for boundary in consolidation_steps:
+        if boundary > completed_steps:
+            break
+        latest_boundary = boundary
+    return completed_steps - latest_boundary
+
+
+def _checkpoint_consolidation_log(
+    value: object,
+    *,
+    completed_steps: int,
+    consolidation_steps: tuple[int, ...],
+) -> list[dict[str, float]]:
+    if not isinstance(value, list):
+        raise TypeError("boundary-regularized SAC consolidation_log must be a list")
+    expected_steps = [
+        boundary for boundary in consolidation_steps if boundary <= completed_steps
+    ]
+    if len(value) != len(expected_steps):
+        raise ValueError(
+            "boundary-regularized SAC consolidation log disagrees with checkpoint progress"
+        )
+
+    result: list[dict[str, float]] = []
+    previous_count = 0
+    for index, (entry, expected_step) in enumerate(
+        zip(value, expected_steps, strict=True)
+    ):
+        metrics = checkpoint_float_mapping(
+            entry,
+            name=f"boundary-regularized SAC consolidation_log[{index}]",
+        )
+        if set(metrics) != {"environment_step", "consolidation_count"}:
+            raise ValueError(
+                "boundary-regularized SAC consolidation log fields are invalid"
+            )
+        environment_step = metrics["environment_step"]
+        consolidation_count = metrics["consolidation_count"]
+        if not environment_step.is_integer() or int(environment_step) != expected_step:
+            raise ValueError(
+                "boundary-regularized SAC consolidation log step is inconsistent"
+            )
+        if (
+            not consolidation_count.is_integer()
+            or int(consolidation_count) < 1
+            or int(consolidation_count) <= previous_count
+        ):
+            raise ValueError(
+                "boundary-regularized SAC consolidation count is inconsistent"
+            )
+        previous_count = int(consolidation_count)
+        result.append(metrics)
+    return result
+
+
 def train_boundary_regularized_sac(
     env: ContinuousTensorEnv,
     agent: RegularizedSACAgent,
     *,
     config: BoundaryRegularizedSACTrainConfig,
+    checkpoint_path: str | Path | None = None,
+    checkpoint_interval: int | None = None,
+    resume_from: str | Path | None = None,
+    max_steps_this_call: int | None = None,
 ) -> dict[str, object]:
     """Train SAC while using true stream boundaries only for consolidation."""
 
     config.validate()
+    if checkpoint_interval is not None and checkpoint_interval < 1:
+        raise ValueError("checkpoint_interval must be positive")
+    if checkpoint_interval is not None and checkpoint_path is None:
+        raise ValueError("checkpoint_interval requires checkpoint_path")
+    if max_steps_this_call is not None and max_steps_this_call < 1:
+        raise ValueError("max_steps_this_call must be positive")
+
     observation_dim = int(env.observation_space.low.numel())
     action_dim = int(env.action_space.low.numel())
 
@@ -67,15 +208,194 @@ def train_boundary_regularized_sac(
     replay = new_replay(config.replay_capacity)
     phase_replay = new_replay(config.replay_capacity)
     train_generator = torch.Generator(device=agent.device).manual_seed(config.seed + 17)
-    consolidation_generator = torch.Generator(device=agent.device).manual_seed(config.seed + 9_001)
-    observation, _ = env.reset(seed=config.seed)
+    consolidation_generator = torch.Generator(device=agent.device).manual_seed(
+        config.seed + 9_001
+    )
+
+    start_step = 0
     episode_return = 0.0
     completed_returns: list[float] = []
     last_metrics: dict[str, float] = {}
     consolidation_log: list[dict[str, float]] = []
     boundary_set = set(config.consolidation_steps)
 
-    for step in range(config.total_steps):
+    if resume_from is None:
+        observation, _ = env.reset(seed=config.seed)
+    else:
+        checkpoint = _load_training_checkpoint(
+            resume_from,
+            device=agent.device,
+        )
+        version = checkpoint_integer(
+            checkpoint.get("version"),
+            name="boundary-regularized SAC checkpoint version",
+        )
+        if version != _BOUNDARY_REGULARIZED_SAC_CHECKPOINT_VERSION:
+            raise ValueError("unsupported boundary-regularized SAC checkpoint version")
+        if checkpoint.get("train_config") != asdict(config):
+            raise ValueError(
+                "boundary-regularized SAC checkpoint configuration mismatch"
+            )
+        start_step = checkpoint_step(
+            checkpoint.get("next_step"),
+            name="boundary-regularized SAC checkpoint next_step",
+            limit=config.total_steps,
+        )
+
+        agent_state = checkpoint.get("agent")
+        replay_state = checkpoint.get("replay")
+        phase_replay_state = checkpoint.get("phase_replay")
+        environment_state = checkpoint.get("environment")
+        if not isinstance(agent_state, dict):
+            raise TypeError("boundary-regularized SAC agent checkpoint must be a dictionary")
+        if not isinstance(replay_state, dict) or not isinstance(
+            phase_replay_state, dict
+        ):
+            raise TypeError(
+                "boundary-regularized SAC replay checkpoints must be dictionaries"
+            )
+        if not isinstance(environment_state, dict):
+            raise TypeError(
+                "boundary-regularized SAC environment checkpoint must be a dictionary"
+            )
+
+        replay_transition_id = checkpoint_integer(
+            replay_state.get("next_transition_id"),
+            name="boundary-regularized SAC replay next_transition_id",
+        )
+        if replay_transition_id != start_step:
+            raise ValueError(
+                "boundary-regularized SAC replay/step progress mismatch"
+            )
+        phase_transition_id = checkpoint_integer(
+            phase_replay_state.get("next_transition_id"),
+            name="boundary-regularized SAC phase replay next_transition_id",
+        )
+        expected_phase_transitions = _phase_transition_count(
+            start_step,
+            config.consolidation_steps,
+        )
+        if phase_transition_id != expected_phase_transitions:
+            raise ValueError(
+                "boundary-regularized SAC phase replay/step progress mismatch"
+            )
+
+        observation = checkpoint_observation(
+            checkpoint.get("observation"),
+            name="boundary-regularized SAC checkpoint observation",
+            device=agent.device,
+        )
+        episode_return = checkpoint_finite_float(
+            checkpoint.get("episode_return"),
+            name="boundary-regularized SAC checkpoint episode_return",
+        )
+        completed_returns = checkpoint_float_list(
+            checkpoint.get("completed_returns"),
+            name="boundary-regularized SAC checkpoint completed_returns",
+        )
+        last_metrics = checkpoint_float_mapping(
+            checkpoint.get("last_metrics"),
+            name="boundary-regularized SAC checkpoint last_metrics",
+        )
+        consolidation_log = _checkpoint_consolidation_log(
+            checkpoint.get("consolidation_log"),
+            completed_steps=start_step,
+            consolidation_steps=config.consolidation_steps,
+        )
+        train_generator_state = checkpoint_generator_state(
+            checkpoint.get("train_generator_state"),
+            name="boundary-regularized SAC train generator checkpoint",
+            device=agent.device,
+        )
+        consolidation_generator_state = checkpoint_generator_state(
+            checkpoint.get("consolidation_generator_state"),
+            name="boundary-regularized SAC consolidation generator checkpoint",
+            device=agent.device,
+        )
+        process_rng = checkpoint.get("process_rng")
+        if not isinstance(process_rng, dict):
+            raise TypeError(
+                "boundary-regularized SAC process RNG checkpoint must be a dictionary"
+            )
+        with preserved_random_state():
+            load_random_state_dict(process_rng)
+
+        resume_state = {
+            "agent": agent_state,
+            "replay": replay_state,
+            "phase_replay": phase_replay_state,
+            "environment": environment_state,
+            "train_generator_state": train_generator_state,
+            "consolidation_generator_state": consolidation_generator_state,
+            "process_rng": process_rng,
+        }
+
+        def current_resume_state() -> dict[str, Any]:
+            return {
+                "agent": agent.state_dict(),
+                "replay": replay.state_dict(),
+                "phase_replay": phase_replay.state_dict(),
+                "environment": _environment_state_dict(env),
+                "train_generator_state": train_generator.get_state().clone(),
+                "consolidation_generator_state": (
+                    consolidation_generator.get_state().clone()
+                ),
+                "process_rng": random_state_dict(),
+            }
+
+        def apply_resume(payload: dict[str, Any]) -> None:
+            agent.load_state_dict(payload["agent"])
+            replay.load_state_dict(payload["replay"])
+            phase_replay.load_state_dict(payload["phase_replay"])
+            _load_environment_state(env, payload["environment"])
+            train_generator.set_state(payload["train_generator_state"].cpu())
+            consolidation_generator.set_state(
+                payload["consolidation_generator_state"].cpu()
+            )
+            load_random_state_dict(payload["process_rng"])
+
+        transactional_state_load(
+            resume_state,
+            current_state=current_resume_state,
+            apply=apply_resume,
+        )
+
+    call_end = config.total_steps
+    if max_steps_this_call is not None:
+        call_end = min(
+            config.total_steps,
+            start_step + max_steps_this_call,
+        )
+
+    def save(next_step: int) -> None:
+        if checkpoint_path is None:
+            return
+        _save_training_checkpoint(
+            checkpoint_path,
+            {
+                "version": _BOUNDARY_REGULARIZED_SAC_CHECKPOINT_VERSION,
+                "train_config": asdict(config),
+                "next_step": next_step,
+                "agent": agent.state_dict(),
+                "replay": replay.state_dict(),
+                "phase_replay": phase_replay.state_dict(),
+                "environment": _environment_state_dict(env),
+                "observation": observation.detach().clone(),
+                "episode_return": episode_return,
+                "completed_returns": list(completed_returns),
+                "last_metrics": dict(last_metrics),
+                "consolidation_log": [
+                    dict(entry) for entry in consolidation_log
+                ],
+                "train_generator_state": train_generator.get_state().clone(),
+                "consolidation_generator_state": (
+                    consolidation_generator.get_state().clone()
+                ),
+                "process_rng": random_state_dict(),
+            },
+        )
+
+    for step in range(start_step, call_end):
         if step < config.random_steps:
             action = env.action_space.sample(generator=train_generator)
         else:
@@ -130,11 +450,25 @@ def train_boundary_regularized_sac(
             )
             phase_replay = new_replay(config.replay_capacity)
 
+        if (
+            checkpoint_path is not None
+            and checkpoint_interval is not None
+            and completed_steps % checkpoint_interval == 0
+        ):
+            save(completed_steps)
+
+    if checkpoint_path is not None:
+        save(call_end)
+
     return {
-        "steps": config.total_steps,
+        "steps": call_end,
+        "target_steps": config.total_steps,
+        "completed": call_end >= config.total_steps,
         "episodes": len(completed_returns),
         "mean_episode_return": (
-            sum(completed_returns) / len(completed_returns) if completed_returns else float("nan")
+            sum(completed_returns) / len(completed_returns)
+            if completed_returns
+            else float("nan")
         ),
         "final_10_mean_return": (
             sum(completed_returns[-10:]) / min(10, len(completed_returns))
@@ -143,5 +477,6 @@ def train_boundary_regularized_sac(
         ),
         "last_update_metrics": last_metrics,
         "replay_size": len(replay),
+        "phase_replay_size": len(phase_replay),
         "consolidations": consolidation_log,
     }
