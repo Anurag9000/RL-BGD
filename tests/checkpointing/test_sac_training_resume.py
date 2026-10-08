@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pytest
 import torch
 
 from rl_bgd.agents.sac.agent import SACAgent, SACConfig
@@ -125,3 +126,43 @@ def test_sac_training_checkpoint_rejects_train_config_change(
         assert "configuration mismatch" in str(exc)
     else:
         raise AssertionError("resume accepted a changed SAC training config")
+
+
+def test_sac_training_rejects_corrupt_resume_progress(tmp_path: Path) -> None:
+    config = SACTrainConfig(
+        total_steps=8,
+        random_steps=8,
+        batch_size=2,
+        replay_capacity=8,
+        seed=211,
+    )
+    checkpoint = tmp_path / "valid_sac.pt"
+    env, agent = _make()
+    train_sac(
+        env,
+        agent,
+        config=config,
+        checkpoint_path=checkpoint,
+        max_steps_this_call=6,
+    )
+    saved = torch.load(checkpoint, weights_only=False)
+    for index, (bad_step, message) in enumerate(
+        [
+            (True, "must be an integer"),
+            (6.0, "must be an integer"),
+            (-1, "is invalid"),
+            (5, "replay/step progress mismatch"),
+        ]
+    ):
+        corrupt = dict(saved)
+        corrupt["next_step"] = bad_step
+        path = tmp_path / f"corrupt_sac_{index}.pt"
+        torch.save(corrupt, path)
+        resumed_env, resumed_agent = _make()
+        with pytest.raises((TypeError, ValueError), match=message):
+            train_sac(
+                resumed_env,
+                resumed_agent,
+                config=config,
+                resume_from=path,
+            )

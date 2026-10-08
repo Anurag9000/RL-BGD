@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pytest
 import torch
 
 from rl_bgd.agents.sac.agent import SACConfig
@@ -90,3 +91,46 @@ def test_recurrent_sac_training_resume_matches_uninterrupted(
         strict=True,
     ):
         torch.testing.assert_close(left, right)
+
+
+def test_recurrent_sac_rejects_corrupt_progress_and_episode_flag(
+    tmp_path: Path,
+) -> None:
+    config = RecurrentSACTrainConfig(
+        total_steps=8,
+        random_steps=8,
+        sequence_batch_size=1,
+        burn_in=1,
+        unroll=1,
+        replay_capacity=8,
+        seed=212,
+    )
+    checkpoint = tmp_path / "valid_recurrent_sac.pt"
+    env, agent = _make()
+    train_recurrent_sac(
+        env,
+        agent,
+        config=config,
+        checkpoint_path=checkpoint,
+        max_steps_this_call=6,
+    )
+    saved = torch.load(checkpoint, weights_only=False)
+    for index, (field, value, message) in enumerate(
+        [
+            ("next_step", "6", "must be an integer"),
+            ("next_step", 5, "replay/step progress mismatch"),
+            ("episode_start", 1, "must be a boolean"),
+        ]
+    ):
+        corrupt = dict(saved)
+        corrupt[field] = value
+        path = tmp_path / f"corrupt_recurrent_sac_{index}.pt"
+        torch.save(corrupt, path)
+        resumed_env, resumed_agent = _make()
+        with pytest.raises((TypeError, ValueError), match=message):
+            train_recurrent_sac(
+                resumed_env,
+                resumed_agent,
+                config=config,
+                resume_from=path,
+            )

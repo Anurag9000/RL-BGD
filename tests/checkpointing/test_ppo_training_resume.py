@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pytest
 import torch
 
 from rl_bgd.agents.ppo.agent import PPOAgent, PPOConfig
@@ -84,3 +85,37 @@ def test_ppo_training_checkpoint_resume_matches_uninterrupted_run(
         strict=True,
     ):
         torch.testing.assert_close(left, right)
+
+
+def test_ppo_rejects_invalid_saved_rollout_progress(tmp_path: Path) -> None:
+    config = PPOTrainConfig(total_steps=8, rollout_steps=4, seed=213)
+    checkpoint = tmp_path / "valid_ppo.pt"
+    env, agent = _make()
+    train_ppo(
+        env,
+        agent,
+        config=config,
+        checkpoint_path=checkpoint,
+        max_rollouts_this_call=1,
+    )
+    saved = torch.load(checkpoint, weights_only=False)
+    for index, (field, value, message) in enumerate(
+        [
+            ("steps", True, "must be an integer"),
+            ("rollout_index", "1", "must be an integer"),
+            ("rollout_index", 0, "progress is inconsistent"),
+            ("steps", 3, "progress is inconsistent"),
+        ]
+    ):
+        corrupt = dict(saved)
+        corrupt[field] = value
+        path = tmp_path / f"corrupt_ppo_{index}.pt"
+        torch.save(corrupt, path)
+        resumed_env, resumed_agent = _make()
+        with pytest.raises((TypeError, ValueError), match=message):
+            train_ppo(
+                resumed_env,
+                resumed_agent,
+                config=config,
+                resume_from=path,
+            )
