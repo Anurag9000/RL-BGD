@@ -117,9 +117,7 @@ def test_parallel_suite_assigns_each_child_to_worker_gpu(
         "smoke",
         tmp_path,
     )
-    jobs = manifest[
-        "jobs"
-    ]
+    jobs = manifest["jobs"]
     assert isinstance(
         jobs,
         list,
@@ -137,18 +135,14 @@ def test_parallel_suite_assigns_each_child_to_worker_gpu(
     def fake_runner(
         command: Any,
         environment: Any,
-    ) -> subprocess.CompletedProcess[
-        str
-    ]:
+    ) -> subprocess.CompletedProcess[str]:
         calls.append(
             (
                 tuple(command),
                 dict(environment),
             )
         )
-        barrier.wait(
-            timeout=5.0
-        )
+        barrier.wait(timeout=5.0)
         return subprocess.CompletedProcess(
             args=list(command),
             returncode=0,
@@ -219,20 +213,12 @@ def test_parallel_suite_default_pressure_policy_does_not_poll_gpu(
         "smoke",
         tmp_path,
     )
-    jobs = manifest[
-        "jobs"
-    ]
+    jobs = manifest["jobs"]
     assert isinstance(
         jobs,
         list,
     )
-    run_id = str(
-        jobs[
-            0
-        ][
-            "run_id"
-        ]
-    )
+    run_id = str(jobs[0]["run_id"])
 
     def fake_runner(
         command: Any,
@@ -260,9 +246,7 @@ def test_parallel_suite_default_pressure_policy_does_not_poll_gpu(
         state_reader=(forbidden_state_reader),
     )
 
-    assert summary[
-        "status"
-    ] == "success"
+    assert summary["status"] == "success"
 
 
 def test_parallel_suite_cpu_fallback_hides_cuda(
@@ -272,9 +256,7 @@ def test_parallel_suite_cpu_fallback_hides_cuda(
         "smoke",
         tmp_path,
     )
-    jobs = manifest[
-        "jobs"
-    ]
+    jobs = manifest["jobs"]
     assert isinstance(
         jobs,
         list,
@@ -297,9 +279,7 @@ def test_parallel_suite_cpu_fallback_hides_cuda(
     summary = run_suite_parallel(
         "smoke",
         tmp_path,
-        run_ids=(
-            run_id,
-        ),
+        run_ids=(run_id,),
         gpu_ids=(),
         cpu_workers=2,
         command_runner=fake_runner,
@@ -317,36 +297,24 @@ def test_parallel_suite_records_worker_exception_as_failure(
         "smoke",
         tmp_path,
     )
-    jobs = manifest[
-        "jobs"
-    ]
+    jobs = manifest["jobs"]
     assert isinstance(
         jobs,
         list,
     )
-    run_id = str(
-        jobs[
-            0
-        ][
-            "run_id"
-        ]
-    )
+    run_id = str(jobs[0]["run_id"])
 
     def failing_runner(
         command: Any,
         environment: Any,
-    ) -> subprocess.CompletedProcess[
-        str
-    ]:
+    ) -> subprocess.CompletedProcess[str]:
         del command, environment
         raise RuntimeError("synthetic worker failure")
 
     summary = run_suite_parallel(
         "smoke",
         tmp_path,
-        run_ids=(
-            run_id,
-        ),
+        run_ids=(run_id,),
         gpu_ids=(),
         command_runner=(failing_runner),
     )

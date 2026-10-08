@@ -195,8 +195,6 @@ def test_stationary_and_mechanism_suites_have_replicate_coverage() -> None:
     assert mechanisms[0].seed_kwarg == "seed"
 
 
-
-
 def _resolved_jobs_by_id(
     manifest: dict[str, object],
 ) -> dict[str, dict[str, object]]:
@@ -297,6 +295,7 @@ def test_compute_resolved_controls_are_matched(
             )
             == adam
         )
+
 
 def test_external_baseline_suite_has_full_method_coverage() -> None:
     jobs = SUITES["baseline_core"].jobs

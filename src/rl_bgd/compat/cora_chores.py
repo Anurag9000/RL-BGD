@@ -114,9 +114,7 @@ def _validate_runtime_trajectory_contract(
         path=traj_path,
         label="scene",
     )
-    scene_num = scene.get(
-        "scene_num"
-    )
+    scene_num = scene.get("scene_num")
     if (
         isinstance(
             scene_num,

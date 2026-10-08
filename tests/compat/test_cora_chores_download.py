@@ -115,11 +115,7 @@ def test_download_falls_back_after_html_and_records_provenance(
 def test_download_retries_transient_network_failures(
     tmp_path: Path,
 ) -> None:
-    archive_bytes = _zip_payload(
-        {
-            "data/traj_data.json": b"{}"
-        }
-    )
+    archive_bytes = _zip_payload({"data/traj_data.json": b"{}"})
     attempts = 0
 
     def opener(
@@ -164,11 +160,7 @@ def test_download_rejects_non_https_candidate(
 def test_download_rejects_hash_mismatch(
     tmp_path: Path,
 ) -> None:
-    archive_bytes = _zip_payload(
-        {
-            "data/traj_data.json": b"{}"
-        }
-    )
+    archive_bytes = _zip_payload({"data/traj_data.json": b"{}"})
 
     def opener(
         request: Request,

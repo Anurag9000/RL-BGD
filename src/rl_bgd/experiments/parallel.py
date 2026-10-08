@@ -109,9 +109,7 @@ def detect_gpu_ids(
             return ()
         return parse_gpu_ids(visible)
 
-    if shutil.which(
-        "nvidia-smi"
-    ) is None:
+    if shutil.which("nvidia-smi") is None:
         return ()
 
     completed = subprocess.run(

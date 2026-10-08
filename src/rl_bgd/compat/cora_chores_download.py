@@ -174,9 +174,7 @@ def download_chores_archive(
     ):
         raise ValueError("expected_sha256 must be a 64-character hexadecimal digest")
 
-    target = Path(
-        destination
-    )
+    target = Path(destination)
     target.parent.mkdir(
         parents=True,
         exist_ok=True,
@@ -256,9 +254,7 @@ def extract_chores_archive(
     if not zipfile.is_zipfile(source):
         raise ChoresArchiveDownloadError(f"not a ZIP archive: {source}")
 
-    target = Path(
-        destination
-    )
+    target = Path(destination)
     target.mkdir(
         parents=True,
         exist_ok=True,

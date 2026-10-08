@@ -290,8 +290,7 @@ class DiagonalGaussianPosterior(ParameterPosterior):
         if not isinstance(saved_dtypes, Mapping):
             raise ValueError("posterior checkpoint is missing parameter dtypes")
         expected_dtypes = {
-            key: str(value).replace("torch.", "")
-            for key, value in self.parameter_dtypes.items()
+            key: str(value).replace("torch.", "") for key, value in self.parameter_dtypes.items()
         }
         if dict(saved_dtypes) != expected_dtypes:
             raise ValueError("posterior checkpoint parameter dtype mismatch")
