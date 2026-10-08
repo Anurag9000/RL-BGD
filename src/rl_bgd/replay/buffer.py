@@ -200,6 +200,8 @@ class ReplayBuffer:
                 raise TypeError(f"replay checkpoint field {key} must be a tensor")
             if source.shape != target[:size].shape:
                 raise ValueError(f"replay checkpoint shape mismatch for {key}")
+            if source.dtype != target.dtype:
+                raise ValueError(f"replay checkpoint dtype mismatch for {key}")
             target[:size].copy_(
                 source.to(
                     device=self.device,

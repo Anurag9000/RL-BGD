@@ -370,9 +370,14 @@ class SequenceReplayBuffer:
             "action_dim": int(self.actions.shape[1]),
         }
         for name, value in expected.items():
-            if int(state[name]) != value:
+            saved = state[name]
+            if isinstance(saved, bool) or not isinstance(saved, int):
+                raise TypeError(f"sequence replay {name} must be an integer")
+            if saved != value:
                 raise ValueError(f"sequence replay {name} mismatch")
-        size = int(state["size"])
+        size = state["size"]
+        if isinstance(size, bool) or not isinstance(size, int):
+            raise TypeError("sequence replay size must be an integer")
         if not 0 <= size <= self.capacity:
             raise ValueError("invalid sequence replay size")
         fields = {
@@ -397,6 +402,8 @@ class SequenceReplayBuffer:
                 raise TypeError(f"sequence replay field {name} must be a tensor")
             if source.shape != target[:size].shape:
                 raise ValueError(f"sequence replay shape mismatch for {name}")
+            if source.dtype != target.dtype:
+                raise ValueError(f"sequence replay dtype mismatch for {name}")
             target[:size].copy_(
                 source.to(
                     device=self.device,
