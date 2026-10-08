@@ -57,26 +57,73 @@ def random_state_dict() -> dict[str, Any]:
     }
 
 
+def _validated_torch_rng_state(
+    value: Any,
+    *,
+    name: str,
+    device: torch.device | str,
+) -> torch.Tensor:
+    if not isinstance(value, torch.Tensor):
+        raise TypeError(f"{name} RNG checkpoint must be a tensor")
+    candidate = value.detach().cpu().contiguous()
+    if candidate.dtype != torch.uint8 or candidate.ndim != 1:
+        raise ValueError(f"{name} RNG checkpoint must be a one-dimensional uint8 tensor")
+    generator = torch.Generator(device=device)
+    try:
+        generator.set_state(candidate)
+    except RuntimeError as exc:
+        raise ValueError(f"invalid {name} RNG checkpoint state") from exc
+    return candidate
+
+
 def load_random_state_dict(state: dict[str, Any]) -> None:
-    """Restore process RNG streams captured by :func:`random_state_dict`."""
+    """Restore validated process RNG streams captured by :func:`random_state_dict`."""
 
     if state.get("version") != 1:
         raise ValueError("unsupported random-state checkpoint version")
-    torch_cpu = state.get("torch_cpu")
-    if not isinstance(torch_cpu, torch.Tensor):
-        raise TypeError("torch CPU RNG checkpoint must be a tensor")
-    random.setstate(state["python"])
-    np.random.set_state(state["numpy"])
-    torch.set_rng_state(torch_cpu.cpu())
+
+    python_state = state.get("python")
+    python_validator = random.Random()
+    try:
+        python_validator.setstate(python_state)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("invalid Python RNG checkpoint state") from exc
+
+    numpy_state = state.get("numpy")
+    numpy_validator = np.random.RandomState()
+    try:
+        numpy_validator.set_state(numpy_state)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("invalid NumPy RNG checkpoint state") from exc
+
+    torch_cpu = _validated_torch_rng_state(
+        state.get("torch_cpu"),
+        name="torch CPU",
+        device="cpu",
+    )
 
     cuda_state = state.get("torch_cuda")
+    checked_cuda: list[torch.Tensor] | None = None
     if cuda_state is not None:
-        if not torch.cuda.is_available():
-            raise RuntimeError("checkpoint contains CUDA RNG state but CUDA is unavailable")
         if not isinstance(cuda_state, list) or not all(
             isinstance(item, torch.Tensor) for item in cuda_state
         ):
             raise TypeError("CUDA RNG checkpoint must be a list of tensors")
+        if not torch.cuda.is_available():
+            raise RuntimeError("checkpoint contains CUDA RNG state but CUDA is unavailable")
         if len(cuda_state) != torch.cuda.device_count():
             raise ValueError("CUDA RNG checkpoint device count mismatch")
-        torch.cuda.set_rng_state_all([item.cpu() for item in cuda_state])
+        checked_cuda = [
+            _validated_torch_rng_state(
+                item,
+                name=f"CUDA device {index}",
+                device=torch.device("cuda", index),
+            )
+            for index, item in enumerate(cuda_state)
+        ]
+
+    random.setstate(python_state)
+    np.random.set_state(numpy_state)
+    torch.set_rng_state(torch_cpu)
+    if checked_cuda is not None:
+        torch.cuda.set_rng_state_all(checked_cuda)

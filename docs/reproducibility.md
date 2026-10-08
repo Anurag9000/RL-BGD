@@ -81,7 +81,9 @@ Examples:
 Training checkpoints bind the saved learner state to the complete training and
 agent configurations. SAC checkpoints also preserve replay contents,
 provenance/evidence-use metadata, replay-sampling RNG, environment state, and
-process RNG state. Ordinary and recurrent SAC replay restores reject NaN/Inf
+process RNG state. Process RNG restore validates Python, NumPy, PyTorch CPU,
+and CUDA payloads before mutating any live global RNG stream, so malformed late
+fields fail without perturbing the running experiment. Ordinary and recurrent SAC replay restores reject NaN/Inf
 transition tensors and non-integer checkpoint versions before any live buffer
 state is modified. PPO checkpoints are written only at rollout boundaries;
 recurrent variants also preserve online hidden state and recurrent progress.

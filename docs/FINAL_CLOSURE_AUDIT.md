@@ -82,7 +82,9 @@ without claiming any final multi-seed scientific results.
 
 The audit also validates SAC/replay and PPO/rollout progress alignment,
 including rejection of non-finite saved replay transitions and rollout values,
-strict checkpoint integer and recurrent episode-boundary flags, and
+strict checkpoint integer and recurrent episode-boundary flags,
+transactional process RNG restore validation across Python, NumPy, PyTorch CPU,
+and CUDA state, and
 non-mutating checkpoint rejection in PPO rollout buffers. Rollout restore
 also rejects non-finite saved observations, actions, rewards, policy
 statistics, GAE estimates, and recurrent hidden states. Recurrent rollout
