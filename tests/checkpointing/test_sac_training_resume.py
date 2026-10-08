@@ -148,6 +148,7 @@ def test_sac_training_rejects_corrupt_resume_progress(tmp_path: Path) -> None:
     saved = torch.load(checkpoint, weights_only=False)
     for index, (bad_step, message) in enumerate(
         [
+            (1.0, "must be an integer"),
             (True, "must be an integer"),
             (6.0, "must be an integer"),
             (-1, "is invalid"),
@@ -166,3 +167,56 @@ def test_sac_training_rejects_corrupt_resume_progress(tmp_path: Path) -> None:
                 config=config,
                 resume_from=path,
             )
+
+
+
+def test_sac_resume_rolls_back_on_late_environment_failure(
+    tmp_path: Path,
+) -> None:
+    config = SACTrainConfig(
+        total_steps=8,
+        random_steps=8,
+        batch_size=2,
+        replay_capacity=8,
+        seed=319,
+    )
+    checkpoint = tmp_path / "sac_transaction.pt"
+    env, agent = _make()
+    train_sac(
+        env,
+        agent,
+        config=config,
+        checkpoint_path=checkpoint,
+        max_steps_this_call=6,
+    )
+    saved = torch.load(checkpoint, weights_only=False)
+    environment = dict(saved["environment"])
+    environment["step"] = True
+    saved["environment"] = environment
+    corrupt = tmp_path / "sac_bad_environment.pt"
+    torch.save(saved, corrupt)
+
+    target_env, target_agent = _make()
+    actor_before = [
+        parameter.detach().clone() for parameter in target_agent.actor.parameters()
+    ]
+    env_before = target_env.state_dict()
+    with pytest.raises(ValueError, match="step is invalid"):
+        train_sac(
+            target_env,
+            target_agent,
+            config=config,
+            resume_from=corrupt,
+        )
+
+    for parameter, before in zip(
+        target_agent.actor.parameters(),
+        actor_before,
+        strict=True,
+    ):
+        torch.testing.assert_close(parameter, before)
+    assert target_env.state_dict()["step"] == env_before["step"]
+    torch.testing.assert_close(
+        target_env.state_dict()["state"],
+        env_before["state"],
+    )

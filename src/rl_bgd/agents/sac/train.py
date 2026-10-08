@@ -12,8 +12,20 @@ import torch
 from rl_bgd.agents.sac.agent import SACAgent
 from rl_bgd.envs.protocols import ContinuousTensorEnv
 from rl_bgd.replay.buffer import ReplayBuffer
-from rl_bgd.utils.checkpoint_progress import checkpoint_step
-from rl_bgd.utils.randomness import load_random_state_dict, random_state_dict
+from rl_bgd.utils.checkpoint_payload import (
+    checkpoint_finite_float,
+    checkpoint_float_list,
+    checkpoint_float_mapping,
+    checkpoint_generator_state,
+    checkpoint_observation,
+)
+from rl_bgd.utils.checkpoint_progress import checkpoint_integer, checkpoint_step
+from rl_bgd.utils.checkpoint_transaction import transactional_state_load
+from rl_bgd.utils.randomness import (
+    load_random_state_dict,
+    preserved_random_state,
+    random_state_dict,
+)
 
 UpdateObserver = Callable[[int, dict[str, float]], None]
 EpisodeObserver = Callable[[int, float], None]
@@ -140,7 +152,10 @@ def train_sac(
             resume_from,
             device=agent.device,
         )
-        if checkpoint.get("version") != _SAC_TRAINING_CHECKPOINT_VERSION:
+        if checkpoint_integer(
+            checkpoint.get("version"),
+            name="SAC training checkpoint version",
+        ) != _SAC_TRAINING_CHECKPOINT_VERSION:
             raise ValueError("unsupported SAC training checkpoint version")
         if checkpoint.get("train_config") != asdict(config):
             raise ValueError("SAC training checkpoint configuration mismatch")
@@ -149,42 +164,78 @@ def train_sac(
             name="SAC training checkpoint next_step",
             limit=config.total_steps,
         )
+
         agent_state = checkpoint.get("agent")
         replay_state = checkpoint.get("replay")
+        environment_state = checkpoint.get("environment")
         if not isinstance(agent_state, dict) or not isinstance(replay_state, dict):
             raise TypeError("SAC training checkpoint agent/replay state must be dictionaries")
-        if replay_state.get("next_transition_id") != start_step:
+        if not isinstance(environment_state, dict):
+            raise TypeError("SAC environment checkpoint state must be a dictionary")
+        replay_transition_id = checkpoint_integer(
+            replay_state.get("next_transition_id"),
+            name="SAC replay checkpoint next_transition_id",
+        )
+        if replay_transition_id != start_step:
             raise ValueError("SAC training checkpoint replay/step progress mismatch")
-        agent.load_state_dict(agent_state)
-        replay.load_state_dict(replay_state)
-        _load_environment_state(
-            env,
-            checkpoint.get("environment"),
+
+        observation = checkpoint_observation(
+            checkpoint.get("observation"),
+            name="SAC training checkpoint observation",
+            device=agent.device,
         )
-        saved_observation = checkpoint.get("observation")
-        if not isinstance(saved_observation, torch.Tensor):
-            raise TypeError("SAC training training checkpoint observation must be a tensor")
-        observation = saved_observation.to(
-            agent.device,
-            dtype=torch.float32,
+        episode_return = checkpoint_finite_float(
+            checkpoint.get("episode_return"),
+            name="SAC training checkpoint episode_return",
         )
-        episode_return = float(checkpoint["episode_return"])
-        completed = checkpoint.get("completed_returns")
-        if not isinstance(completed, list):
-            raise TypeError("SAC training checkpoint completed_returns must be a list")
-        completed_returns = [float(value) for value in completed]
-        saved_metrics = checkpoint.get("last_metrics")
-        if not isinstance(saved_metrics, dict):
-            raise TypeError("SAC training checkpoint last_metrics must be a dictionary")
-        last_metrics = {str(key): float(value) for key, value in saved_metrics.items()}
-        generator_state = checkpoint.get("replay_generator_state")
-        if not isinstance(generator_state, torch.Tensor):
-            raise TypeError("SAC replay generator checkpoint must be a tensor")
-        generator.set_state(generator_state.cpu())
+        completed_returns = checkpoint_float_list(
+            checkpoint.get("completed_returns"),
+            name="SAC training checkpoint completed_returns",
+        )
+        last_metrics = checkpoint_float_mapping(
+            checkpoint.get("last_metrics"),
+            name="SAC training checkpoint last_metrics",
+        )
+        generator_state = checkpoint_generator_state(
+            checkpoint.get("replay_generator_state"),
+            name="SAC replay generator checkpoint",
+            device=agent.device,
+        )
         process_rng = checkpoint.get("process_rng")
         if not isinstance(process_rng, dict):
             raise TypeError("SAC process RNG checkpoint must be a dictionary")
-        load_random_state_dict(process_rng)
+        with preserved_random_state():
+            load_random_state_dict(process_rng)
+
+        resume_state = {
+            "agent": agent_state,
+            "replay": replay_state,
+            "environment": environment_state,
+            "replay_generator_state": generator_state,
+            "process_rng": process_rng,
+        }
+
+        def current_resume_state() -> dict[str, Any]:
+            return {
+                "agent": agent.state_dict(),
+                "replay": replay.state_dict(),
+                "environment": _environment_state_dict(env),
+                "replay_generator_state": generator.get_state().clone(),
+                "process_rng": random_state_dict(),
+            }
+
+        def apply_resume(payload: dict[str, Any]) -> None:
+            agent.load_state_dict(payload["agent"])
+            replay.load_state_dict(payload["replay"])
+            _load_environment_state(env, payload["environment"])
+            generator.set_state(payload["replay_generator_state"].cpu())
+            load_random_state_dict(payload["process_rng"])
+
+        transactional_state_load(
+            resume_state,
+            current_state=current_resume_state,
+            apply=apply_resume,
+        )
 
     call_end = config.total_steps
     if max_steps_this_call is not None:

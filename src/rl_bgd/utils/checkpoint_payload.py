@@ -64,3 +64,25 @@ def checkpoint_observation(
         device=device,
         dtype=torch.float32,
     ).clone()
+
+
+
+def checkpoint_generator_state(
+    value: object,
+    *,
+    name: str,
+    device: torch.device,
+) -> Tensor:
+    """Validate a torch.Generator state without mutating the live generator."""
+
+    if not isinstance(value, Tensor):
+        raise TypeError(f"{name} must be a tensor")
+    candidate = value.detach().cpu().contiguous()
+    if candidate.dtype != torch.uint8 or candidate.ndim != 1:
+        raise ValueError(f"{name} must be a one-dimensional uint8 tensor")
+    validator = torch.Generator(device=device)
+    try:
+        validator.set_state(candidate)
+    except RuntimeError as exc:
+        raise ValueError(f"{name} is invalid") from exc
+    return candidate

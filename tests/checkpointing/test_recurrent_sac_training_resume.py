@@ -117,6 +117,7 @@ def test_recurrent_sac_rejects_corrupt_progress_and_episode_flag(
     saved = torch.load(checkpoint, weights_only=False)
     for index, (field, value, message) in enumerate(
         [
+            ("version", 1.0, "must be an integer"),
             ("next_step", "6", "must be an integer"),
             ("next_step", 5, "replay/step progress mismatch"),
             ("episode_start", 1, "must be a boolean"),
@@ -134,3 +135,60 @@ def test_recurrent_sac_rejects_corrupt_progress_and_episode_flag(
                 config=config,
                 resume_from=path,
             )
+
+
+
+def test_recurrent_sac_resume_rolls_back_on_late_environment_failure(
+    tmp_path: Path,
+) -> None:
+    config = RecurrentSACTrainConfig(
+        total_steps=8,
+        random_steps=8,
+        sequence_batch_size=1,
+        burn_in=1,
+        unroll=1,
+        replay_capacity=8,
+        seed=321,
+    )
+    checkpoint = tmp_path / "recurrent_sac_transaction.pt"
+    env, agent = _make()
+    train_recurrent_sac(
+        env,
+        agent,
+        config=config,
+        checkpoint_path=checkpoint,
+        max_steps_this_call=6,
+    )
+    saved = torch.load(checkpoint, weights_only=False)
+    environment = dict(saved["environment"])
+    environment["step"] = True
+    saved["environment"] = environment
+    corrupt = tmp_path / "recurrent_sac_bad_environment.pt"
+    torch.save(saved, corrupt)
+
+    target_env, target_agent = _make()
+    actor_before = [
+        parameter.detach().clone() for parameter in target_agent.actor.parameters()
+    ]
+    hidden_before = target_agent.actor_hidden.detach().clone()
+    env_before = target_env.state_dict()
+    with pytest.raises(ValueError, match="step is invalid"):
+        train_recurrent_sac(
+            target_env,
+            target_agent,
+            config=config,
+            resume_from=corrupt,
+        )
+
+    for parameter, before in zip(
+        target_agent.actor.parameters(),
+        actor_before,
+        strict=True,
+    ):
+        torch.testing.assert_close(parameter, before)
+    torch.testing.assert_close(target_agent.actor_hidden, hidden_before)
+    assert target_env.state_dict()["step"] == env_before["step"]
+    torch.testing.assert_close(
+        target_env.state_dict()["state"],
+        env_before["state"],
+    )

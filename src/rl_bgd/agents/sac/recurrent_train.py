@@ -13,8 +13,24 @@ from torch import Tensor
 from rl_bgd.agents.sac.recurrent_agent import RecurrentSACAgent
 from rl_bgd.envs.protocols import ContinuousTensorEnv
 from rl_bgd.replay.sequence_buffer import SequenceReplayBuffer
-from rl_bgd.utils.checkpoint_progress import checkpoint_boolean, checkpoint_step
-from rl_bgd.utils.randomness import load_random_state_dict, random_state_dict
+from rl_bgd.utils.checkpoint_payload import (
+    checkpoint_finite_float,
+    checkpoint_float_list,
+    checkpoint_float_mapping,
+    checkpoint_generator_state,
+    checkpoint_observation,
+)
+from rl_bgd.utils.checkpoint_progress import (
+    checkpoint_boolean,
+    checkpoint_integer,
+    checkpoint_step,
+)
+from rl_bgd.utils.checkpoint_transaction import transactional_state_load
+from rl_bgd.utils.randomness import (
+    load_random_state_dict,
+    preserved_random_state,
+    random_state_dict,
+)
 
 PostStepObserver = Callable[[int, RecurrentSACAgent], None]
 
@@ -149,7 +165,10 @@ def train_recurrent_sac(
             resume_from,
             device=agent.device,
         )
-        if checkpoint.get("version") != _RECURRENT_SAC_TRAINING_CHECKPOINT_VERSION:
+        if checkpoint_integer(
+            checkpoint.get("version"),
+            name="recurrent SAC training checkpoint version",
+        ) != _RECURRENT_SAC_TRAINING_CHECKPOINT_VERSION:
             raise ValueError("unsupported recurrent SAC training checkpoint version")
         if checkpoint.get("train_config") != asdict(config):
             raise ValueError("recurrent SAC training checkpoint configuration mismatch")
@@ -162,54 +181,89 @@ def train_recurrent_sac(
             checkpoint.get("episode_start"),
             name="recurrent SAC checkpoint episode_start",
         )
+
         agent_state = checkpoint.get("agent")
         replay_state = checkpoint.get("replay")
+        environment_state = checkpoint.get("environment")
         if not isinstance(agent_state, dict) or not isinstance(replay_state, dict):
             raise TypeError("recurrent SAC agent/replay state must be dictionaries")
-        if replay_state.get("next_transition_id") != start_step:
-            raise ValueError("recurrent SAC checkpoint replay/step progress mismatch")
-        agent.load_state_dict(agent_state)
-        replay.load_state_dict(replay_state)
-        _load_environment_state(
-            env,
-            checkpoint.get("environment"),
+        if not isinstance(environment_state, dict):
+            raise TypeError("recurrent SAC environment state must be a dictionary")
+        replay_transition_id = checkpoint_integer(
+            replay_state.get("next_transition_id"),
+            name="recurrent SAC replay checkpoint next_transition_id",
         )
-        saved_observation = checkpoint.get("observation")
-        if not isinstance(saved_observation, Tensor):
-            raise TypeError("recurrent SAC checkpoint observation must be a tensor")
-        observation = saved_observation.to(
-            agent.device,
-            dtype=torch.float32,
+        if replay_transition_id != start_step:
+            raise ValueError("recurrent SAC checkpoint replay/step progress mismatch")
+
+        observation = checkpoint_observation(
+            checkpoint.get("observation"),
+            name="recurrent SAC checkpoint observation",
+            device=agent.device,
         )
         raw_history = checkpoint.get("episode_history")
-        if not isinstance(raw_history, list) or not all(
-            isinstance(item, Tensor) for item in raw_history
-        ):
-            raise TypeError("recurrent SAC episode history must be a tensor list")
+        if not isinstance(raw_history, list):
+            raise TypeError("recurrent SAC episode history must be a list")
         episode_history = [
-            item.to(
-                agent.device,
-                dtype=torch.float32,
+            checkpoint_observation(
+                item,
+                name=f"recurrent SAC episode_history[{index}]",
+                device=agent.device,
             )
-            for item in raw_history
+            for index, item in enumerate(raw_history)
         ]
-        episode_return = float(checkpoint["episode_return"])
-        raw_returns = checkpoint.get("completed_returns")
-        if not isinstance(raw_returns, list):
-            raise TypeError("recurrent SAC completed_returns must be a list")
-        completed_returns = [float(value) for value in raw_returns]
-        raw_metrics = checkpoint.get("last_metrics")
-        if not isinstance(raw_metrics, dict):
-            raise TypeError("recurrent SAC last_metrics must be a dictionary")
-        last_metrics = {str(key): float(value) for key, value in raw_metrics.items()}
-        generator_state = checkpoint.get("replay_generator_state")
-        if not isinstance(generator_state, Tensor):
-            raise TypeError("recurrent SAC replay generator state must be a tensor")
-        generator.set_state(generator_state.cpu())
+        episode_return = checkpoint_finite_float(
+            checkpoint.get("episode_return"),
+            name="recurrent SAC checkpoint episode_return",
+        )
+        completed_returns = checkpoint_float_list(
+            checkpoint.get("completed_returns"),
+            name="recurrent SAC completed_returns",
+        )
+        last_metrics = checkpoint_float_mapping(
+            checkpoint.get("last_metrics"),
+            name="recurrent SAC last_metrics",
+        )
+        generator_state = checkpoint_generator_state(
+            checkpoint.get("replay_generator_state"),
+            name="recurrent SAC replay generator checkpoint",
+            device=agent.device,
+        )
         process_rng = checkpoint.get("process_rng")
         if not isinstance(process_rng, dict):
             raise TypeError("recurrent SAC process RNG state must be a dictionary")
-        load_random_state_dict(process_rng)
+        with preserved_random_state():
+            load_random_state_dict(process_rng)
+
+        resume_state = {
+            "agent": agent_state,
+            "replay": replay_state,
+            "environment": environment_state,
+            "replay_generator_state": generator_state,
+            "process_rng": process_rng,
+        }
+
+        def current_resume_state() -> dict[str, Any]:
+            return {
+                "agent": agent.state_dict(),
+                "replay": replay.state_dict(),
+                "environment": _environment_state_dict(env),
+                "replay_generator_state": generator.get_state().clone(),
+                "process_rng": random_state_dict(),
+            }
+
+        def apply_resume(payload: dict[str, Any]) -> None:
+            agent.load_state_dict(payload["agent"])
+            replay.load_state_dict(payload["replay"])
+            _load_environment_state(env, payload["environment"])
+            generator.set_state(payload["replay_generator_state"].cpu())
+            load_random_state_dict(payload["process_rng"])
+
+        transactional_state_load(
+            resume_state,
+            current_state=current_resume_state,
+            apply=apply_resume,
+        )
 
     window = config.burn_in + config.unroll
     required_size = window + config.sequence_batch_size - 1
