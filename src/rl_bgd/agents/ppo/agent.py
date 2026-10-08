@@ -12,11 +12,11 @@ from rl_bgd.agents.ppo.rollout import (
     PPORolloutBatch,
     RolloutBuffer,
 )
-from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 from rl_bgd.models.ppo import (
     PPOSquashedGaussianActor,
     ValueNetwork,
 )
+from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 
 
 @dataclass(frozen=True)

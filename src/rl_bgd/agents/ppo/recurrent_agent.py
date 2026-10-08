@@ -13,11 +13,11 @@ from rl_bgd.agents.ppo.recurrent_rollout import (
     RecurrentPPORolloutBatch,
     RecurrentRolloutBuffer,
 )
-from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 from rl_bgd.models.recurrent_ppo import (
     RecurrentPPOSquashedGaussianActor,
     RecurrentValueNetwork,
 )
+from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 
 
 @dataclass(frozen=True)

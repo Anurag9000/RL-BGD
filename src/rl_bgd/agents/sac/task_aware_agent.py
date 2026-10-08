@@ -9,13 +9,13 @@ from typing import Any
 import torch
 from torch import Tensor, nn
 
-from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 from rl_bgd.agents.sac.agent import SACConfig
 from rl_bgd.models.task_aware_sac import (
     TaskAwareQNetwork,
     TaskAwareSquashedGaussianActor,
 )
 from rl_bgd.replay.buffer import ReplayBatch
+from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 
 
 class TaskAwareSACAgent:

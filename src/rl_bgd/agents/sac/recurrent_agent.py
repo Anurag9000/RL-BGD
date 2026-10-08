@@ -10,7 +10,6 @@ from typing import Any
 import torch
 from torch import Tensor, nn
 
-from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 from rl_bgd.agents.sac.agent import (
     SACConfig,
 )
@@ -21,6 +20,7 @@ from rl_bgd.models.recurrent_sac import (
 from rl_bgd.replay.sequence_buffer import (
     SequenceReplayBatch,
 )
+from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 
 
 @dataclass(frozen=True)
