@@ -46,6 +46,12 @@ and predictive-world-model state use versioned checkpoint paths with round-trip
 tests in their owning components. Resume semantics are tested at the component
 level; exact cross-hardware floating-point identity is not claimed.
 
+Stationary and recurrent replay checkpoint loaders validate integer metadata,
+tensor shapes/dtypes, physical ring chronology, transition IDs, and evidence
+usage/freshness before copying any tensors into the live buffer. Rejected
+payloads therefore leave existing replay state intact; wrapped-ring round-trip
+regression tests compare subsequent seeded samples after restoration.
+
 ## Resumable stationary training
 
 The dependency-light stationary SAC/PPO and BGD-SAC/BGD-PPO script entrypoints
