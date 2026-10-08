@@ -15,7 +15,7 @@ from rl_bgd.baselines.importance import (
     snapshot_parameters,
     validate_importance,
 )
-from rl_bgd.utils.checkpoint_progress import checkpoint_integer
+from rl_bgd.utils.checkpoint_progress import checkpoint_finite_float, checkpoint_integer
 
 
 @dataclass
@@ -122,22 +122,31 @@ class EWCRegularizer:
         )
         if version != 1:
             raise ValueError("unsupported EWC checkpoint version")
-        self.strength = float(state["strength"])
-        if self.strength < 0:
+        strength = checkpoint_finite_float(
+            state.get("strength"),
+            name="EWC checkpoint strength",
+        )
+        if strength < 0:
             raise ValueError("invalid EWC strength in checkpoint")
-        incoming = state["states"]
-        if not isinstance(
-            incoming,
-            list,
-        ):
+        incoming = state.get("states")
+        if not isinstance(incoming, list):
             raise TypeError("EWC checkpoint states must be a list")
-        self.states = [
-            EWCConsolidation(
-                anchor=_clone_state(item["anchor"]),
-                importance=_clone_state(item["importance"]),
+        staged_states: list[EWCConsolidation] = []
+        for item in incoming:
+            if not isinstance(item, Mapping):
+                raise TypeError("EWC checkpoint consolidation must be a mapping")
+            anchor = item.get("anchor")
+            importance = item.get("importance")
+            if not isinstance(anchor, Mapping) or not isinstance(importance, Mapping):
+                raise TypeError("EWC checkpoint anchor and importance must be mappings")
+            staged_states.append(
+                EWCConsolidation(
+                    anchor=_clone_state(anchor),
+                    importance=_clone_state(importance),
+                )
             )
-            for item in incoming
-        ]
+        self.strength = strength
+        self.states = staged_states
 
 
 class OnlineEWCRegularizer:
@@ -227,13 +236,27 @@ class OnlineEWCRegularizer:
         )
         if version != 1:
             raise ValueError("unsupported Online-EWC checkpoint version")
-        self.strength = float(state["strength"])
-        self.decay = float(state["decay"])
-        if self.strength < 0 or not 0.0 <= self.decay <= 1.0:
+        strength = checkpoint_finite_float(
+            state.get("strength"),
+            name="Online-EWC checkpoint strength",
+        )
+        decay = checkpoint_finite_float(
+            state.get("decay"),
+            name="Online-EWC checkpoint decay",
+        )
+        if strength < 0 or not 0.0 <= decay <= 1.0:
             raise ValueError("invalid Online-EWC checkpoint hyperparameters")
         anchor = state.get("anchor")
         importance = state.get("importance")
         if (anchor is None) != (importance is None):
             raise ValueError("Online-EWC checkpoint has incomplete consolidated state")
-        self.anchor = None if anchor is None else _clone_state(anchor)
-        self.importance = None if importance is None else _clone_state(importance)
+        if anchor is not None and not isinstance(anchor, Mapping):
+            raise TypeError("Online-EWC checkpoint anchor must be a mapping")
+        if importance is not None and not isinstance(importance, Mapping):
+            raise TypeError("Online-EWC checkpoint importance must be a mapping")
+        staged_anchor = None if anchor is None else _clone_state(anchor)
+        staged_importance = None if importance is None else _clone_state(importance)
+        self.strength = strength
+        self.decay = decay
+        self.anchor = staged_anchor
+        self.importance = staged_importance

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import math
 
 import torch
 
@@ -13,6 +14,17 @@ def checkpoint_integer(value: object, *, name: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise TypeError(f"{name} must be an integer")
     return value
+
+
+def checkpoint_finite_float(value: object, *, name: str) -> float:
+    """Accept only finite numeric checkpoint metadata without string/bool coercion."""
+
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise TypeError(f"{name} must be numeric")
+    result = float(value)
+    if not math.isfinite(result):
+        raise ValueError(f"{name} must be finite")
+    return result
 
 
 def checkpoint_nonnegative_integer(value: object, *, name: str) -> int:

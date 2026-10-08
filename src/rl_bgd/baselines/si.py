@@ -15,7 +15,7 @@ from rl_bgd.baselines.importance import (
     trainable_parameters,
     zeros_like_parameters,
 )
-from rl_bgd.utils.checkpoint_progress import checkpoint_integer
+from rl_bgd.utils.checkpoint_progress import checkpoint_finite_float, checkpoint_integer
 
 
 class SynapticIntelligence:
@@ -147,9 +147,15 @@ class SynapticIntelligence:
         )
         if version != 1:
             raise ValueError("unsupported SI checkpoint version")
-        self.strength = float(state["strength"])
-        self.damping = float(state["damping"])
-        if self.strength < 0 or self.damping <= 0:
+        strength = checkpoint_finite_float(
+            state.get("strength"),
+            name="SI checkpoint strength",
+        )
+        damping = checkpoint_finite_float(
+            state.get("damping"),
+            name="SI checkpoint damping",
+        )
+        if strength < 0 or damping <= 0:
             raise ValueError("invalid SI checkpoint hyperparameters")
 
         def clone_field(
@@ -163,7 +169,13 @@ class SynapticIntelligence:
                 raise TypeError(f"SI checkpoint {name} must be a mapping")
             return {key: value.detach().float().clone() for key, value in field.items()}
 
-        self.anchor = clone_field("anchor")
-        self.previous = clone_field("previous")
-        self.path_integral = clone_field("path_integral")
-        self.importance = clone_field("importance")
+        anchor = clone_field("anchor")
+        previous = clone_field("previous")
+        path_integral = clone_field("path_integral")
+        importance = clone_field("importance")
+        self.strength = strength
+        self.damping = damping
+        self.anchor = anchor
+        self.previous = previous
+        self.path_integral = path_integral
+        self.importance = importance

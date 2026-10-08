@@ -14,7 +14,7 @@ from rl_bgd.baselines.importance import (
     snapshot_parameters,
     validate_importance,
 )
-from rl_bgd.utils.checkpoint_progress import checkpoint_integer
+from rl_bgd.utils.checkpoint_progress import checkpoint_finite_float, checkpoint_integer
 
 
 class MASRegularizer:
@@ -105,8 +105,11 @@ class MASRegularizer:
         )
         if version != 1:
             raise ValueError("unsupported MAS checkpoint version")
-        self.strength = float(state["strength"])
-        if self.strength < 0:
+        strength = checkpoint_finite_float(
+            state.get("strength"),
+            name="MAS checkpoint strength",
+        )
+        if strength < 0:
             raise ValueError("invalid MAS checkpoint strength")
         anchor = state.get("anchor")
         importance = state.get("importance")
@@ -125,5 +128,8 @@ class MASRegularizer:
                 raise TypeError("MAS state must be a mapping")
             return {name: tensor.detach().float().clone() for name, tensor in value.items()}
 
-        self.anchor = clone(anchor)
-        self.importance = clone(importance)
+        staged_anchor = clone(anchor)
+        staged_importance = clone(importance)
+        self.strength = strength
+        self.anchor = staged_anchor
+        self.importance = staged_importance
