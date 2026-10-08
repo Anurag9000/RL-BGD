@@ -119,3 +119,89 @@ def test_agent_checkpoint_rejection_restores_exact_prior_state(
         target.load_state_dict(payload)
 
     _assert_nested_equal(target.state_dict(), before)
+
+@pytest.mark.parametrize(
+    "factory",
+    [_ppo, _recurrent_ppo, _sac, _recurrent_sac, _task_aware_sac],
+)
+@pytest.mark.parametrize("invalid_version", [True, 2.0, "2"])
+def test_agent_checkpoint_rejects_coerced_version(
+    factory: Any,
+    invalid_version: object,
+) -> None:
+    agent = factory()
+    payload = deepcopy(agent.state_dict())
+    payload["checkpoint_version"] = invalid_version
+
+    with pytest.raises(TypeError, match="must be an integer"):
+        agent.load_state_dict(payload)
+
+
+@pytest.mark.parametrize(
+    ("factory", "counter_name"),
+    [
+        (_ppo, "update_count"),
+        (_recurrent_ppo, "update_count"),
+        (_recurrent_ppo, "recurrent_reset_count"),
+        (_sac, "update_count"),
+        (_recurrent_sac, "update_count"),
+        (_recurrent_sac, "recurrent_reset_count"),
+        (_task_aware_sac, "update_count"),
+        (_task_aware_sac, "optimizer_reset_count"),
+    ],
+)
+@pytest.mark.parametrize("invalid_count", [True, 1.5, "1", -1])
+def test_agent_checkpoint_rejects_invalid_counter(
+    factory: Any,
+    counter_name: str,
+    invalid_count: object,
+) -> None:
+    agent = factory()
+    payload = deepcopy(agent.state_dict())
+    payload[counter_name] = invalid_count
+
+    with pytest.raises((TypeError, ValueError)):
+        agent.load_state_dict(payload)
+
+
+@pytest.mark.parametrize("factory", [_recurrent_ppo, _recurrent_sac])
+def test_recurrent_agent_checkpoint_rejects_nonfinite_hidden_state(
+    factory: Any,
+) -> None:
+    agent = factory()
+    payload = deepcopy(agent.state_dict())
+    actor_hidden = payload["actor_hidden"]
+    assert isinstance(actor_hidden, torch.Tensor)
+    payload["actor_hidden"] = torch.full_like(actor_hidden, float("nan"))
+    before = deepcopy(agent.state_dict())
+
+    with pytest.raises(ValueError, match="non-finite"):
+        agent.load_state_dict(payload)
+
+    _assert_nested_equal(agent.state_dict(), before)
+
+
+@pytest.mark.parametrize("factory", [_sac, _recurrent_sac, _task_aware_sac])
+def test_sac_checkpoint_rejects_log_alpha_shape_mismatch(factory: Any) -> None:
+    agent = factory()
+    payload = deepcopy(agent.state_dict())
+    payload["log_alpha"] = torch.zeros(2)
+    before = deepcopy(agent.state_dict())
+
+    with pytest.raises(ValueError, match="shape mismatch"):
+        agent.load_state_dict(payload)
+
+    _assert_nested_equal(agent.state_dict(), before)
+
+
+@pytest.mark.parametrize("invalid_num_tasks", [True, 2.0, "2"])
+def test_task_aware_checkpoint_rejects_coerced_task_count(
+    invalid_num_tasks: object,
+) -> None:
+    agent = _task_aware_sac()
+    payload = deepcopy(agent.state_dict())
+    payload["num_tasks"] = invalid_num_tasks
+
+    with pytest.raises(TypeError, match="must be an integer"):
+        agent.load_state_dict(payload)
+

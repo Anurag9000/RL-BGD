@@ -20,6 +20,11 @@ from rl_bgd.models.recurrent_sac import (
 from rl_bgd.replay.sequence_buffer import (
     SequenceReplayBatch,
 )
+from rl_bgd.utils.checkpoint_progress import (
+    checkpoint_integer,
+    checkpoint_nonnegative_integer,
+    checkpoint_tensor_like,
+)
 from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 
 
@@ -521,7 +526,11 @@ class RecurrentSACAgent:
         self,
         state: dict[str, Any],
     ) -> None:
-        if state.get("checkpoint_version") != 2:
+        version = checkpoint_integer(
+            state.get("checkpoint_version"),
+            name="recurrent SAC checkpoint version",
+        )
+        if version != 2:
             raise ValueError("unsupported recurrent SAC checkpoint version")
         if state.get("sac_config") != asdict(self.config):
             raise ValueError("recurrent SAC configuration mismatch")
@@ -542,14 +551,27 @@ class RecurrentSACAgent:
                 ).load_state_dict(payload[name])
             self.actor_optimizer.load_state_dict(payload["actor_optimizer"])
             self.critic_optimizer.load_state_dict(payload["critic_optimizer"])
-            self.log_alpha.data.copy_(payload["log_alpha"].to(self.device))
-            self.alpha_optimizer.load_state_dict(payload["alpha_optimizer"])
-            self.actor_hidden = payload["actor_hidden"].to(
-                self.device,
-                dtype=torch.float32,
+            self.log_alpha.data.copy_(
+                checkpoint_tensor_like(
+                    payload.get("log_alpha"),
+                    name="recurrent SAC checkpoint log_alpha",
+                    reference=self.log_alpha,
+                )
             )
-            self.update_count = int(payload["update_count"])
-            self.recurrent_reset_count = int(payload["recurrent_reset_count"])
+            self.alpha_optimizer.load_state_dict(payload["alpha_optimizer"])
+            self.actor_hidden = checkpoint_tensor_like(
+                payload.get("actor_hidden"),
+                name="recurrent SAC checkpoint actor_hidden",
+                reference=self.actor_hidden,
+            )
+            self.update_count = checkpoint_nonnegative_integer(
+                payload.get("update_count"),
+                name="recurrent SAC checkpoint update_count",
+            )
+            self.recurrent_reset_count = checkpoint_nonnegative_integer(
+                payload.get("recurrent_reset_count"),
+                name="recurrent SAC checkpoint recurrent_reset_count",
+            )
 
         transactional_state_load(
             state,

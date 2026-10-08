@@ -15,6 +15,11 @@ from rl_bgd.models.task_aware_sac import (
     TaskAwareSquashedGaussianActor,
 )
 from rl_bgd.replay.buffer import ReplayBatch
+from rl_bgd.utils.checkpoint_progress import (
+    checkpoint_integer,
+    checkpoint_nonnegative_integer,
+    checkpoint_tensor_like,
+)
 from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 
 
@@ -268,11 +273,19 @@ class TaskAwareSACAgent:
         self,
         state: dict[str, Any],
     ) -> None:
-        if state.get("checkpoint_version") != 2:
+        version = checkpoint_integer(
+            state.get("checkpoint_version"),
+            name="task-aware SAC checkpoint version",
+        )
+        if version != 2:
             raise ValueError("unsupported task-aware SAC checkpoint version")
         if state.get("config") != asdict(self.config):
             raise ValueError("task-aware SAC checkpoint configuration mismatch")
-        if state.get("num_tasks") != self.num_tasks:
+        num_tasks = checkpoint_integer(
+            state.get("num_tasks"),
+            name="task-aware SAC checkpoint num_tasks",
+        )
+        if num_tasks != self.num_tasks:
             raise ValueError("task-aware SAC checkpoint task-count mismatch")
 
         def apply(payload: dict[str, Any]) -> None:
@@ -286,10 +299,22 @@ class TaskAwareSACAgent:
                 getattr(self, name).load_state_dict(payload[name])
             self.actor_optimizer.load_state_dict(payload["actor_optimizer"])
             self.critic_optimizer.load_state_dict(payload["critic_optimizer"])
-            self.log_alpha.data.copy_(payload["log_alpha"].to(self.device))
+            self.log_alpha.data.copy_(
+                checkpoint_tensor_like(
+                    payload.get("log_alpha"),
+                    name="task-aware SAC checkpoint log_alpha",
+                    reference=self.log_alpha,
+                )
+            )
             self.alpha_optimizer.load_state_dict(payload["alpha_optimizer"])
-            self.update_count = int(payload["update_count"])
-            self.optimizer_reset_count = int(payload.get("optimizer_reset_count", 0))
+            self.update_count = checkpoint_nonnegative_integer(
+                payload.get("update_count"),
+                name="task-aware SAC checkpoint update_count",
+            )
+            self.optimizer_reset_count = checkpoint_nonnegative_integer(
+                payload.get("optimizer_reset_count", 0),
+                name="task-aware SAC checkpoint optimizer_reset_count",
+            )
 
         transactional_state_load(
             state,

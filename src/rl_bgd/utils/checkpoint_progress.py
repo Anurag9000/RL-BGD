@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+import torch
+
 
 def checkpoint_integer(value: object, *, name: str) -> int:
     """Disallow lossy conversion of scientific checkpoint integer metadata."""
@@ -11,6 +13,36 @@ def checkpoint_integer(value: object, *, name: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise TypeError(f"{name} must be an integer")
     return value
+
+
+def checkpoint_nonnegative_integer(value: object, *, name: str) -> int:
+    """Accept only true integer counters that are non-negative."""
+
+    value = checkpoint_integer(value, name=name)
+    if value < 0:
+        raise ValueError(f"{name} must be non-negative")
+    return value
+
+
+def checkpoint_tensor_like(
+    value: object,
+    *,
+    name: str,
+    reference: torch.Tensor,
+) -> torch.Tensor:
+    """Validate shape/dtype/finiteness and stage a saved tensor."""
+
+    if not isinstance(value, torch.Tensor):
+        raise TypeError(f"{name} must be a tensor")
+    if value.shape != reference.shape:
+        raise ValueError(f"{name} shape mismatch")
+    if value.dtype != reference.dtype:
+        raise ValueError(f"{name} dtype mismatch")
+    if (value.is_floating_point() or value.is_complex()) and not torch.isfinite(
+        value
+    ).all().item():
+        raise ValueError(f"{name} contains non-finite values")
+    return value.detach().to(device=reference.device).clone()
 
 
 def checkpoint_step(value: object, *, name: str, limit: int) -> int:

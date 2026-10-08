@@ -16,6 +16,10 @@ from rl_bgd.models.ppo import (
     PPOSquashedGaussianActor,
     ValueNetwork,
 )
+from rl_bgd.utils.checkpoint_progress import (
+    checkpoint_integer,
+    checkpoint_nonnegative_integer,
+)
 from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 
 
@@ -305,7 +309,11 @@ class PPOAgent:
         self,
         state: dict[str, Any],
     ) -> None:
-        if state.get("checkpoint_version") != 2:
+        version = checkpoint_integer(
+            state.get("checkpoint_version"),
+            name="PPO checkpoint version",
+        )
+        if version != 2:
             raise ValueError("unsupported PPO checkpoint version")
         if state.get("config") != asdict(self.config):
             raise ValueError("PPO checkpoint configuration mismatch")
@@ -315,7 +323,10 @@ class PPOAgent:
             self.value.load_state_dict(payload["value"])
             self.actor_optimizer.load_state_dict(payload["actor_optimizer"])
             self.value_optimizer.load_state_dict(payload["value_optimizer"])
-            self.update_count = int(payload["update_count"])
+            self.update_count = checkpoint_nonnegative_integer(
+                payload.get("update_count"),
+                name="PPO checkpoint update_count",
+            )
 
         transactional_state_load(
             state,

@@ -17,6 +17,11 @@ from rl_bgd.models.recurrent_ppo import (
     RecurrentPPOSquashedGaussianActor,
     RecurrentValueNetwork,
 )
+from rl_bgd.utils.checkpoint_progress import (
+    checkpoint_integer,
+    checkpoint_nonnegative_integer,
+    checkpoint_tensor_like,
+)
 from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 
 
@@ -409,7 +414,11 @@ class RecurrentPPOAgent:
         self,
         state: dict[str, Any],
     ) -> None:
-        if state.get("checkpoint_version") != 2:
+        version = checkpoint_integer(
+            state.get("checkpoint_version"),
+            name="recurrent PPO checkpoint version",
+        )
+        if version != 2:
             raise ValueError("unsupported recurrent PPO checkpoint version")
         if state.get("ppo_config") != asdict(self.config):
             raise ValueError("recurrent PPO configuration mismatch")
@@ -421,16 +430,24 @@ class RecurrentPPOAgent:
             self.value.load_state_dict(payload["value"])
             self.actor_optimizer.load_state_dict(payload["actor_optimizer"])
             self.value_optimizer.load_state_dict(payload["value_optimizer"])
-            self.actor_hidden = payload["actor_hidden"].to(
-                self.device,
-                dtype=torch.float32,
+            self.actor_hidden = checkpoint_tensor_like(
+                payload.get("actor_hidden"),
+                name="recurrent PPO checkpoint actor_hidden",
+                reference=self.actor_hidden,
             )
-            self.value_hidden = payload["value_hidden"].to(
-                self.device,
-                dtype=torch.float32,
+            self.value_hidden = checkpoint_tensor_like(
+                payload.get("value_hidden"),
+                name="recurrent PPO checkpoint value_hidden",
+                reference=self.value_hidden,
             )
-            self.update_count = int(payload["update_count"])
-            self.recurrent_reset_count = int(payload["recurrent_reset_count"])
+            self.update_count = checkpoint_nonnegative_integer(
+                payload.get("update_count"),
+                name="recurrent PPO checkpoint update_count",
+            )
+            self.recurrent_reset_count = checkpoint_nonnegative_integer(
+                payload.get("recurrent_reset_count"),
+                name="recurrent PPO checkpoint recurrent_reset_count",
+            )
 
         transactional_state_load(
             state,
