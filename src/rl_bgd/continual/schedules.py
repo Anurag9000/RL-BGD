@@ -30,7 +30,13 @@ class ContextScheduleConfig:
     bounds: dict[str, tuple[float, float]] | None = None
 
     def validate(self) -> None:
-        if self.mode not in {"abrupt", "smooth", "periodic", "random_walk", "recurring"}:
+        if self.mode not in {
+            "abrupt",
+            "smooth",
+            "periodic",
+            "random_walk",
+            "recurring",
+        }:
             raise ValueError(f"unsupported context schedule mode: {self.mode}")
         if not self.anchors:
             raise ValueError("at least one context anchor is required")
@@ -39,7 +45,11 @@ class ContextScheduleConfig:
             raise ValueError("context anchors cannot be empty")
         if any(set(anchor) != keys for anchor in self.anchors):
             raise ValueError("all context anchors must share identical keys")
-        if any(not math.isfinite(value) for anchor in self.anchors for value in anchor.values()):
+        if any(
+            not math.isfinite(value)
+            for anchor in self.anchors
+            for value in anchor.values()
+        ):
             raise ValueError("context anchors must contain finite values")
         if (
             isinstance(self.phase_steps, bool)
