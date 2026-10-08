@@ -11,8 +11,22 @@ from torch import Tensor
 
 from rl_bgd.agents.ppo.rollout import RolloutBuffer
 from rl_bgd.envs.protocols import ContinuousTensorEnv
-from rl_bgd.utils.checkpoint_progress import checkpoint_ppo_progress
-from rl_bgd.utils.randomness import load_random_state_dict, random_state_dict
+from rl_bgd.utils.checkpoint_payload import (
+    checkpoint_finite_float,
+    checkpoint_float_list,
+    checkpoint_float_mapping,
+    checkpoint_observation,
+)
+from rl_bgd.utils.checkpoint_progress import (
+    checkpoint_integer,
+    checkpoint_ppo_progress,
+)
+from rl_bgd.utils.checkpoint_transaction import transactional_state_load
+from rl_bgd.utils.randomness import (
+    load_random_state_dict,
+    preserved_random_state,
+    random_state_dict,
+)
 
 _PPO_TRAINING_CHECKPOINT_VERSION = 1
 
@@ -147,7 +161,10 @@ def train_ppo(
             resume_from,
             device=agent.device,
         )
-        if checkpoint.get("version") != _PPO_TRAINING_CHECKPOINT_VERSION:
+        if checkpoint_integer(
+            checkpoint.get("version"),
+            name="PPO training checkpoint version",
+        ) != _PPO_TRAINING_CHECKPOINT_VERSION:
             raise ValueError("unsupported PPO training checkpoint version")
         if checkpoint.get("train_config") != asdict(config):
             raise ValueError("PPO training checkpoint configuration mismatch")
@@ -157,34 +174,59 @@ def train_ppo(
             rollout_steps=config.rollout_steps,
             label="PPO training checkpoint",
         )
+
         agent_state = checkpoint.get("agent")
         if not isinstance(agent_state, dict):
             raise TypeError("PPO training checkpoint agent state must be a dictionary")
-        agent.load_state_dict(agent_state)
-        _load_environment_state(
-            env,
-            checkpoint.get("environment"),
+        environment_state = checkpoint.get("environment")
+        if not isinstance(environment_state, dict):
+            raise TypeError("PPO environment checkpoint state must be a dictionary")
+        observation = checkpoint_observation(
+            checkpoint.get("observation"),
+            name="PPO training checkpoint observation",
+            device=agent.device,
         )
-        saved_observation = checkpoint.get("observation")
-        if not isinstance(saved_observation, torch.Tensor):
-            raise TypeError("PPO training training checkpoint observation must be a tensor")
-        observation = saved_observation.to(
-            agent.device,
-            dtype=torch.float32,
+        episode_return = checkpoint_finite_float(
+            checkpoint.get("episode_return"),
+            name="PPO training checkpoint episode_return",
         )
-        episode_return = float(checkpoint["episode_return"])
-        completed = checkpoint.get("completed_returns")
-        if not isinstance(completed, list):
-            raise TypeError("PPO training checkpoint completed_returns must be a list")
-        completed_returns = [float(value) for value in completed]
-        saved_metrics = checkpoint.get("last_metrics")
-        if not isinstance(saved_metrics, dict):
-            raise TypeError("PPO training checkpoint last_metrics must be a dictionary")
-        last_metrics = {str(key): float(value) for key, value in saved_metrics.items()}
+        completed_returns = checkpoint_float_list(
+            checkpoint.get("completed_returns"),
+            name="PPO training checkpoint completed_returns",
+        )
+        last_metrics = checkpoint_float_mapping(
+            checkpoint.get("last_metrics"),
+            name="PPO training checkpoint last_metrics",
+        )
         process_rng = checkpoint.get("process_rng")
         if not isinstance(process_rng, dict):
             raise TypeError("PPO process RNG checkpoint must be a dictionary")
-        load_random_state_dict(process_rng)
+        with preserved_random_state():
+            load_random_state_dict(process_rng)
+
+        resume_state = {
+            "agent": agent_state,
+            "environment": environment_state,
+            "process_rng": process_rng,
+        }
+
+        def current_resume_state() -> dict[str, Any]:
+            return {
+                "agent": agent.state_dict(),
+                "environment": _environment_state_dict(env),
+                "process_rng": random_state_dict(),
+            }
+
+        def apply_resume(payload: dict[str, Any]) -> None:
+            agent.load_state_dict(payload["agent"])
+            _load_environment_state(env, payload["environment"])
+            load_random_state_dict(payload["process_rng"])
+
+        transactional_state_load(
+            resume_state,
+            current_state=current_resume_state,
+            apply=apply_resume,
+        )
 
     def save() -> None:
         if checkpoint_path is None:

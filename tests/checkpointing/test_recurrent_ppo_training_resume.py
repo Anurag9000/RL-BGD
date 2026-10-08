@@ -110,6 +110,7 @@ def test_recurrent_ppo_rejects_invalid_progress_and_episode_flag(
     saved = torch.load(checkpoint, weights_only=False)
     for index, (field, value, message) in enumerate(
         [
+            ("version", 1.0, "must be an integer"),
             ("steps", 4.0, "must be an integer"),
             ("rollout_index", 2, "progress is inconsistent"),
             ("steps", 3, "progress is inconsistent"),
@@ -128,3 +129,50 @@ def test_recurrent_ppo_rejects_invalid_progress_and_episode_flag(
                 config=config,
                 resume_from=path,
             )
+
+
+
+def test_recurrent_ppo_resume_rolls_back_agent_and_environment_on_late_failure(
+    tmp_path: Path,
+) -> None:
+    config = RecurrentPPOTrainConfig(total_steps=8, rollout_steps=4, seed=317)
+    checkpoint = tmp_path / "recurrent_ppo_transaction.pt"
+    env, agent = _make()
+    train_recurrent_ppo(
+        env,
+        agent,
+        config=config,
+        checkpoint_path=checkpoint,
+        max_rollouts_this_call=1,
+    )
+    saved = torch.load(checkpoint, weights_only=False)
+    environment = dict(saved["environment"])
+    environment["step"] = True
+    saved["environment"] = environment
+    corrupt = tmp_path / "recurrent_ppo_bad_environment.pt"
+    torch.save(saved, corrupt)
+
+    target_env, target_agent = _make()
+    actor_before = [parameter.detach().clone() for parameter in target_agent.actor.parameters()]
+    hidden_before = target_agent.actor_hidden.detach().clone()
+    env_before = target_env.state_dict()
+    with pytest.raises(ValueError, match="step is invalid"):
+        train_recurrent_ppo(
+            target_env,
+            target_agent,
+            config=config,
+            resume_from=corrupt,
+        )
+
+    for parameter, before in zip(
+        target_agent.actor.parameters(),
+        actor_before,
+        strict=True,
+    ):
+        torch.testing.assert_close(parameter, before)
+    torch.testing.assert_close(target_agent.actor_hidden, hidden_before)
+    assert target_env.state_dict()["step"] == env_before["step"]
+    torch.testing.assert_close(
+        target_env.state_dict()["state"],
+        env_before["state"],
+    )

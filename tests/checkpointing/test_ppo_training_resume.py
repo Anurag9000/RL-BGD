@@ -119,3 +119,104 @@ def test_ppo_rejects_invalid_saved_rollout_progress(tmp_path: Path) -> None:
                 config=config,
                 resume_from=path,
             )
+
+
+
+def test_ppo_resume_rejects_noncanonical_payload_before_mutation(
+    tmp_path: Path,
+) -> None:
+    config = PPOTrainConfig(total_steps=8, rollout_steps=4, seed=315)
+    checkpoint = tmp_path / "ppo_payload.pt"
+    env, agent = _make()
+    train_ppo(
+        env,
+        agent,
+        config=config,
+        checkpoint_path=checkpoint,
+        max_rollouts_this_call=1,
+    )
+    saved = torch.load(checkpoint, weights_only=False)
+    observation = saved["observation"]
+    assert isinstance(observation, torch.Tensor)
+    bad_observation = observation.clone()
+    bad_observation.reshape(-1)[0] = float("nan")
+
+    corruptions = [
+        ("version", 1.0, "must be an integer"),
+        ("observation", bad_observation, "non-finite"),
+        ("episode_return", "0.0", "finite number"),
+        ("completed_returns", [True], "finite number"),
+        ("last_metrics", {"loss": float("inf")}, "finite number"),
+        ("last_metrics", {1: 0.0}, "keys must be strings"),
+    ]
+    for index, (field, value, message) in enumerate(corruptions):
+        corrupt = dict(saved)
+        corrupt[field] = value
+        path = tmp_path / f"corrupt_payload_{index}.pt"
+        torch.save(corrupt, path)
+
+        target_env, target_agent = _make()
+        actor_before = [parameter.detach().clone() for parameter in target_agent.actor.parameters()]
+        env_before = target_env.state_dict()
+        with pytest.raises((TypeError, ValueError), match=message):
+            train_ppo(
+                target_env,
+                target_agent,
+                config=config,
+                resume_from=path,
+            )
+        for parameter, before in zip(
+            target_agent.actor.parameters(),
+            actor_before,
+            strict=True,
+        ):
+            torch.testing.assert_close(parameter, before)
+        assert target_env.state_dict()["step"] == env_before["step"]
+        torch.testing.assert_close(
+            target_env.state_dict()["state"],
+            env_before["state"],
+        )
+
+
+def test_ppo_resume_rolls_back_agent_and_environment_on_late_failure(
+    tmp_path: Path,
+) -> None:
+    config = PPOTrainConfig(total_steps=8, rollout_steps=4, seed=316)
+    checkpoint = tmp_path / "ppo_transaction.pt"
+    env, agent = _make()
+    train_ppo(
+        env,
+        agent,
+        config=config,
+        checkpoint_path=checkpoint,
+        max_rollouts_this_call=1,
+    )
+    saved = torch.load(checkpoint, weights_only=False)
+    environment = dict(saved["environment"])
+    environment["step"] = True
+    saved["environment"] = environment
+    corrupt = tmp_path / "ppo_bad_environment.pt"
+    torch.save(saved, corrupt)
+
+    target_env, target_agent = _make()
+    actor_before = [parameter.detach().clone() for parameter in target_agent.actor.parameters()]
+    env_before = target_env.state_dict()
+    with pytest.raises(ValueError, match="step is invalid"):
+        train_ppo(
+            target_env,
+            target_agent,
+            config=config,
+            resume_from=corrupt,
+        )
+
+    for parameter, before in zip(
+        target_agent.actor.parameters(),
+        actor_before,
+        strict=True,
+    ):
+        torch.testing.assert_close(parameter, before)
+    assert target_env.state_dict()["step"] == env_before["step"]
+    torch.testing.assert_close(
+        target_env.state_dict()["state"],
+        env_before["state"],
+    )
