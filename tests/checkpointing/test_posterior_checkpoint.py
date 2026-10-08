@@ -107,3 +107,30 @@ def test_posterior_checkpoint_rejects_parameter_dtype_mismatch() -> None:
     restored = DiagonalGaussianPosterior.from_module(nn.Linear(2, 1), prior_std=0.2)
     with pytest.raises(ValueError, match="parameter dtype mismatch"):
         restored.load_state_dict(state)
+
+
+@pytest.mark.parametrize("bad_count", [-1, True, 1.5, "2"])
+def test_updater_checkpoint_rejects_invalid_step_count(bad_count: object) -> None:
+    module = nn.Linear(2, 1)
+    updater = BGDUpdater(
+        DiagonalGaussianPosterior.from_module(module, prior_std=0.2),
+        BGDConfig(eta=0.3, mc_samples=2, antithetic=True),
+    )
+    state = updater.state_dict()
+    state["step_count"] = bad_count
+    with pytest.raises(ValueError, match="step_count must be non-negative integer"):
+        updater.load_state_dict(state)
+
+
+def test_updater_checkpoint_rejects_extra_config_keys() -> None:
+    module = nn.Linear(2, 1)
+    updater = BGDUpdater(
+        DiagonalGaussianPosterior.from_module(module, prior_std=0.2),
+        BGDConfig(eta=0.3, mc_samples=2, antithetic=True),
+    )
+    state = updater.state_dict()
+    saved = state["config"]
+    assert isinstance(saved, dict)
+    saved["unexpected"] = 1.0
+    with pytest.raises(ValueError, match="config mismatch"):
+        updater.load_state_dict(state)

@@ -315,19 +315,27 @@ class BGDUpdater:
         if not isinstance(checkpoint_config, Mapping):
             raise ValueError("BGD updater checkpoint is missing its configuration")
         expected_config = self._config_state()
+        if set(checkpoint_config) != set(expected_config):
+            raise ValueError("BGD updater checkpoint config mismatch: keys differ")
         mismatches = [
             name
             for name, expected in expected_config.items()
-            if checkpoint_config.get(name) != expected
+            if checkpoint_config[name] != expected
         ]
         if mismatches:
             details = ", ".join(
                 (
-                    f"{name}: checkpoint={checkpoint_config.get(name)!r}, "
+                    f"{name}: checkpoint={checkpoint_config[name]!r}, "
                     f"runtime={expected_config[name]!r}"
                 )
                 for name in mismatches
             )
             raise ValueError(f"BGD updater checkpoint config mismatch: {details}")
-        self.posterior.load_state_dict(state["posterior"])
-        self.step_count = int(state["step_count"])
+        step_count = state.get("step_count")
+        if isinstance(step_count, bool) or not isinstance(step_count, int) or step_count < 0:
+            raise ValueError("BGD updater checkpoint step_count must be non-negative integer")
+        saved_posterior = state.get("posterior")
+        if not isinstance(saved_posterior, Mapping):
+            raise TypeError("BGD updater checkpoint posterior must be a mapping")
+        self.posterior.load_state_dict(saved_posterior)
+        self.step_count = step_count
