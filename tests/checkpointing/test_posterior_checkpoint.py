@@ -134,3 +134,97 @@ def test_updater_checkpoint_rejects_extra_config_keys() -> None:
     saved["unexpected"] = 1.0
     with pytest.raises(ValueError, match="config mismatch"):
         updater.load_state_dict(state)
+
+def _posterior_state_equal(
+    left: dict[str, object],
+    right: dict[str, object],
+) -> None:
+    assert left.keys() == right.keys()
+    for key in left:
+        lhs = left[key]
+        rhs = right[key]
+        if isinstance(lhs, dict):
+            assert isinstance(rhs, dict)
+            assert lhs.keys() == rhs.keys()
+            for nested_key in lhs:
+                nested_lhs = lhs[nested_key]
+                nested_rhs = rhs[nested_key]
+                if isinstance(nested_lhs, torch.Tensor):
+                    assert isinstance(nested_rhs, torch.Tensor)
+                    torch.testing.assert_close(nested_lhs, nested_rhs, rtol=0.0, atol=0.0)
+                else:
+                    assert nested_lhs == nested_rhs
+        else:
+            assert lhs == rhs
+
+
+@pytest.mark.parametrize("field", ["means", "stds", "prior_means", "prior_stds"])
+def test_posterior_checkpoint_rejection_is_non_mutating(field: str) -> None:
+    source = DiagonalGaussianPosterior.from_module(nn.Linear(2, 1), prior_std=0.2)
+    target = DiagonalGaussianPosterior.from_module(nn.Linear(2, 1), prior_std=0.3)
+    before = target.state_dict()
+    corrupt = source.state_dict()
+    mapping = corrupt[field]
+    assert isinstance(mapping, dict)
+    name = next(iter(mapping))
+    value = mapping[name]
+    assert isinstance(value, torch.Tensor)
+    damaged = value.clone()
+    damaged.reshape(-1)[0] = float("nan")
+    mapping[name] = damaged
+
+    with pytest.raises(ValueError, match="non-finite"):
+        target.load_state_dict(corrupt)
+
+    _posterior_state_equal(before, target.state_dict())
+
+
+@pytest.mark.parametrize("invalid_version", [True, 1.0, "1"])
+def test_posterior_checkpoint_version_is_not_coerced(invalid_version: object) -> None:
+    posterior = DiagonalGaussianPosterior.from_module(nn.Linear(2, 1), prior_std=0.2)
+    state = posterior.state_dict()
+    state["version"] = invalid_version
+    with pytest.raises(TypeError, match="must be an integer"):
+        posterior.load_state_dict(state)
+
+
+def test_posterior_checkpoint_rejects_internal_dtype_coercion() -> None:
+    posterior = DiagonalGaussianPosterior.from_module(nn.Linear(2, 1), prior_std=0.2)
+    state = posterior.state_dict()
+    means = state["means"]
+    assert isinstance(means, dict)
+    name = next(iter(means))
+    value = means[name]
+    assert isinstance(value, torch.Tensor)
+    means[name] = value.to(torch.float64)
+
+    with pytest.raises(ValueError, match="dtype mismatch"):
+        posterior.load_state_dict(state)
+
+
+@pytest.mark.parametrize("invalid_std", [0.0, -1.0, 1e-8, 100.0])
+def test_posterior_checkpoint_rejects_invalid_saved_std(invalid_std: float) -> None:
+    posterior = DiagonalGaussianPosterior.from_module(nn.Linear(2, 1), prior_std=0.2)
+    state = posterior.state_dict()
+    stds = state["stds"]
+    assert isinstance(stds, dict)
+    name = next(iter(stds))
+    value = stds[name]
+    assert isinstance(value, torch.Tensor)
+    stds[name] = torch.full_like(value, invalid_std)
+
+    with pytest.raises(ValueError, match="std|bounds"):
+        posterior.load_state_dict(state)
+
+
+@pytest.mark.parametrize("invalid_version", [True, 1.0, "1"])
+def test_bgd_updater_checkpoint_version_is_not_coerced(invalid_version: object) -> None:
+    updater = BGDUpdater(
+        DiagonalGaussianPosterior.from_module(nn.Linear(2, 1), prior_std=0.2),
+        BGDConfig(eta=0.3, mc_samples=2, antithetic=True),
+    )
+    state = updater.state_dict()
+    state["version"] = invalid_version
+    with pytest.raises(TypeError, match="must be an integer"):
+        updater.load_state_dict(state)
+

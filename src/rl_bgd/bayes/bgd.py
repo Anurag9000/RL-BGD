@@ -14,6 +14,7 @@ from rl_bgd.bayes.diagnostics import posterior_diagnostics
 from rl_bgd.bayes.diagonal_gaussian import DiagonalGaussianPosterior
 from rl_bgd.bayes.mc_sampling import aggregate_bgd_statistics
 from rl_bgd.bayes.tempering import temper_diagonal_gaussian
+from rl_bgd.utils.checkpoint_progress import checkpoint_integer
 
 
 @dataclass(frozen=True)
@@ -309,7 +310,11 @@ class BGDUpdater:
         }
 
     def load_state_dict(self, state: Mapping[str, Any]) -> None:
-        if state.get("updater_type") != "bgd" or state.get("version") != 1:
+        version = checkpoint_integer(
+            state.get("version"),
+            name="BGD updater checkpoint version",
+        )
+        if state.get("updater_type") != "bgd" or version != 1:
             raise ValueError("incompatible BGD updater checkpoint")
         checkpoint_config = state.get("config")
         if not isinstance(checkpoint_config, Mapping):

@@ -10,6 +10,7 @@ import torch
 from torch import Tensor, nn
 
 from rl_bgd.bayes.posterior import ParameterPosterior
+from rl_bgd.utils.checkpoint_progress import checkpoint_integer
 
 
 @dataclass(frozen=True)
@@ -138,6 +139,8 @@ class DiagonalGaussianPosterior(ParameterPosterior):
                 raise ValueError(f"nonfinite posterior mean for {name}")
             if not torch.isfinite(self.stds[name]).all() or torch.any(self.stds[name] <= 0):
                 raise ValueError(f"invalid posterior std for {name}")
+            if not torch.isfinite(self.prior_means[name]).all():
+                raise ValueError(f"nonfinite prior mean for {name}")
             if not torch.isfinite(self.prior_stds[name]).all() or torch.any(
                 self.prior_stds[name] <= 0
             ):
@@ -283,7 +286,11 @@ class DiagonalGaussianPosterior(ParameterPosterior):
     ) -> None:
         if state.get("posterior_type") != "diagonal_gaussian":
             raise ValueError("incompatible posterior type")
-        if state.get("version") != 1:
+        version = checkpoint_integer(
+            state.get("version"),
+            name="posterior checkpoint version",
+        )
+        if version != 1:
             raise ValueError("unsupported posterior checkpoint version")
 
         saved_dtypes = state.get("parameter_dtypes")
@@ -305,6 +312,7 @@ class DiagonalGaussianPosterior(ParameterPosterior):
         if dict(saved_bounds) != expected_bounds:
             raise ValueError("posterior checkpoint bounds mismatch")
 
+        prepared: dict[str, dict[str, Tensor]] = {}
         for field, target in (
             ("means", self.means),
             ("stds", self.stds),
@@ -316,17 +324,33 @@ class DiagonalGaussianPosterior(ParameterPosterior):
                 raise TypeError(f"checkpoint {field} must be a mapping")
             if set(incoming) != set(target):
                 raise ValueError(f"checkpoint {field} keys do not match posterior")
+            field_values: dict[str, Tensor] = {}
             for name in target:
                 value = incoming[name]
                 if not isinstance(value, Tensor):
                     raise TypeError(f"checkpoint {field}/{name} must be a tensor")
                 if value.shape != target[name].shape:
                     raise ValueError(f"checkpoint shape mismatch for {name}")
-                target[name].copy_(
-                    value.to(
-                        device=target[name].device,
-                        dtype=torch.float32,
-                    )
-                )
-        self.clamp_stds_()
+                if value.dtype != target[name].dtype:
+                    raise ValueError(f"checkpoint dtype mismatch for {field}/{name}")
+                if not torch.isfinite(value).all().item():
+                    raise ValueError(f"checkpoint {field}/{name} contains non-finite values")
+                if field in {"stds", "prior_stds"} and torch.any(value <= 0).item():
+                    raise ValueError(f"checkpoint {field}/{name} contains non-positive std")
+                if field == "stds" and (
+                    torch.any(value < self.bounds.sigma_min).item()
+                    or torch.any(value > self.bounds.sigma_max).item()
+                ):
+                    raise ValueError(f"checkpoint stds/{name} violates posterior bounds")
+                field_values[name] = value.to(device=target[name].device).clone()
+            prepared[field] = field_values
+
+        for field, target in (
+            ("means", self.means),
+            ("stds", self.stds),
+            ("prior_means", self.prior_means),
+            ("prior_stds", self.prior_stds),
+        ):
+            for name in target:
+                target[name].copy_(prepared[field][name])
         self.assert_finite()
