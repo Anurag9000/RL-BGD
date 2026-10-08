@@ -10,9 +10,11 @@ from torch import Tensor, nn
 
 from rl_bgd.baselines.importance import (
     ParameterState,
+    checkpoint_parameter_state,
     quadratic_importance_penalty,
     snapshot_parameters,
     trainable_parameters,
+    validate_checkpoint_parameter_layout,
     zeros_like_parameters,
 )
 from rl_bgd.utils.checkpoint_progress import checkpoint_finite_float, checkpoint_integer
@@ -158,21 +160,33 @@ class SynapticIntelligence:
         if strength < 0 or damping <= 0:
             raise ValueError("invalid SI checkpoint hyperparameters")
 
-        def clone_field(
-            name: str,
-        ) -> ParameterState:
-            field = state[name]
-            if not isinstance(
-                field,
-                Mapping,
-            ):
-                raise TypeError(f"SI checkpoint {name} must be a mapping")
-            return {key: value.detach().float().clone() for key, value in field.items()}
-
-        anchor = clone_field("anchor")
-        previous = clone_field("previous")
-        path_integral = clone_field("path_integral")
-        importance = clone_field("importance")
+        anchor = checkpoint_parameter_state(
+            state.get("anchor"),
+            name="SI checkpoint anchor",
+        )
+        previous = checkpoint_parameter_state(
+            state.get("previous"),
+            name="SI checkpoint previous",
+        )
+        path_integral = checkpoint_parameter_state(
+            state.get("path_integral"),
+            name="SI checkpoint path_integral",
+        )
+        importance = checkpoint_parameter_state(
+            state.get("importance"),
+            name="SI checkpoint importance",
+            nonnegative=True,
+        )
+        for field_name, candidate in (
+            ("previous", previous),
+            ("path_integral", path_integral),
+            ("importance", importance),
+        ):
+            validate_checkpoint_parameter_layout(
+                anchor,
+                candidate,
+                name=f"SI checkpoint {field_name}",
+            )
         self.strength = strength
         self.damping = damping
         self.anchor = anchor

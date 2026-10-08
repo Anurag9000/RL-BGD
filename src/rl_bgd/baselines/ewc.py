@@ -11,8 +11,10 @@ from torch import Tensor, nn
 
 from rl_bgd.baselines.importance import (
     ParameterState,
+    checkpoint_parameter_state,
     quadratic_importance_penalty,
     snapshot_parameters,
+    validate_checkpoint_parameter_layout,
     validate_importance,
 )
 from rl_bgd.utils.checkpoint_progress import checkpoint_finite_float, checkpoint_integer
@@ -135,15 +137,22 @@ class EWCRegularizer:
         for item in incoming:
             if not isinstance(item, Mapping):
                 raise TypeError("EWC checkpoint consolidation must be a mapping")
-            anchor = item.get("anchor")
-            importance = item.get("importance")
-            if not isinstance(anchor, Mapping) or not isinstance(importance, Mapping):
-                raise TypeError("EWC checkpoint anchor and importance must be mappings")
+            anchor = checkpoint_parameter_state(
+                item.get("anchor"),
+                name="EWC checkpoint anchor",
+            )
+            importance = checkpoint_parameter_state(
+                item.get("importance"),
+                name="EWC checkpoint importance",
+                nonnegative=True,
+            )
+            validate_checkpoint_parameter_layout(
+                anchor,
+                importance,
+                name="EWC checkpoint importance",
+            )
             staged_states.append(
-                EWCConsolidation(
-                    anchor=_clone_state(anchor),
-                    importance=_clone_state(importance),
-                )
+                EWCConsolidation(anchor=anchor, importance=importance)
             )
         self.strength = strength
         self.states = staged_states
@@ -250,12 +259,29 @@ class OnlineEWCRegularizer:
         importance = state.get("importance")
         if (anchor is None) != (importance is None):
             raise ValueError("Online-EWC checkpoint has incomplete consolidated state")
-        if anchor is not None and not isinstance(anchor, Mapping):
-            raise TypeError("Online-EWC checkpoint anchor must be a mapping")
-        if importance is not None and not isinstance(importance, Mapping):
-            raise TypeError("Online-EWC checkpoint importance must be a mapping")
-        staged_anchor = None if anchor is None else _clone_state(anchor)
-        staged_importance = None if importance is None else _clone_state(importance)
+        staged_anchor = (
+            None
+            if anchor is None
+            else checkpoint_parameter_state(
+                anchor,
+                name="Online-EWC checkpoint anchor",
+            )
+        )
+        staged_importance = (
+            None
+            if importance is None
+            else checkpoint_parameter_state(
+                importance,
+                name="Online-EWC checkpoint importance",
+                nonnegative=True,
+            )
+        )
+        if staged_anchor is not None and staged_importance is not None:
+            validate_checkpoint_parameter_layout(
+                staged_anchor,
+                staged_importance,
+                name="Online-EWC checkpoint importance",
+            )
         self.strength = strength
         self.decay = decay
         self.anchor = staged_anchor

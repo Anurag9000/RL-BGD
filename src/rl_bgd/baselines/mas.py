@@ -10,8 +10,10 @@ from torch import Tensor, nn
 
 from rl_bgd.baselines.importance import (
     ParameterState,
+    checkpoint_parameter_state,
     quadratic_importance_penalty,
     snapshot_parameters,
+    validate_checkpoint_parameter_layout,
     validate_importance,
 )
 from rl_bgd.utils.checkpoint_progress import checkpoint_finite_float, checkpoint_integer
@@ -116,20 +118,29 @@ class MASRegularizer:
         if (anchor is None) != (importance is None):
             raise ValueError("MAS checkpoint has incomplete state")
 
-        def clone(
-            value: Any,
-        ) -> ParameterState | None:
-            if value is None:
-                return None
-            if not isinstance(
-                value,
-                Mapping,
-            ):
-                raise TypeError("MAS state must be a mapping")
-            return {name: tensor.detach().float().clone() for name, tensor in value.items()}
-
-        staged_anchor = clone(anchor)
-        staged_importance = clone(importance)
+        staged_anchor = (
+            None
+            if anchor is None
+            else checkpoint_parameter_state(
+                anchor,
+                name="MAS checkpoint anchor",
+            )
+        )
+        staged_importance = (
+            None
+            if importance is None
+            else checkpoint_parameter_state(
+                importance,
+                name="MAS checkpoint importance",
+                nonnegative=True,
+            )
+        )
+        if staged_anchor is not None and staged_importance is not None:
+            validate_checkpoint_parameter_layout(
+                staged_anchor,
+                staged_importance,
+                name="MAS checkpoint importance",
+            )
         self.strength = strength
         self.anchor = staged_anchor
         self.importance = staged_importance

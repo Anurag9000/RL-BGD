@@ -110,3 +110,132 @@ def test_si_late_field_failure_does_not_mutate_hyperparameters() -> None:
         target.load_state_dict(payload)
 
     _assert_nested_equal(target.state_dict(), before)
+
+def _consolidated_ewc() -> EWCRegularizer:
+    owner = EWCRegularizer()
+    model = nn.Linear(2, 1)
+    importance = {
+        name: torch.ones_like(parameter, dtype=torch.float32)
+        for name, parameter in model.named_parameters()
+    }
+    owner.consolidate(model, importance)
+    return owner
+
+
+def _consolidated_online_ewc() -> OnlineEWCRegularizer:
+    owner = OnlineEWCRegularizer()
+    model = nn.Linear(2, 1)
+    importance = {
+        name: torch.ones_like(parameter, dtype=torch.float32)
+        for name, parameter in model.named_parameters()
+    }
+    owner.consolidate(model, importance)
+    return owner
+
+
+def _consolidated_mas() -> MASRegularizer:
+    owner = MASRegularizer()
+    model = nn.Linear(2, 1)
+    importance = {
+        name: torch.ones_like(parameter, dtype=torch.float32)
+        for name, parameter in model.named_parameters()
+    }
+    owner.consolidate(model, importance)
+    return owner
+
+
+@pytest.mark.parametrize(
+    ("factory", "path"),
+    [
+        (_consolidated_ewc, ("states", 0, "importance")),
+        (_consolidated_online_ewc, ("importance",)),
+        (_consolidated_mas, ("importance",)),
+        (_si, ("importance",)),
+    ],
+)
+def test_regularizer_checkpoint_rejects_nonfinite_tensor_payload(
+    factory: Callable[..., Any],
+    path: tuple[object, ...],
+) -> None:
+    owner = factory()
+    before = deepcopy(owner.state_dict())
+    corrupt: Any = deepcopy(before)
+    nested: Any = corrupt
+    for component in path:
+        nested = nested[component]
+    assert isinstance(nested, dict)
+    name = next(iter(nested))
+    tensor = nested[name]
+    assert isinstance(tensor, torch.Tensor)
+    damaged = tensor.clone()
+    damaged.reshape(-1)[0] = float("nan")
+    nested[name] = damaged
+
+    with pytest.raises(ValueError, match="non-finite"):
+        owner.load_state_dict(corrupt)
+
+    _assert_nested_equal(owner.state_dict(), before)
+
+
+@pytest.mark.parametrize(
+    ("factory", "path"),
+    [
+        (_consolidated_ewc, ("states", 0, "importance")),
+        (_consolidated_online_ewc, ("importance",)),
+        (_consolidated_mas, ("importance",)),
+        (_si, ("importance",)),
+    ],
+)
+def test_regularizer_checkpoint_rejects_negative_importance(
+    factory: Callable[..., Any],
+    path: tuple[object, ...],
+) -> None:
+    owner = factory()
+    before = deepcopy(owner.state_dict())
+    corrupt: Any = deepcopy(before)
+    nested: Any = corrupt
+    for component in path:
+        nested = nested[component]
+    assert isinstance(nested, dict)
+    name = next(iter(nested))
+    tensor = nested[name]
+    assert isinstance(tensor, torch.Tensor)
+    nested[name] = torch.full_like(tensor, -1.0)
+
+    with pytest.raises(ValueError, match="non-negative"):
+        owner.load_state_dict(corrupt)
+
+    _assert_nested_equal(owner.state_dict(), before)
+
+
+def test_online_ewc_checkpoint_rejects_layout_mismatch_without_mutation() -> None:
+    owner = _consolidated_online_ewc()
+    before = deepcopy(owner.state_dict())
+    corrupt = deepcopy(before)
+    importance = corrupt["importance"]
+    assert isinstance(importance, dict)
+    importance.pop(next(iter(importance)))
+
+    with pytest.raises(ValueError, match="keys do not match"):
+        owner.load_state_dict(corrupt)
+
+    _assert_nested_equal(owner.state_dict(), before)
+
+
+def test_si_checkpoint_rejects_tensor_dtype_coercion_without_mutation() -> None:
+    owner = _si()
+    before = deepcopy(owner.state_dict())
+    corrupt = deepcopy(before)
+    importance = corrupt["importance"]
+    assert isinstance(importance, dict)
+    name = next(iter(importance))
+    tensor = importance[name]
+    assert isinstance(tensor, torch.Tensor)
+    importance[name] = tensor.to(torch.float64)
+
+    with pytest.raises(ValueError, match="dtype mismatch"):
+        owner.load_state_dict(corrupt)
+
+    _assert_nested_equal(owner.state_dict(), before)
+
+

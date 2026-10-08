@@ -12,6 +12,47 @@ LossClosure = Callable[[], Tensor]
 OutputClosure = Callable[[], Tensor]
 
 
+def checkpoint_parameter_state(
+    value: object,
+    *,
+    name: str,
+    nonnegative: bool = False,
+) -> ParameterState:
+    """Validate and clone a serialized float32 parameter-state mapping."""
+
+    if not isinstance(value, Mapping):
+        raise TypeError(f"{name} must be a mapping")
+    prepared: ParameterState = {}
+    for key, tensor in value.items():
+        if not isinstance(key, str):
+            raise TypeError(f"{name} keys must be strings")
+        if not isinstance(tensor, Tensor):
+            raise TypeError(f"{name}/{key} must be a tensor")
+        if tensor.dtype != torch.float32:
+            raise ValueError(f"{name}/{key} dtype mismatch")
+        if not torch.isfinite(tensor).all().item():
+            raise ValueError(f"{name}/{key} contains non-finite values")
+        if nonnegative and torch.any(tensor < 0).item():
+            raise ValueError(f"{name}/{key} must be non-negative")
+        prepared[key] = tensor.detach().clone()
+    return prepared
+
+
+def validate_checkpoint_parameter_layout(
+    reference: Mapping[str, Tensor],
+    candidate: Mapping[str, Tensor],
+    *,
+    name: str,
+) -> None:
+    """Require identical names and shapes across serialized parameter states."""
+
+    if set(candidate) != set(reference):
+        raise ValueError(f"{name} keys do not match")
+    for key, reference_tensor in reference.items():
+        if candidate[key].shape != reference_tensor.shape:
+            raise ValueError(f"{name}/{key} shape mismatch")
+
+
 def trainable_parameters(
     module: nn.Module,
 ) -> dict[str, nn.Parameter]:

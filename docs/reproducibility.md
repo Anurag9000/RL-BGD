@@ -95,7 +95,9 @@ recurrent variants also preserve online hidden state and recurrent progress.
 Configuration mismatches fail closed on restore. Saved SAC progress must agree
 with the replay transition history; PPO progress must agree with completed
 rollout updates. Saved counters and recurrent episode-boundary flags are
-validated without implicit numerical or boolean coercion.
+validated without implicit numerical or boolean coercion. Continual-learning regularizer checkpoints also reject
+non-finite, dtype-coerced, layout-mismatched, or negative-importance tensor
+payloads before committing staged state.
 
 Feed-forward and recurrent PPO rollout buffers validate checkpoint dimensions,
 strict version metadata, tensor shapes/dtypes, finite floating-point behavior
