@@ -45,7 +45,7 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | SAC deterministic evaluation | COMPLETE | deterministic policy runner |
 | SAC replay buffer | COMPLETE | device-aware buffer, IDs/usage/fresh metadata |
 | terminated vs truncated bootstrap | COMPLETE | bootstrap_mask + test |
-| SAC/replay checkpointing | COMPLETE | stationary/recurrent replay restore with wrapped-ring chronology, evidence-use and freshness fidelity, strict integer/dtype validation, and non-mutating rejection tests |
+| SAC/replay checkpointing | COMPLETE | stationary/recurrent replay restore with wrapped-ring chronology, evidence-use and freshness fidelity, strict integer/version/dtype/finite-value validation, and non-mutating rejection tests |
 | Stationary SAC learning smoke | COMPLETE | slow deterministic-return learning test |
 | BGD-SAC critic-only | COMPLETE | mean-target semantics + mode test + stationary learning test |
 | BGD-SAC actor-only | COMPLETE | functional-call sampled actor update + mode test |

@@ -166,7 +166,7 @@ class ReplayBuffer:
         }
 
     def load_state_dict(self, state: dict[str, object]) -> None:
-        if state.get("version") != 1:
+        if _checkpoint_int(state.get("version"), name="replay version") != 1:
             raise ValueError("unsupported replay checkpoint version")
         if (
             _checkpoint_int(
@@ -203,6 +203,8 @@ class ReplayBuffer:
                 raise ValueError(f"replay checkpoint shape mismatch for {key}")
             if source.dtype != target.dtype:
                 raise ValueError(f"replay checkpoint dtype mismatch for {key}")
+            if source.is_floating_point() and not torch.isfinite(source).all().item():
+                raise ValueError("replay checkpoint contains non-finite values for " + key)
             checked_tensors[key] = source
         position = _checkpoint_int(
             state["position"],

@@ -81,6 +81,7 @@ compare resumed and uninterrupted runs on dependency-light synthetic LQR
 without claiming any final multi-seed scientific results.
 
 The audit also validates SAC/replay and PPO/rollout progress alignment,
+including rejection of non-finite saved replay transitions and rollout values,
 strict checkpoint integer and recurrent episode-boundary flags, and
 non-mutating checkpoint rejection in PPO rollout buffers. Rollout restore
 also rejects non-finite saved observations, actions, rewards, policy

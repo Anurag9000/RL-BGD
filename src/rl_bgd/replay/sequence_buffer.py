@@ -8,6 +8,8 @@ from typing import Any
 import torch
 from torch import Tensor
 
+from rl_bgd.utils.checkpoint_progress import checkpoint_integer
+
 
 @dataclass(frozen=True)
 class SequenceReplayBatch:
@@ -362,7 +364,7 @@ class SequenceReplayBuffer:
         self,
         state: dict[str, Any],
     ) -> None:
-        if state.get("version") != 1:
+        if checkpoint_integer(state.get("version"), name="sequence replay version") != 1:
             raise ValueError("unsupported sequence replay checkpoint version")
         expected = {
             "capacity": self.capacity,
@@ -405,6 +407,8 @@ class SequenceReplayBuffer:
                 raise ValueError(f"sequence replay shape mismatch for {name}")
             if source.dtype != target.dtype:
                 raise ValueError(f"sequence replay dtype mismatch for {name}")
+            if source.is_floating_point() and not torch.isfinite(source).all().item():
+                raise ValueError("sequence replay contains non-finite values for " + name)
             checked_tensors[name] = source
         position = state["position"]
         next_transition_id = state["next_transition_id"]

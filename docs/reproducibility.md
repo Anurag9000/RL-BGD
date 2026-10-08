@@ -81,7 +81,9 @@ Examples:
 Training checkpoints bind the saved learner state to the complete training and
 agent configurations. SAC checkpoints also preserve replay contents,
 provenance/evidence-use metadata, replay-sampling RNG, environment state, and
-process RNG state. PPO checkpoints are written only at rollout boundaries;
+process RNG state. Ordinary and recurrent SAC replay restores reject NaN/Inf
+transition tensors and non-integer checkpoint versions before any live buffer
+state is modified. PPO checkpoints are written only at rollout boundaries;
 recurrent variants also preserve online hidden state and recurrent progress.
 Configuration mismatches fail closed on restore. Saved SAC progress must agree
 with the replay transition history; PPO progress must agree with completed
