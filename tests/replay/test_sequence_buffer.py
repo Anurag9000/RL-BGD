@@ -291,3 +291,20 @@ def test_sequence_replay_checkpoint_rejects_tensor_dtype_drift() -> None:
     state["observations"] = observations.double()
     with pytest.raises(ValueError, match="dtype mismatch for observations"):
         SequenceReplayBuffer(4, 1, 1).load_state_dict(state)
+
+
+def test_sequence_replay_rejected_checkpoint_does_not_mutate_live_buffer() -> None:
+    source = SequenceReplayBuffer(4, 1, 1)
+    target = SequenceReplayBuffer(4, 1, 1)
+    add_transition(source, 1, episode_start=True)
+    add_transition(target, 99, episode_start=True)
+    before = target.state_dict()
+    invalid = source.state_dict()
+    invalid["next_transition_id"] = 999
+    with pytest.raises(ValueError, match="next transition ID is inconsistent"):
+        target.load_state_dict(invalid)
+    after = target.state_dict()
+    for field in ("observations", "transition_ids", "usage_counts", "fresh"):
+        torch.testing.assert_close(after[field], before[field])
+    for field in ("size", "position", "next_transition_id"):
+        assert after[field] == before[field]
