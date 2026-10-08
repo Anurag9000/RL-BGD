@@ -13,6 +13,7 @@ from rl_bgd.agents.ppo.recurrent_rollout import (
     RecurrentPPORolloutBatch,
     RecurrentRolloutBuffer,
 )
+from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 from rl_bgd.models.recurrent_ppo import (
     RecurrentPPOSquashedGaussianActor,
     RecurrentValueNetwork,
@@ -414,17 +415,25 @@ class RecurrentPPOAgent:
             raise ValueError("recurrent PPO configuration mismatch")
         if state.get("recurrent_config") != asdict(self.recurrent_config):
             raise ValueError("recurrent PPO architecture configuration mismatch")
-        self.actor.load_state_dict(state["actor"])
-        self.value.load_state_dict(state["value"])
-        self.actor_optimizer.load_state_dict(state["actor_optimizer"])
-        self.value_optimizer.load_state_dict(state["value_optimizer"])
-        self.actor_hidden = state["actor_hidden"].to(
-            self.device,
-            dtype=torch.float32,
+
+        def apply(payload: dict[str, Any]) -> None:
+            self.actor.load_state_dict(payload["actor"])
+            self.value.load_state_dict(payload["value"])
+            self.actor_optimizer.load_state_dict(payload["actor_optimizer"])
+            self.value_optimizer.load_state_dict(payload["value_optimizer"])
+            self.actor_hidden = payload["actor_hidden"].to(
+                self.device,
+                dtype=torch.float32,
+            )
+            self.value_hidden = payload["value_hidden"].to(
+                self.device,
+                dtype=torch.float32,
+            )
+            self.update_count = int(payload["update_count"])
+            self.recurrent_reset_count = int(payload["recurrent_reset_count"])
+
+        transactional_state_load(
+            state,
+            current_state=self.state_dict,
+            apply=apply,
         )
-        self.value_hidden = state["value_hidden"].to(
-            self.device,
-            dtype=torch.float32,
-        )
-        self.update_count = int(state["update_count"])
-        self.recurrent_reset_count = int(state["recurrent_reset_count"])

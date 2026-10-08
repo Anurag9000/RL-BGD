@@ -9,6 +9,7 @@ from typing import Any
 import torch
 from torch import Tensor, nn
 
+from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 from rl_bgd.models.actor import SquashedGaussianActor
 from rl_bgd.models.critic import QNetwork
 from rl_bgd.replay.buffer import ReplayBatch
@@ -245,16 +246,24 @@ class SACAgent:
             raise ValueError("unsupported SAC checkpoint version")
         if state.get("config") != asdict(self.config):
             raise ValueError("SAC checkpoint configuration mismatch")
-        for name in (
-            "actor",
-            "critic1",
-            "critic2",
-            "target1",
-            "target2",
-        ):
-            getattr(self, name).load_state_dict(state[name])
-        self.actor_optimizer.load_state_dict(state["actor_optimizer"])
-        self.critic_optimizer.load_state_dict(state["critic_optimizer"])
-        self.log_alpha.data.copy_(state["log_alpha"].to(self.device))
-        self.alpha_optimizer.load_state_dict(state["alpha_optimizer"])
-        self.update_count = int(state["update_count"])
+
+        def apply(payload: dict[str, Any]) -> None:
+            for name in (
+                "actor",
+                "critic1",
+                "critic2",
+                "target1",
+                "target2",
+            ):
+                getattr(self, name).load_state_dict(payload[name])
+            self.actor_optimizer.load_state_dict(payload["actor_optimizer"])
+            self.critic_optimizer.load_state_dict(payload["critic_optimizer"])
+            self.log_alpha.data.copy_(payload["log_alpha"].to(self.device))
+            self.alpha_optimizer.load_state_dict(payload["alpha_optimizer"])
+            self.update_count = int(payload["update_count"])
+
+        transactional_state_load(
+            state,
+            current_state=self.state_dict,
+            apply=apply,
+        )

@@ -9,6 +9,7 @@ from typing import Any
 import torch
 from torch import Tensor, nn
 
+from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 from rl_bgd.agents.sac.agent import SACConfig
 from rl_bgd.models.task_aware_sac import (
     TaskAwareQNetwork,
@@ -273,17 +274,25 @@ class TaskAwareSACAgent:
             raise ValueError("task-aware SAC checkpoint configuration mismatch")
         if state.get("num_tasks") != self.num_tasks:
             raise ValueError("task-aware SAC checkpoint task-count mismatch")
-        for name in (
-            "actor",
-            "critic1",
-            "critic2",
-            "target1",
-            "target2",
-        ):
-            getattr(self, name).load_state_dict(state[name])
-        self.actor_optimizer.load_state_dict(state["actor_optimizer"])
-        self.critic_optimizer.load_state_dict(state["critic_optimizer"])
-        self.log_alpha.data.copy_(state["log_alpha"].to(self.device))
-        self.alpha_optimizer.load_state_dict(state["alpha_optimizer"])
-        self.update_count = int(state["update_count"])
-        self.optimizer_reset_count = int(state.get("optimizer_reset_count", 0))
+
+        def apply(payload: dict[str, Any]) -> None:
+            for name in (
+                "actor",
+                "critic1",
+                "critic2",
+                "target1",
+                "target2",
+            ):
+                getattr(self, name).load_state_dict(payload[name])
+            self.actor_optimizer.load_state_dict(payload["actor_optimizer"])
+            self.critic_optimizer.load_state_dict(payload["critic_optimizer"])
+            self.log_alpha.data.copy_(payload["log_alpha"].to(self.device))
+            self.alpha_optimizer.load_state_dict(payload["alpha_optimizer"])
+            self.update_count = int(payload["update_count"])
+            self.optimizer_reset_count = int(payload.get("optimizer_reset_count", 0))
+
+        transactional_state_load(
+            state,
+            current_state=self.state_dict,
+            apply=apply,
+        )
