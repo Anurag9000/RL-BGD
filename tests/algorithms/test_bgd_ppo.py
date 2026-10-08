@@ -185,3 +185,21 @@ def test_bgd_ppo_checkpoint_rejects_bayesian_config_mismatch() -> None:
     )
     with pytest.raises(ValueError, match="BGD-PPO checkpoint configuration mismatch"):
         restored.load_state_dict(state)
+
+
+@pytest.mark.parametrize("invalid_version", [True, 3.0, "3"])
+def test_bgd_ppo_checkpoint_rejects_coerced_version_metadata(
+    invalid_version: object,
+) -> None:
+    source = make_agent("actor_and_value")
+    state = source.state_dict()
+    state["bgd_ppo_version"] = invalid_version
+
+    target = make_agent("actor_and_value")
+    before = target.state_dict()
+    with pytest.raises(TypeError, match="must be an integer"):
+        target.load_state_dict(state)
+
+    after = target.state_dict()
+    assert after["bgd_ppo_version"] == before["bgd_ppo_version"]
+    assert after["update_count"] == before["update_count"]

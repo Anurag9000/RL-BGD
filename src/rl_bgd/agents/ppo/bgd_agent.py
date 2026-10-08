@@ -27,6 +27,7 @@ from rl_bgd.bayes.bgd import (
 from rl_bgd.bayes.diagonal_gaussian import (
     DiagonalGaussianPosterior,
 )
+from rl_bgd.utils.checkpoint_progress import checkpoint_integer
 
 PPOBayesianization = Literal[
     "actor_only",
@@ -432,11 +433,9 @@ class BGDPPOAgent(PPOAgent):
         self,
         state: dict[str, Any],
     ) -> None:
-        version = int(
-            state.get(
-                "bgd_ppo_version",
-                0,
-            )
+        version = checkpoint_integer(
+            state.get("bgd_ppo_version"),
+            name="BGD-PPO checkpoint version",
         )
         if version != 3:
             raise ValueError("unsupported BGD-PPO checkpoint version")
