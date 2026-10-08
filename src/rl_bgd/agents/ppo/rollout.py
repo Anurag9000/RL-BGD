@@ -9,6 +9,8 @@ from typing import Any
 import torch
 from torch import Tensor
 
+from rl_bgd.utils.checkpoint_progress import checkpoint_integer
+
 
 @dataclass(frozen=True)
 class PPORolloutBatch:
@@ -250,14 +252,14 @@ class RolloutBuffer:
 
         if state.get("version") != 1:
             raise ValueError("unsupported PPO rollout checkpoint version")
-        if int(state["capacity"]) != self.capacity:
+        if checkpoint_integer(state["capacity"], name="PPO rollout capacity") != self.capacity:
             raise ValueError("PPO rollout checkpoint capacity mismatch")
-        if int(state["observation_dim"]) != int(self.observations.shape[1]):
+        if checkpoint_integer(state["observation_dim"], name="PPO rollout observation_dim") != int(self.observations.shape[1]):
             raise ValueError("PPO rollout observation dimension mismatch")
-        if int(state["action_dim"]) != int(self.actions.shape[1]):
+        if checkpoint_integer(state["action_dim"], name="PPO rollout action_dim") != int(self.actions.shape[1]):
             raise ValueError("PPO rollout action dimension mismatch")
 
-        size = int(state["size"])
+        size = checkpoint_integer(state["size"], name="PPO rollout size")
         if not 0 <= size <= self.capacity:
             raise ValueError("invalid PPO rollout checkpoint size")
         fields = {
@@ -270,6 +272,7 @@ class RolloutBuffer:
             "next_values": self.next_values,
             "log_probs": self.log_probs,
         }
+        checked_tensors: dict[str, Tensor] = {}
         for name, target in fields.items():
             source = state[name]
             if not isinstance(
@@ -279,12 +282,9 @@ class RolloutBuffer:
                 raise TypeError(f"PPO rollout checkpoint field {name} must be a tensor")
             if source.shape != target[:size].shape:
                 raise ValueError(f"PPO rollout checkpoint shape mismatch for {name}")
-            target[:size].copy_(
-                source.to(
-                    device=self.device,
-                    dtype=target.dtype,
-                )
-            )
+            if source.dtype != target.dtype:
+                raise ValueError(f"PPO rollout checkpoint dtype mismatch for {name}")
+            checked_tensors[name] = source
 
         advantages = state.get("advantages")
         returns = state.get("returns")
@@ -292,10 +292,7 @@ class RolloutBuffer:
             raise ValueError(
                 "PPO rollout checkpoint must contain both advantages and returns or neither"
             )
-        if advantages is None:
-            self.advantages = None
-            self.returns = None
-        else:
+        if advantages is not None:
             if not isinstance(
                 advantages,
                 Tensor,
@@ -307,12 +304,13 @@ class RolloutBuffer:
             expected_shape = (size, 1)
             if advantages.shape != expected_shape or returns.shape != expected_shape:
                 raise ValueError("PPO rollout checkpoint advantage/return shape mismatch")
-            self.advantages = advantages.to(
-                device=self.device,
-                dtype=torch.float32,
-            ).clone()
-            self.returns = returns.to(
-                device=self.device,
-                dtype=torch.float32,
-            ).clone()
+            if advantages.dtype != torch.float32 or returns.dtype != torch.float32:
+                raise ValueError("PPO rollout checkpoint advantage/return dtype mismatch")
+
+        for name, target in fields.items():
+            target[:size].copy_(checked_tensors[name].to(device=self.device))
+        self.advantages = (
+            None if advantages is None else advantages.to(device=self.device).clone()
+        )
+        self.returns = None if returns is None else returns.to(device=self.device).clone()
         self.size = size

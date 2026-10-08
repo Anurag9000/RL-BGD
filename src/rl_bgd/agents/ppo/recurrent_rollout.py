@@ -9,6 +9,8 @@ from typing import Any
 import torch
 from torch import Tensor
 
+from rl_bgd.utils.checkpoint_progress import checkpoint_integer
+
 
 @dataclass(frozen=True)
 class RecurrentPPORolloutBatch:
@@ -335,9 +337,9 @@ class RecurrentRolloutBuffer:
             "value_hidden_dim": int(self.value_hiddens.shape[1]),
         }
         for name, expected in checks.items():
-            if int(state[name]) != expected:
+            if checkpoint_integer(state[name], name=f"recurrent rollout {name}") != expected:
                 raise ValueError(f"recurrent rollout {name} mismatch")
-        size = int(state["size"])
+        size = checkpoint_integer(state["size"], name="recurrent rollout size")
         if not 0 <= size <= self.capacity:
             raise ValueError("invalid recurrent rollout size")
         fields = {
@@ -353,6 +355,7 @@ class RecurrentRolloutBuffer:
             "actor_hiddens": self.actor_hiddens,
             "value_hiddens": self.value_hiddens,
         }
+        checked_tensors: dict[str, Tensor] = {}
         for name, target in fields.items():
             source = state[name]
             if not isinstance(
@@ -362,12 +365,9 @@ class RecurrentRolloutBuffer:
                 raise TypeError(f"recurrent rollout field {name} must be a tensor")
             if source.shape != target[:size].shape:
                 raise ValueError(f"recurrent rollout shape mismatch for {name}")
-            target[:size].copy_(
-                source.to(
-                    self.device,
-                    dtype=target.dtype,
-                )
-            )
+            if source.dtype != target.dtype:
+                raise ValueError(f"recurrent rollout dtype mismatch for {name}")
+            checked_tensors[name] = source
 
         advantages = state.get("advantages")
         returns = state.get("returns")
@@ -375,10 +375,7 @@ class RecurrentRolloutBuffer:
             raise ValueError(
                 "recurrent rollout must contain both advantages and returns or neither"
             )
-        if advantages is None:
-            self.advantages = None
-            self.returns = None
-        else:
+        if advantages is not None:
             if not isinstance(
                 advantages,
                 Tensor,
@@ -387,18 +384,16 @@ class RecurrentRolloutBuffer:
                 Tensor,
             ):
                 raise TypeError("recurrent rollout advantages/returns must be tensors")
-            expected_shape = (
-                size,
-                1,
-            )
+            expected_shape = (size, 1)
             if advantages.shape != expected_shape or returns.shape != expected_shape:
                 raise ValueError("recurrent rollout advantage/return shape mismatch")
-            self.advantages = advantages.to(
-                self.device,
-                dtype=torch.float32,
-            ).clone()
-            self.returns = returns.to(
-                self.device,
-                dtype=torch.float32,
-            ).clone()
+            if advantages.dtype != torch.float32 or returns.dtype != torch.float32:
+                raise ValueError("recurrent rollout advantage/return dtype mismatch")
+
+        for name, target in fields.items():
+            target[:size].copy_(checked_tensors[name].to(device=self.device))
+        self.advantages = (
+            None if advantages is None else advantages.to(device=self.device).clone()
+        )
+        self.returns = None if returns is None else returns.to(device=self.device).clone()
         self.size = size
