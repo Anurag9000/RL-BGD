@@ -137,7 +137,7 @@ def test_replay_checkpoint_preserves_wrapped_ring_and_future_samples() -> None:
     for field in ("observations", "transition_ids", "usage_counts", "fresh"):
         torch.testing.assert_close(source.state_dict()[field], restored.state_dict()[field])
     for buffer in (source, restored):
-        assert buffer.add(
+        transition_id = buffer.add(
             torch.tensor([7.0]),
             torch.tensor([0.0]),
             7.0,
@@ -145,7 +145,8 @@ def test_replay_checkpoint_preserves_wrapped_ring_and_future_samples() -> None:
             terminated=False,
             truncated=False,
             insertion_step=7,
-        ) == 7
+        )
+        assert transition_id == 7
     original = source.sample(3, generator=torch.Generator().manual_seed(9))
     resumed = restored.sample(3, generator=torch.Generator().manual_seed(9))
     for field in ("transition_ids", "usage_counts", "fresh", "observations"):
