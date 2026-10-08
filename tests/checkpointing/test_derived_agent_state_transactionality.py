@@ -170,6 +170,7 @@ def test_derived_agent_checkpoint_rejection_restores_exact_prior_state(
 
     _assert_nested_equal(target.state_dict(), before)
 
+
 @pytest.mark.parametrize(
     ("factory", "version_key"),
     [
@@ -198,7 +199,14 @@ def test_derived_checkpoint_versions_are_not_coerced(
         agent.load_state_dict(payload)
 
 
-@pytest.mark.parametrize("flag_name", ["adaptive_td_retention", "adaptive_ensemble_retention", "adaptive_predictive_retention"])
+@pytest.mark.parametrize(
+    "flag_name",
+    [
+        "adaptive_td_retention",
+        "adaptive_ensemble_retention",
+        "adaptive_predictive_retention",
+    ],
+)
 def test_bgd_sac_adaptive_flags_require_real_booleans(flag_name: str) -> None:
     agent = _bgd_sac()
     payload = deepcopy(agent.state_dict())
