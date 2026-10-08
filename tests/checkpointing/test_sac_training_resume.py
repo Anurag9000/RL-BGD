@@ -146,17 +146,17 @@ def test_sac_training_rejects_corrupt_resume_progress(tmp_path: Path) -> None:
         max_steps_this_call=6,
     )
     saved = torch.load(checkpoint, weights_only=False)
-    for index, (bad_step, message) in enumerate(
+    for index, (field, value, message) in enumerate(
         [
-            (1.0, "must be an integer"),
-            (True, "must be an integer"),
-            (6.0, "must be an integer"),
-            (-1, "is invalid"),
-            (5, "replay/step progress mismatch"),
+            ("version", 1.0, "must be an integer"),
+            ("next_step", True, "must be an integer"),
+            ("next_step", 6.0, "must be an integer"),
+            ("next_step", -1, "is invalid"),
+            ("next_step", 5, "replay/step progress mismatch"),
         ]
     ):
         corrupt = dict(saved)
-        corrupt["next_step"] = bad_step
+        corrupt[field] = value
         path = tmp_path / f"corrupt_sac_{index}.pt"
         torch.save(corrupt, path)
         resumed_env, resumed_agent = _make()
@@ -167,7 +167,6 @@ def test_sac_training_rejects_corrupt_resume_progress(tmp_path: Path) -> None:
                 config=config,
                 resume_from=path,
             )
-
 
 
 def test_sac_resume_rolls_back_on_late_environment_failure(

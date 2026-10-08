@@ -66,7 +66,6 @@ def checkpoint_observation(
     ).clone()
 
 
-
 def checkpoint_generator_state(
     value: object,
     *,

@@ -137,7 +137,6 @@ def test_recurrent_sac_rejects_corrupt_progress_and_episode_flag(
             )
 
 
-
 def test_recurrent_sac_resume_rolls_back_on_late_environment_failure(
     tmp_path: Path,
 ) -> None:
