@@ -11,6 +11,7 @@ from torch import Tensor
 
 from rl_bgd.agents.ppo.rollout import RolloutBuffer
 from rl_bgd.envs.protocols import ContinuousTensorEnv
+from rl_bgd.utils.checkpoint_progress import checkpoint_ppo_progress
 from rl_bgd.utils.randomness import load_random_state_dict, random_state_dict
 
 _PPO_TRAINING_CHECKPOINT_VERSION = 1
@@ -150,6 +151,12 @@ def train_ppo(
             raise ValueError("unsupported PPO training checkpoint version")
         if checkpoint.get("train_config") != asdict(config):
             raise ValueError("PPO training checkpoint configuration mismatch")
+        steps, rollout_index = checkpoint_ppo_progress(
+            checkpoint,
+            total_steps=config.total_steps,
+            rollout_steps=config.rollout_steps,
+            label="PPO training checkpoint",
+        )
         agent_state = checkpoint.get("agent")
         if not isinstance(agent_state, dict):
             raise TypeError("PPO training checkpoint agent state must be a dictionary")
@@ -165,10 +172,6 @@ def train_ppo(
             agent.device,
             dtype=torch.float32,
         )
-        steps = int(checkpoint["steps"])
-        rollout_index = int(checkpoint["rollout_index"])
-        if not 0 <= steps <= config.total_steps or rollout_index < 0:
-            raise ValueError("PPO training checkpoint progress is invalid")
         episode_return = float(checkpoint["episode_return"])
         completed = checkpoint.get("completed_returns")
         if not isinstance(completed, list):

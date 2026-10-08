@@ -13,6 +13,7 @@ from torch import Tensor
 from rl_bgd.agents.sac.recurrent_agent import RecurrentSACAgent
 from rl_bgd.envs.protocols import ContinuousTensorEnv
 from rl_bgd.replay.sequence_buffer import SequenceReplayBuffer
+from rl_bgd.utils.checkpoint_progress import checkpoint_boolean, checkpoint_step
 from rl_bgd.utils.randomness import load_random_state_dict, random_state_dict
 
 PostStepObserver = Callable[[int, RecurrentSACAgent], None]
@@ -152,10 +153,21 @@ def train_recurrent_sac(
             raise ValueError("unsupported recurrent SAC training checkpoint version")
         if checkpoint.get("train_config") != asdict(config):
             raise ValueError("recurrent SAC training checkpoint configuration mismatch")
+        start_step = checkpoint_step(
+            checkpoint.get("next_step"),
+            name="recurrent SAC checkpoint next_step",
+            limit=config.total_steps,
+        )
+        episode_start = checkpoint_boolean(
+            checkpoint.get("episode_start"),
+            name="recurrent SAC checkpoint episode_start",
+        )
         agent_state = checkpoint.get("agent")
         replay_state = checkpoint.get("replay")
         if not isinstance(agent_state, dict) or not isinstance(replay_state, dict):
             raise TypeError("recurrent SAC agent/replay state must be dictionaries")
+        if replay_state.get("next_transition_id") != start_step:
+            raise ValueError("recurrent SAC checkpoint replay/step progress mismatch")
         agent.load_state_dict(agent_state)
         replay.load_state_dict(replay_state)
         _load_environment_state(
@@ -169,10 +181,6 @@ def train_recurrent_sac(
             agent.device,
             dtype=torch.float32,
         )
-        start_step = int(checkpoint["next_step"])
-        if not 0 <= start_step <= config.total_steps:
-            raise ValueError("recurrent SAC checkpoint next_step is invalid")
-        episode_start = bool(checkpoint["episode_start"])
         raw_history = checkpoint.get("episode_history")
         if not isinstance(raw_history, list) or not all(
             isinstance(item, Tensor) for item in raw_history

@@ -12,6 +12,7 @@ import torch
 from rl_bgd.agents.sac.agent import SACAgent
 from rl_bgd.envs.protocols import ContinuousTensorEnv
 from rl_bgd.replay.buffer import ReplayBuffer
+from rl_bgd.utils.checkpoint_progress import checkpoint_step
 from rl_bgd.utils.randomness import load_random_state_dict, random_state_dict
 
 UpdateObserver = Callable[[int, dict[str, float]], None]
@@ -143,10 +144,17 @@ def train_sac(
             raise ValueError("unsupported SAC training checkpoint version")
         if checkpoint.get("train_config") != asdict(config):
             raise ValueError("SAC training checkpoint configuration mismatch")
+        start_step = checkpoint_step(
+            checkpoint.get("next_step"),
+            name="SAC training checkpoint next_step",
+            limit=config.total_steps,
+        )
         agent_state = checkpoint.get("agent")
         replay_state = checkpoint.get("replay")
         if not isinstance(agent_state, dict) or not isinstance(replay_state, dict):
             raise TypeError("SAC training checkpoint agent/replay state must be dictionaries")
+        if replay_state.get("next_transition_id") != start_step:
+            raise ValueError("SAC training checkpoint replay/step progress mismatch")
         agent.load_state_dict(agent_state)
         replay.load_state_dict(replay_state)
         _load_environment_state(
@@ -160,9 +168,6 @@ def train_sac(
             agent.device,
             dtype=torch.float32,
         )
-        start_step = int(checkpoint["next_step"])
-        if not 0 <= start_step <= config.total_steps:
-            raise ValueError("SAC training checkpoint next_step is invalid")
         episode_return = float(checkpoint["episode_return"])
         completed = checkpoint.get("completed_returns")
         if not isinstance(completed, list):

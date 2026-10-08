@@ -11,6 +11,10 @@ import torch
 from rl_bgd.agents.ppo.recurrent_agent import RecurrentPPOAgent
 from rl_bgd.agents.ppo.recurrent_rollout import RecurrentRolloutBuffer
 from rl_bgd.envs.protocols import ContinuousTensorEnv
+from rl_bgd.utils.checkpoint_progress import (
+    checkpoint_boolean,
+    checkpoint_ppo_progress,
+)
 from rl_bgd.utils.randomness import load_random_state_dict, random_state_dict
 
 _RECURRENT_PPO_TRAINING_CHECKPOINT_VERSION = 1
@@ -119,6 +123,16 @@ def train_recurrent_ppo(
             raise ValueError("unsupported recurrent PPO training checkpoint version")
         if checkpoint.get("train_config") != asdict(config):
             raise ValueError("recurrent PPO training checkpoint configuration mismatch")
+        steps, rollout_index = checkpoint_ppo_progress(
+            checkpoint,
+            total_steps=config.total_steps,
+            rollout_steps=config.rollout_steps,
+            label="recurrent PPO checkpoint",
+        )
+        episode_start = checkpoint_boolean(
+            checkpoint.get("episode_start"),
+            name="recurrent PPO checkpoint episode_start",
+        )
         agent_state = checkpoint.get("agent")
         if not isinstance(agent_state, dict):
             raise TypeError("recurrent PPO checkpoint agent state must be a dictionary")
@@ -134,11 +148,6 @@ def train_recurrent_ppo(
             agent.device,
             dtype=torch.float32,
         )
-        steps = int(checkpoint["steps"])
-        rollout_index = int(checkpoint["rollout_index"])
-        if not 0 <= steps <= config.total_steps or rollout_index < 0:
-            raise ValueError("recurrent PPO checkpoint progress is invalid")
-        episode_start = bool(checkpoint["episode_start"])
         episode_return = float(checkpoint["episode_return"])
         raw_returns = checkpoint.get("completed_returns")
         if not isinstance(raw_returns, list):
