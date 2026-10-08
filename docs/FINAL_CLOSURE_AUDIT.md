@@ -85,8 +85,8 @@ including rejection of non-finite saved replay transitions and rollout values,
 transactional staging of replay payloads before live-buffer mutation,
 wrapped recurrent-replay episode-boundary validation,
 strict checkpoint integer and recurrent episode-boundary flags,
-transactional process RNG restore validation across Python, NumPy, PyTorch CPU,
-and CUDA state, and
+strict integer version metadata plus transactional process RNG restore
+validation across Python, NumPy, PyTorch CPU, and CUDA state, and
 non-mutating checkpoint rejection in PPO rollout buffers. Rollout restore
 also rejects non-finite saved observations, actions, rewards, policy
 statistics, GAE estimates, and recurrent hidden states, and stages all validated

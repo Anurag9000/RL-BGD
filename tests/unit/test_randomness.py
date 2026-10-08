@@ -61,6 +61,7 @@ def test_random_state_checkpoint_round_trip() -> None:
     assert actual[1] == expected[1]
     torch.testing.assert_close(actual[2], expected[2])
 
+
 @pytest.mark.parametrize(
     "corruption",
     ["numpy", "torch_cpu", "torch_cuda"],
@@ -79,6 +80,25 @@ def test_random_state_checkpoint_rejection_is_non_mutating(corruption: str) -> N
     expected = _draw()
     seed_everything(321)
     with pytest.raises((TypeError, ValueError, RuntimeError)):
+        load_random_state_dict(state)
+    actual = _draw()
+
+    assert actual[0] == expected[0]
+    assert actual[1] == expected[1]
+    torch.testing.assert_close(actual[2], expected[2])
+
+@pytest.mark.parametrize("version", [True, 1.0])
+def test_random_state_checkpoint_rejects_coerced_version_without_mutating_rng(
+    version: object,
+) -> None:
+    seed_everything(999)
+    state = random_state_dict()
+    state["version"] = version
+
+    seed_everything(321)
+    expected = _draw()
+    seed_everything(321)
+    with pytest.raises(TypeError, match="must be an integer"):
         load_random_state_dict(state)
     actual = _draw()
 

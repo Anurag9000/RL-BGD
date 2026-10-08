@@ -10,6 +10,8 @@ from typing import Any
 import numpy as np
 import torch
 
+from rl_bgd.utils.checkpoint_progress import checkpoint_integer
+
 
 def seed_everything(seed: int, *, deterministic: bool = False) -> None:
     if seed < 0:
@@ -79,7 +81,7 @@ def _validated_torch_rng_state(
 def load_random_state_dict(state: dict[str, Any]) -> None:
     """Restore validated process RNG streams captured by :func:`random_state_dict`."""
 
-    if state.get("version") != 1:
+    if checkpoint_integer(state.get("version"), name="random-state version") != 1:
         raise ValueError("unsupported random-state checkpoint version")
 
     python_state = state.get("python")

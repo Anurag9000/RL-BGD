@@ -84,9 +84,11 @@ Examples:
 Training checkpoints bind the saved learner state to the complete training and
 agent configurations. SAC checkpoints also preserve replay contents,
 provenance/evidence-use metadata, replay-sampling RNG, environment state, and
-process RNG state. Process RNG restore validates Python, NumPy, PyTorch CPU,
-and CUDA payloads before mutating any live global RNG stream, so malformed late
-fields fail without perturbing the running experiment. Ordinary and recurrent SAC replay restores reject NaN/Inf
+process RNG state. Process RNG restore validates strict integer version metadata,
+Python, NumPy, PyTorch CPU, and CUDA payloads before mutating any live global
+RNG stream, so malformed late
+fields fail without perturbing the running experiment. Ordinary and recurrent
+SAC replay restores reject NaN/Inf
 transition tensors and non-integer checkpoint versions before any live buffer
 state is modified. PPO checkpoints are written only at rollout boundaries;
 recurrent variants also preserve online hidden state and recurrent progress.
@@ -99,8 +101,8 @@ Feed-forward and recurrent PPO rollout buffers validate checkpoint dimensions,
 strict version metadata, tensor shapes/dtypes, finite floating-point behavior
 statistics (including hidden states and GAE results), and paired GAE
 advantages/returns before updating live on-policy buffers. NaN/Inf checkpoint
-payloads fail closed without partially overwriting behavior-policy statistics. Validated
-payload tensors are also fully staged on the destination device before any live
+payloads fail closed without partially overwriting behavior-policy statistics.
+Validated payload tensors are also fully staged on the destination device before any live
 rollout storage is changed, so transfer/conversion failures are transactional.
 
 Version-2 surprise-normalizer, TD-surprise and previous-transition
