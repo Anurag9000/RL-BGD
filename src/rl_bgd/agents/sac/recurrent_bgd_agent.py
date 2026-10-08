@@ -38,6 +38,7 @@ from rl_bgd.surprise.base import (
     surprise_to_retention,
 )
 from rl_bgd.surprise.td import TDSurprise
+from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 
 
 class BGDRecurrentSACAgent(RecurrentSACAgent):
@@ -512,32 +513,30 @@ class BGDRecurrentSACAgent(RecurrentSACAgent):
         if state.get("replay_evidence_mode") != self.bgd_config.replay_evidence.mode:
             raise ValueError("BGD recurrent SAC evidence mode mismatch")
         expected_adaptive = self.bgd_config.adaptive_td_retention is not None
-        if (
-            bool(
-                state.get(
-                    "adaptive_td_retention",
-                    False,
-                )
-            )
-            != expected_adaptive
-        ):
+        if bool(state.get("adaptive_td_retention", False)) != expected_adaptive:
             raise ValueError("BGD recurrent SAC adaptive-retention mismatch")
-        super().load_state_dict(state)
-        if self.td_surprise is not None:
-            payload = state["td_surprise"]
-            if not isinstance(
-                payload,
-                dict,
-            ):
-                raise TypeError("TD-surprise state must be a dictionary")
-            self.td_surprise.load_state_dict(payload)
-        if self.actor_bgd is not None:
-            self.actor_bgd.load_state_dict(state["actor_bgd"])
-            assert self.actor_posterior is not None
-            self.actor_posterior.sync_module(self.actor)
-        if self.critic1_bgd is not None and self.critic2_bgd is not None:
-            self.critic1_bgd.load_state_dict(state["critic1_bgd"])
-            self.critic2_bgd.load_state_dict(state["critic2_bgd"])
-            assert self.critic1_posterior is not None and self.critic2_posterior is not None
-            self.critic1_posterior.sync_module(self.critic1)
-            self.critic2_posterior.sync_module(self.critic2)
+
+        def apply(payload: dict[str, Any]) -> None:
+            super(BGDRecurrentSACAgent, self).load_state_dict(payload)
+            if self.td_surprise is not None:
+                td_payload = payload["td_surprise"]
+                if not isinstance(td_payload, dict):
+                    raise TypeError("TD-surprise state must be a dictionary")
+                self.td_surprise.load_state_dict(td_payload)
+            if self.actor_bgd is not None:
+                self.actor_bgd.load_state_dict(payload["actor_bgd"])
+                assert self.actor_posterior is not None
+                self.actor_posterior.sync_module(self.actor)
+            if self.critic1_bgd is not None and self.critic2_bgd is not None:
+                self.critic1_bgd.load_state_dict(payload["critic1_bgd"])
+                self.critic2_bgd.load_state_dict(payload["critic2_bgd"])
+                assert self.critic1_posterior is not None
+                assert self.critic2_posterior is not None
+                self.critic1_posterior.sync_module(self.critic1)
+                self.critic2_posterior.sync_module(self.critic2)
+
+        transactional_state_load(
+            state,
+            current_state=self.state_dict,
+            apply=apply,
+        )

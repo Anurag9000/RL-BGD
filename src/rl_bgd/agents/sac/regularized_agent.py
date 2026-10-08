@@ -19,6 +19,7 @@ from rl_bgd.baselines.importance import (
 from rl_bgd.baselines.mas import MASRegularizer
 from rl_bgd.baselines.si import SynapticIntelligence
 from rl_bgd.replay.buffer import ReplayBatch
+from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 from rl_bgd.utils.randomness import preserved_random_state
 
 RegularizationMethod = Literal["ewc", "online_ewc", "si", "mas"]
@@ -409,22 +410,33 @@ class RegularizedSACAgent(SACAgent):
         return state
 
     def load_state_dict(self, state: dict[str, Any]) -> None:
-        super().load_state_dict(state)
         regularized = state.get("regularized_sac")
         if not isinstance(regularized, dict) or regularized.get("version") != 1:
             raise ValueError("missing or unsupported regularized SAC state")
         if regularized.get("config") != asdict(self.regularization_config):
             raise ValueError("regularized SAC checkpoint configuration mismatch")
-        self.consolidation_count = int(regularized["consolidation_count"])
-        for key, regularizer in (
-            ("actor_regularizer", self.actor_regularizer),
-            ("critic_regularizer", self.critic_regularizer),
-        ):
-            saved = regularized[key]
-            if regularizer is None:
-                if saved is not None:
-                    raise ValueError(f"unexpected checkpoint state for {key}")
-            else:
-                if not isinstance(saved, dict):
-                    raise TypeError(f"checkpoint {key} must be a mapping")
-                regularizer.load_state_dict(saved)
+
+        def apply(payload: dict[str, Any]) -> None:
+            super(RegularizedSACAgent, self).load_state_dict(payload)
+            regularized_payload = payload["regularized_sac"]
+            if not isinstance(regularized_payload, dict):
+                raise TypeError("regularized SAC checkpoint state must be a mapping")
+            self.consolidation_count = int(regularized_payload["consolidation_count"])
+            for key, regularizer in (
+                ("actor_regularizer", self.actor_regularizer),
+                ("critic_regularizer", self.critic_regularizer),
+            ):
+                saved = regularized_payload[key]
+                if regularizer is None:
+                    if saved is not None:
+                        raise ValueError(f"unexpected checkpoint state for {key}")
+                else:
+                    if not isinstance(saved, dict):
+                        raise TypeError(f"checkpoint {key} must be a mapping")
+                    regularizer.load_state_dict(saved)
+
+        transactional_state_load(
+            state,
+            current_state=self.state_dict,
+            apply=apply,
+        )

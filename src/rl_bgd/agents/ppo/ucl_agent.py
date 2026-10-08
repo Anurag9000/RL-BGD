@@ -17,6 +17,7 @@ from rl_bgd.baselines.ucl import (
     ucl_regularization,
 )
 from rl_bgd.models.ucl_ppo import UCLPPOActor, UCLValueNetwork
+from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 
 
 @dataclass(frozen=True)
@@ -369,17 +370,25 @@ class UCLPPOAgent:
             raise ValueError("UCL-PPO PPO configuration mismatch")
         if state.get("ucl_config") != asdict(self.ucl_config):
             raise ValueError("UCL-PPO UCL configuration mismatch")
-        self.actor.load_state_dict(state["actor"])
-        self.value.load_state_dict(state["value"])
-        self.actor_optimizer.load_state_dict(state["actor_optimizer"])
-        self.value_optimizer.load_state_dict(state["value_optimizer"])
-        self.actor_snapshot = self._restore_snapshots(
-            state["actor_snapshot"],
-            device=self.device,
+
+        def apply(payload: dict[str, Any]) -> None:
+            self.actor.load_state_dict(payload["actor"])
+            self.value.load_state_dict(payload["value"])
+            self.actor_optimizer.load_state_dict(payload["actor_optimizer"])
+            self.value_optimizer.load_state_dict(payload["value_optimizer"])
+            self.actor_snapshot = self._restore_snapshots(
+                payload["actor_snapshot"],
+                device=self.device,
+            )
+            self.value_snapshot = self._restore_snapshots(
+                payload["value_snapshot"],
+                device=self.device,
+            )
+            self.boundary_count = int(payload["boundary_count"])
+            self.update_count = int(payload["update_count"])
+
+        transactional_state_load(
+            state,
+            current_state=self.state_dict,
+            apply=apply,
         )
-        self.value_snapshot = self._restore_snapshots(
-            state["value_snapshot"],
-            device=self.device,
-        )
-        self.boundary_count = int(state["boundary_count"])
-        self.update_count = int(state["update_count"])

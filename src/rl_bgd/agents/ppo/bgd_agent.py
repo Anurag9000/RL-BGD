@@ -28,6 +28,7 @@ from rl_bgd.bayes.diagonal_gaussian import (
     DiagonalGaussianPosterior,
 )
 from rl_bgd.utils.checkpoint_progress import checkpoint_integer
+from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 
 PPOBayesianization = Literal[
     "actor_only",
@@ -449,14 +450,20 @@ class BGDPPOAgent(PPOAgent):
         )
         if checkpoint_evidence_mode != self.bgd_config.evidence_mode:
             raise ValueError("BGD-PPO checkpoint evidence mode mismatch")
-        super().load_state_dict(state)
 
-        if self.actor_bgd is not None:
-            self.actor_bgd.load_state_dict(state["actor_bgd"])
-            assert self.actor_posterior is not None
-            self.actor_posterior.sync_module(self.actor)
+        def apply(payload: dict[str, Any]) -> None:
+            super(BGDPPOAgent, self).load_state_dict(payload)
+            if self.actor_bgd is not None:
+                self.actor_bgd.load_state_dict(payload["actor_bgd"])
+                assert self.actor_posterior is not None
+                self.actor_posterior.sync_module(self.actor)
+            if self.value_bgd is not None:
+                self.value_bgd.load_state_dict(payload["value_bgd"])
+                assert self.value_posterior is not None
+                self.value_posterior.sync_module(self.value)
 
-        if self.value_bgd is not None:
-            self.value_bgd.load_state_dict(state["value_bgd"])
-            assert self.value_posterior is not None
-            self.value_posterior.sync_module(self.value)
+        transactional_state_load(
+            state,
+            current_state=self.state_dict,
+            apply=apply,
+        )

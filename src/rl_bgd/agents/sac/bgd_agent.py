@@ -34,6 +34,7 @@ from rl_bgd.surprise.predictive import (
     PredictiveSurprise,
 )
 from rl_bgd.surprise.td import AdaptiveTDRetentionConfig, TDSurprise
+from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 
 BayesianizationMode = Literal[
     "critic_only",
@@ -583,46 +584,54 @@ class BGDSACAgent(SACAgent):
             raise ValueError(
                 "BGD-SAC checkpoint predictive adaptive-retention configuration mismatch"
             )
-        super().load_state_dict(state)  # type: ignore[arg-type]
-        if self.td_surprise is not None:
-            payload = state["td_surprise"]
-            if not isinstance(payload, dict):
-                raise TypeError("TD-surprise checkpoint state must be a dictionary")
-            self.td_surprise.load_state_dict(payload)
-        if self.ensemble_surprise is not None:
-            payload = state["ensemble_surprise"]
-            if not isinstance(payload, dict):
-                raise TypeError("ensemble-surprise checkpoint state must be a dictionary")
-            self.ensemble_surprise.load_state_dict(payload)
-        if (
-            self.predictive_surprise is not None
-            and self.predictive_model is not None
-            and self.predictive_optimizer is not None
-        ):
-            payload = state["predictive_surprise"]
-            if not isinstance(payload, dict):
-                raise TypeError("predictive-surprise checkpoint state must be a dictionary")
-            self.predictive_surprise.load_state_dict(payload)
-            model_state = state["predictive_model"]
-            optimizer_state = state["predictive_optimizer"]
-            if not isinstance(model_state, dict) or not isinstance(optimizer_state, dict):
-                raise TypeError("predictive-model checkpoint state must be dictionaries")
-            self.predictive_model.load_state_dict(model_state)
-            self.predictive_optimizer.load_state_dict(optimizer_state)
-        if self.actor_bgd is not None:
-            self.actor_bgd.load_state_dict(
-                state["actor_bgd"]  # type: ignore[arg-type]
-            )
-            assert self.actor_posterior is not None
-            self.actor_posterior.sync_module(self.actor)
-        if self.critic1_bgd is not None and self.critic2_bgd is not None:
-            self.critic1_bgd.load_state_dict(
-                state["critic1_bgd"]  # type: ignore[arg-type]
-            )
-            self.critic2_bgd.load_state_dict(
-                state["critic2_bgd"]  # type: ignore[arg-type]
-            )
-            assert self.critic1_posterior is not None
-            assert self.critic2_posterior is not None
-            self.critic1_posterior.sync_module(self.critic1)
-            self.critic2_posterior.sync_module(self.critic2)
+
+        def apply(payload: dict[str, object]) -> None:
+            super(BGDSACAgent, self).load_state_dict(payload)  # type: ignore[arg-type]
+            if self.td_surprise is not None:
+                td_payload = payload["td_surprise"]
+                if not isinstance(td_payload, dict):
+                    raise TypeError("TD-surprise checkpoint state must be a dictionary")
+                self.td_surprise.load_state_dict(td_payload)
+            if self.ensemble_surprise is not None:
+                ensemble_payload = payload["ensemble_surprise"]
+                if not isinstance(ensemble_payload, dict):
+                    raise TypeError("ensemble-surprise checkpoint state must be a dictionary")
+                self.ensemble_surprise.load_state_dict(ensemble_payload)
+            if (
+                self.predictive_surprise is not None
+                and self.predictive_model is not None
+                and self.predictive_optimizer is not None
+            ):
+                predictive_payload = payload["predictive_surprise"]
+                if not isinstance(predictive_payload, dict):
+                    raise TypeError("predictive-surprise checkpoint state must be a dictionary")
+                self.predictive_surprise.load_state_dict(predictive_payload)
+                model_state = payload["predictive_model"]
+                optimizer_state = payload["predictive_optimizer"]
+                if not isinstance(model_state, dict) or not isinstance(optimizer_state, dict):
+                    raise TypeError("predictive-model checkpoint state must be dictionaries")
+                self.predictive_model.load_state_dict(model_state)
+                self.predictive_optimizer.load_state_dict(optimizer_state)
+            if self.actor_bgd is not None:
+                self.actor_bgd.load_state_dict(
+                    payload["actor_bgd"]  # type: ignore[arg-type]
+                )
+                assert self.actor_posterior is not None
+                self.actor_posterior.sync_module(self.actor)
+            if self.critic1_bgd is not None and self.critic2_bgd is not None:
+                self.critic1_bgd.load_state_dict(
+                    payload["critic1_bgd"]  # type: ignore[arg-type]
+                )
+                self.critic2_bgd.load_state_dict(
+                    payload["critic2_bgd"]  # type: ignore[arg-type]
+                )
+                assert self.critic1_posterior is not None
+                assert self.critic2_posterior is not None
+                self.critic1_posterior.sync_module(self.critic1)
+                self.critic2_posterior.sync_module(self.critic2)
+
+        transactional_state_load(
+            state,
+            current_state=self.state_dict,
+            apply=apply,
+        )

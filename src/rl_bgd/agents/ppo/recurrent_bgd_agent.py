@@ -28,6 +28,7 @@ from rl_bgd.bayes.bgd import (
 from rl_bgd.bayes.diagonal_gaussian import (
     DiagonalGaussianPosterior,
 )
+from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 
 
 class BGDRecurrentPPOAgent(RecurrentPPOAgent):
@@ -421,12 +422,20 @@ class BGDRecurrentPPOAgent(RecurrentPPOAgent):
             raise ValueError("BGD recurrent PPO Bayesianization mode mismatch")
         if state.get("evidence_mode") != self.bgd_config.evidence_mode:
             raise ValueError("BGD recurrent PPO evidence mode mismatch")
-        super().load_state_dict(state)
-        if self.actor_bgd is not None:
-            self.actor_bgd.load_state_dict(state["actor_bgd"])
-            assert self.actor_posterior is not None
-            self.actor_posterior.sync_module(self.actor)
-        if self.value_bgd is not None:
-            self.value_bgd.load_state_dict(state["value_bgd"])
-            assert self.value_posterior is not None
-            self.value_posterior.sync_module(self.value)
+
+        def apply(payload: dict[str, Any]) -> None:
+            super(BGDRecurrentPPOAgent, self).load_state_dict(payload)
+            if self.actor_bgd is not None:
+                self.actor_bgd.load_state_dict(payload["actor_bgd"])
+                assert self.actor_posterior is not None
+                self.actor_posterior.sync_module(self.actor)
+            if self.value_bgd is not None:
+                self.value_bgd.load_state_dict(payload["value_bgd"])
+                assert self.value_posterior is not None
+                self.value_posterior.sync_module(self.value)
+
+        transactional_state_load(
+            state,
+            current_state=self.state_dict,
+            apply=apply,
+        )
