@@ -26,6 +26,11 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | InformationAccessConfig | COMPLETE | central contract + leakage tests |
 | Device auto/CUDA/CPU | COMPLETE | utils/device.py + tests |
 | Deterministic seeding | COMPLETE | Python/NumPy/PyTorch CPU/CUDA |
+| Stationary SAC/PPO end-to-end resume | COMPLETE | training checkpoints restore agent, optimizer, environment, progress, process RNG and (for SAC) replay sampling, usage history and chronology; split-vs-uninterrupted CPU regression tests |
+| Recurrent SAC/PPO end-to-end resume | COMPLETE | online hidden states, episode/replay context, rollout boundaries and process RNG restored; deterministic split-vs-uninterrupted tests |
+| Public stationary resume CLIs | COMPLETE | Adam/BGD SAC/PPO scripts and a single-run recurrent acceptance CLI expose checkpoint path, interval, resume source and per-call limits; CLI contract tests |
+| Checkpoint configuration fidelity | COMPLETE | agent, posterior dtype/bounds, surprise estimator/EMA, environment and context-wrapper settings reject mismatched loads; versioned regression tests |
+| Context-schedule input validation | COMPLETE | modes, finite anchor/bounds/random-walk parameters, positive integer clock intervals and step indices validated with failure tests |
 | Diagonal quadratic benchmark | COMPLETE | arbitrary dimension + changing optimum/curvature |
 | Rotated/non-diagonal quadratic | COMPLETE | dense SPD construction + test |
 | Abrupt/smooth/recurring quadratic streams | COMPLETE | QuadraticStream + tests |

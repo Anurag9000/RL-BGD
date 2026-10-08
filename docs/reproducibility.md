@@ -79,6 +79,17 @@ process RNG state. PPO checkpoints are written only at rollout boundaries;
 recurrent variants also preserve online hidden state and recurrent progress.
 Configuration mismatches fail closed on restore.
 
+Version-2 surprise-normalizer, TD-surprise and previous-transition
+context-wrapper checkpoints deliberately reject older payload formats that
+lacked configuration fields. Earlier checkpoints must be regenerated or
+migrated with independently verified original settings; guessing defaults
+would silently alter the experiment. Checkpoint files use PyTorch
+deserialization and should only be loaded from trusted local sources.
+
+Environment restore also rejects nonfinite mutable dynamics and inconsistent
+scheduled-context state. Nonstationary schedule constructors reject unknown
+modes and nonfinite parameterization before any training begins.
+
 ## Paper statistics
 
 Paper aggregation uses matched seed groups. Scalar metrics receive percentile

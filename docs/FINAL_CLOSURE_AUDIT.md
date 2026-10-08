@@ -71,6 +71,27 @@ tested surfaces include:
 - automatic bootstrap statistics, matched-seed comparisons, tables, and
   figures.
 
+## Incremental reproducibility closure (October 2026)
+
+Subsequent to the historical Phase-16 validation snapshot above, incremental
+commits added exact SAC/PPO and recurrent SAC/PPO training resume, stationary
+command-line checkpoint controls, replay/hidden/environment RNG restoration,
+and fail-closed scientific checkpoint configuration checks. Regression tests
+compare resumed and uninterrupted runs on dependency-light synthetic LQR
+without claiming any final multi-seed scientific results.
+
+The audit also validates schedule mode/step inputs and finite context
+parameters, and guards posterior bounds/precision and surprise normalization
+settings against silent checkpoint drift. Version-2 surprise checkpoints
+intentionally reject incompatible earlier payloads rather than silently
+guessing their unrecorded configuration.
+
+The opening commit-specific CI statement above is a historical evidence
+snapshot, not a claim that every later commit has already passed all gates.
+The current main-branch workflows remain the authoritative evidence for
+subsequent changes. The unresolved CHORES external archive prerequisite and
+the unexecuted scientific suites below are unchanged.
+
 ## External block: CORA CHORES / ALFRED
 
 CORA CHORES is the only capability still marked BLOCKED.
