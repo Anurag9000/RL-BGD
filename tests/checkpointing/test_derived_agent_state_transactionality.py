@@ -148,7 +148,7 @@ def _bad_ucl_snapshot(payload: dict[str, Any]) -> None:
         (_bgd_sac, _missing_actor_bgd, KeyError),
         (_recurrent_bgd_sac, _missing_actor_bgd, KeyError),
         (_regularized_sac, _bad_regularizer, TypeError),
-        (_ucl_ppo, _bad_ucl_snapshot, KeyError),
+        (_ucl_ppo, _bad_ucl_snapshot, ValueError),
     ],
 )
 def test_derived_agent_checkpoint_rejection_restores_exact_prior_state(
@@ -258,3 +258,48 @@ def test_regularized_sac_version_is_not_coerced(invalid_version: object) -> None
     with pytest.raises(TypeError, match="must be an integer"):
         agent.load_state_dict(payload)
 
+
+
+def test_ucl_checkpoint_rejects_nonfinite_snapshot_without_mutation() -> None:
+    torch.manual_seed(2001)
+    source = _ucl_ppo()
+    payload = deepcopy(source.state_dict())
+    actor_snapshot = payload["actor_snapshot"]
+    assert isinstance(actor_snapshot, list)
+    weight_mu = actor_snapshot[0]["weight_mu"]
+    assert isinstance(weight_mu, torch.Tensor)
+    damaged = weight_mu.clone()
+    damaged.reshape(-1)[0] = float("nan")
+    actor_snapshot[0]["weight_mu"] = damaged
+
+    torch.manual_seed(2002)
+    target = _ucl_ppo()
+    before = deepcopy(target.state_dict())
+    with pytest.raises(ValueError, match="non-finite"):
+        target.load_state_dict(payload)
+
+    _assert_nested_equal(target.state_dict(), before)
+
+
+def test_ucl_checkpoint_rejects_nonpositive_snapshot_sigma() -> None:
+    agent = _ucl_ppo()
+    payload = deepcopy(agent.state_dict())
+    value_snapshot = payload["value_snapshot"]
+    assert isinstance(value_snapshot, list)
+    sigma = value_snapshot[0]["weight_sigma"]
+    assert isinstance(sigma, torch.Tensor)
+    value_snapshot[0]["weight_sigma"] = torch.zeros_like(sigma)
+
+    with pytest.raises(ValueError, match="strictly positive"):
+        agent.load_state_dict(payload)
+
+
+def test_ucl_checkpoint_rejects_snapshot_layer_count_mismatch() -> None:
+    agent = _ucl_ppo()
+    payload = deepcopy(agent.state_dict())
+    actor_snapshot = payload["actor_snapshot"]
+    assert isinstance(actor_snapshot, list)
+    actor_snapshot.clear()
+
+    with pytest.raises(ValueError, match="layer count mismatch"):
+        agent.load_state_dict(payload)

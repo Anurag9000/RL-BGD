@@ -338,19 +338,58 @@ class UCLPPOAgent:
 
     @staticmethod
     def _restore_snapshots(
-        saved: list[dict[str, Tensor]],
+        saved: object,
         *,
         device: torch.device,
+        reference: tuple[UCLLayerSnapshot, ...],
+        name: str,
     ) -> tuple[UCLLayerSnapshot, ...]:
-        return tuple(
-            UCLLayerSnapshot(
-                weight_mu=item["weight_mu"].to(device).clone(),
-                weight_sigma=item["weight_sigma"].to(device).clone(),
-                bias_mu=item["bias_mu"].to(device).clone(),
-                bias_sigma=item["bias_sigma"].to(device).clone(),
+        if not isinstance(saved, list):
+            raise TypeError(f"{name} must be a list")
+        if len(saved) != len(reference):
+            raise ValueError(f"{name} layer count mismatch")
+        required = {
+            "weight_mu",
+            "weight_sigma",
+            "bias_mu",
+            "bias_sigma",
+        }
+        restored: list[UCLLayerSnapshot] = []
+        for index, (item, expected) in enumerate(
+            zip(saved, reference, strict=True)
+        ):
+            if not isinstance(item, dict):
+                raise TypeError(f"{name}[{index}] must be a dictionary")
+            if set(item) != required:
+                raise ValueError(f"{name}[{index}] fields do not match")
+            prepared: dict[str, Tensor] = {}
+            for field in required:
+                value = item[field]
+                expected_value = getattr(expected, field)
+                if not isinstance(value, Tensor):
+                    raise TypeError(f"{name}[{index}].{field} must be a tensor")
+                if value.shape != expected_value.shape:
+                    raise ValueError(f"{name}[{index}].{field} shape mismatch")
+                if value.dtype != expected_value.dtype:
+                    raise ValueError(f"{name}[{index}].{field} dtype mismatch")
+                if not torch.isfinite(value).all().item():
+                    raise ValueError(
+                        f"{name}[{index}].{field} contains non-finite values"
+                    )
+                if field.endswith("_sigma") and torch.any(value <= 0).item():
+                    raise ValueError(
+                        f"{name}[{index}].{field} must be strictly positive"
+                    )
+                prepared[field] = value.detach().to(device=device).clone()
+            restored.append(
+                UCLLayerSnapshot(
+                    weight_mu=prepared["weight_mu"],
+                    weight_sigma=prepared["weight_sigma"],
+                    bias_mu=prepared["bias_mu"],
+                    bias_sigma=prepared["bias_sigma"],
+                )
             )
-            for item in saved
-        )
+        return tuple(restored)
 
     def state_dict(self) -> dict[str, Any]:
         return {
@@ -380,26 +419,34 @@ class UCLPPOAgent:
             raise ValueError("UCL-PPO UCL configuration mismatch")
 
         def apply(payload: dict[str, Any]) -> None:
+            actor_snapshot = self._restore_snapshots(
+                payload.get("actor_snapshot"),
+                device=self.device,
+                reference=self.actor_snapshot,
+                name="UCL-PPO actor snapshot",
+            )
+            value_snapshot = self._restore_snapshots(
+                payload.get("value_snapshot"),
+                device=self.device,
+                reference=self.value_snapshot,
+                name="UCL-PPO value snapshot",
+            )
+            boundary_count = checkpoint_nonnegative_integer(
+                payload.get("boundary_count"),
+                name="UCL-PPO checkpoint boundary_count",
+            )
+            update_count = checkpoint_nonnegative_integer(
+                payload.get("update_count"),
+                name="UCL-PPO checkpoint update_count",
+            )
             self.actor.load_state_dict(payload["actor"])
             self.value.load_state_dict(payload["value"])
             self.actor_optimizer.load_state_dict(payload["actor_optimizer"])
             self.value_optimizer.load_state_dict(payload["value_optimizer"])
-            self.actor_snapshot = self._restore_snapshots(
-                payload["actor_snapshot"],
-                device=self.device,
-            )
-            self.value_snapshot = self._restore_snapshots(
-                payload["value_snapshot"],
-                device=self.device,
-            )
-            self.boundary_count = checkpoint_nonnegative_integer(
-                payload.get("boundary_count"),
-                name="UCL-PPO checkpoint boundary_count",
-            )
-            self.update_count = checkpoint_nonnegative_integer(
-                payload.get("update_count"),
-                name="UCL-PPO checkpoint update_count",
-            )
+            self.actor_snapshot = actor_snapshot
+            self.value_snapshot = value_snapshot
+            self.boundary_count = boundary_count
+            self.update_count = update_count
 
         transactional_state_load(
             state,
