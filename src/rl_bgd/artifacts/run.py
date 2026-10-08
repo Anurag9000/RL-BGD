@@ -27,6 +27,16 @@ def _require_int(
     return value
 
 
+def _require_nonempty_string(
+    value: object,
+    *,
+    name: str,
+) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise TypeError(f"{name} must be a non-empty string")
+    return value
+
+
 def _require_float(
     value: object,
     *,
@@ -44,7 +54,7 @@ def _require_float(
 
 
 def _finite_mapping(
-    values: Mapping[str, float],
+    values: Mapping[str, object],
     *,
     name: str,
 ) -> dict[str, float]:
@@ -52,10 +62,10 @@ def _finite_mapping(
     for key, value in values.items():
         if not isinstance(key, str) or not key:
             raise ValueError(f"{name} keys must be non-empty strings")
-        converted = float(value)
-        if not math.isfinite(converted):
-            raise ValueError(f"{name} contains nonfinite value for {key}")
-        result[key] = converted
+        result[key] = _require_float(
+            value,
+            name=f"{name} value for {key}",
+        )
     return result
 
 
@@ -79,7 +89,11 @@ class RunManifest:
     metadata: dict[str, object] = field(default_factory=dict)
 
     def validate(self) -> None:
-        if self.schema_version != RUN_SCHEMA_VERSION:
+        schema_version = _require_int(
+            self.schema_version,
+            name="run manifest schema version",
+        )
+        if schema_version != RUN_SCHEMA_VERSION:
             raise ValueError("unsupported run-manifest schema version")
         for name, value in (
             ("run_id", self.run_id),
@@ -88,11 +102,17 @@ class RunManifest:
             ("benchmark", self.benchmark),
             ("git_commit", self.git_commit),
         ):
-            if not isinstance(value, str) or not value.strip():
-                raise ValueError(f"run manifest {name} must be non-empty")
-        if self.seed < 0:
+            _require_nonempty_string(
+                value,
+                name=f"run manifest {name}",
+            )
+        seed = _require_int(
+            self.seed,
+            name="run manifest seed",
+        )
+        if seed < 0:
             raise ValueError("run manifest seed must be non-negative")
-        if self.status not in {
+        if not isinstance(self.status, str) or self.status not in {
             "completed",
             "failed",
             "partial",
@@ -105,13 +125,17 @@ class RunManifest:
             for key, value in self.information_access.items()
         ):
             raise ValueError("information_access must map string keys to booleans")
+        if any(not isinstance(key, str) or not key for key in self.metadata):
+            raise ValueError("run manifest metadata keys must be non-empty strings")
         for filename in (
             self.config_file,
             self.metrics_file,
             self.summary_file,
         ):
+            if not isinstance(filename, str) or not filename.strip():
+                raise ValueError("run artifact filenames must be non-empty strings")
             relative = Path(filename)
-            if relative.is_absolute() or ".." in relative.parts or filename.strip() == "":
+            if relative.is_absolute() or ".." in relative.parts:
                 raise ValueError("run artifact filenames must stay inside the run directory")
 
     def to_dict(self) -> dict[str, object]:
@@ -134,84 +158,89 @@ class RunManifest:
                 "metadata",
                 {},
             )
-            if not isinstance(
-                information,
-                Mapping,
-            ):
+            if not isinstance(information, Mapping):
                 raise TypeError("information_access must be a mapping")
-            if not isinstance(
-                metadata,
-                Mapping,
-            ):
+            if not isinstance(metadata, Mapping):
                 raise TypeError("metadata must be a mapping")
             raw_task_order = payload.get(
                 "task_order",
                 (),
             )
-            if isinstance(
-                raw_task_order,
-                (str, bytes),
-            ) or not isinstance(
+            if isinstance(raw_task_order, (str, bytes)) or not isinstance(
                 raw_task_order,
                 Sequence,
             ):
                 raise TypeError("task_order must be a sequence of task names")
+
+            task_order = tuple(
+                _require_nonempty_string(
+                    value,
+                    name=f"task_order[{index}]",
+                )
+                for index, value in enumerate(raw_task_order)
+            )
+            information_access: dict[str, bool] = {}
+            for key, value in information.items():
+                normalized_key = _require_nonempty_string(
+                    key,
+                    name="information_access key",
+                )
+                if not isinstance(value, bool):
+                    raise TypeError("information_access values must be booleans")
+                information_access[normalized_key] = value
+
             manifest = cls(
-                run_id=str(payload["run_id"]),
-                method=str(payload["method"]),
-                setting=str(payload["setting"]),
-                benchmark=str(payload["benchmark"]),
+                run_id=_require_nonempty_string(
+                    payload["run_id"],
+                    name="run manifest run_id",
+                ),
+                method=_require_nonempty_string(
+                    payload["method"],
+                    name="run manifest method",
+                ),
+                setting=_require_nonempty_string(
+                    payload["setting"],
+                    name="run manifest setting",
+                ),
+                benchmark=_require_nonempty_string(
+                    payload["benchmark"],
+                    name="run manifest benchmark",
+                ),
                 seed=_require_int(
                     payload["seed"],
                     name="run manifest seed",
                 ),
-                git_commit=str(payload["git_commit"]),
-                status=str(
-                    payload.get(
-                        "status",
-                        "completed",
-                    )
+                git_commit=_require_nonempty_string(
+                    payload["git_commit"],
+                    name="run manifest git_commit",
+                ),
+                status=_require_nonempty_string(
+                    payload.get("status", "completed"),
+                    name="run manifest status",
                 ),  # type: ignore[arg-type]
-                task_order=tuple(str(value) for value in raw_task_order),
-                information_access={
-                    str(key): value for key, value in information.items() if isinstance(value, bool)
-                },
-                config_file=str(
-                    payload.get(
-                        "config_file",
-                        "config.yaml",
-                    )
+                task_order=task_order,
+                information_access=information_access,
+                config_file=_require_nonempty_string(
+                    payload.get("config_file", "config.yaml"),
+                    name="run manifest config_file",
                 ),
-                metrics_file=str(
-                    payload.get(
-                        "metrics_file",
-                        "metrics.csv",
-                    )
+                metrics_file=_require_nonempty_string(
+                    payload.get("metrics_file", "metrics.csv"),
+                    name="run manifest metrics_file",
                 ),
-                summary_file=str(
-                    payload.get(
-                        "summary_file",
-                        "summary.json",
-                    )
+                summary_file=_require_nonempty_string(
+                    payload.get("summary_file", "summary.json"),
+                    name="run manifest summary_file",
                 ),
                 schema_version=_require_int(
-                    payload.get(
-                        "schema_version",
-                        RUN_SCHEMA_VERSION,
-                    ),
+                    payload.get("schema_version", RUN_SCHEMA_VERSION),
                     name="run manifest schema version",
                 ),
                 metadata=dict(metadata),
             )
-        except (
-            KeyError,
-            TypeError,
-            ValueError,
-        ) as exc:
+        except (KeyError, TypeError, ValueError) as exc:
             raise ValueError("invalid run manifest payload") from exc
         manifest.validate()
-        if len(manifest.information_access) != len(information):
-            raise ValueError("information_access values must all be booleans")
         return manifest
 
 
@@ -230,10 +259,16 @@ class RunSummary:
     schema_version: int = RUN_SCHEMA_VERSION
 
     def validate(self) -> None:
-        if self.schema_version != RUN_SCHEMA_VERSION:
+        schema_version = _require_int(
+            self.schema_version,
+            name="run summary schema version",
+        )
+        if schema_version != RUN_SCHEMA_VERSION:
             raise ValueError("unsupported run-summary schema version")
-        if not self.run_id.strip():
-            raise ValueError("run summary run_id must be non-empty")
+        _require_nonempty_string(
+            self.run_id,
+            name="run summary run_id",
+        )
         _finite_mapping(
             self.metrics,
             name="summary metrics",
@@ -243,12 +278,16 @@ class RunSummary:
             name="summary resources",
         )
         for task, values in self.task_metrics.items():
-            if not isinstance(task, str) or not task:
-                raise ValueError("task metric names must be non-empty")
+            _require_nonempty_string(
+                task,
+                name="task metric name",
+            )
             _finite_mapping(
                 values,
                 name=f"task metrics for {task}",
             )
+        if any(not isinstance(key, str) or not key for key in self.metadata):
+            raise ValueError("run summary metadata keys must be non-empty strings")
 
     def to_dict(self) -> dict[str, object]:
         self.validate()
@@ -260,100 +299,52 @@ class RunSummary:
         payload: Mapping[str, object],
     ) -> RunSummary:
         try:
-            raw_metrics = payload.get(
-                "metrics",
-                {},
-            )
-            raw_resources = payload.get(
-                "resources",
-                {},
-            )
-            raw_task_metrics = payload.get(
-                "task_metrics",
-                {},
-            )
-            raw_metadata = payload.get(
-                "metadata",
-                {},
-            )
+            raw_metrics = payload.get("metrics", {})
+            raw_resources = payload.get("resources", {})
+            raw_task_metrics = payload.get("task_metrics", {})
+            raw_metadata = payload.get("metadata", {})
             if (
-                not isinstance(
-                    raw_metrics,
-                    Mapping,
-                )
-                or not isinstance(
-                    raw_resources,
-                    Mapping,
-                )
-                or not isinstance(
-                    raw_task_metrics,
-                    Mapping,
-                )
-                or not isinstance(
-                    raw_metadata,
-                    Mapping,
-                )
+                not isinstance(raw_metrics, Mapping)
+                or not isinstance(raw_resources, Mapping)
+                or not isinstance(raw_task_metrics, Mapping)
+                or not isinstance(raw_metadata, Mapping)
             ):
                 raise TypeError("summary mappings have invalid types")
 
-            task_metrics: dict[
-                str,
-                dict[str, float],
-            ] = {}
+            task_metrics: dict[str, dict[str, float]] = {}
             for task, values in raw_task_metrics.items():
-                if not isinstance(
-                    values,
-                    Mapping,
-                ):
+                task_name = _require_nonempty_string(
+                    task,
+                    name="task metric name",
+                )
+                if not isinstance(values, Mapping):
                     raise TypeError("per-task metrics must be mappings")
-                task_metrics[str(task)] = _finite_mapping(
-                    {
-                        str(key): _require_float(
-                            value,
-                            name=f"task metric {task}/{key}",
-                        )
-                        for key, value in values.items()
-                    },
-                    name=f"task metrics for {task}",
+                task_metrics[task_name] = _finite_mapping(
+                    values,
+                    name=f"task metrics for {task_name}",
                 )
 
             summary = cls(
-                run_id=str(payload["run_id"]),
+                run_id=_require_nonempty_string(
+                    payload["run_id"],
+                    name="run summary run_id",
+                ),
                 metrics=_finite_mapping(
-                    {
-                        str(key): _require_float(
-                            value,
-                            name=f"summary metric {key}",
-                        )
-                        for key, value in raw_metrics.items()
-                    },
+                    raw_metrics,
                     name="summary metrics",
                 ),
                 task_metrics=task_metrics,
                 resources=_finite_mapping(
-                    {
-                        str(key): _require_float(
-                            value,
-                            name=f"summary resource {key}",
-                        )
-                        for key, value in raw_resources.items()
-                    },
+                    raw_resources,
                     name="summary resources",
                 ),
                 metadata=dict(raw_metadata),
                 schema_version=_require_int(
-                    payload.get(
-                        "schema_version",
-                        RUN_SCHEMA_VERSION,
-                    ),
+                    payload.get("schema_version", RUN_SCHEMA_VERSION),
                     name="run summary schema version",
                 ),
             )
-        except (
-            KeyError,
-            TypeError,
-            ValueError,
-        ) as exc:
+        except (KeyError, TypeError, ValueError) as exc:
             raise ValueError("invalid run summary payload") from exc
         summary.validate()
         return summary

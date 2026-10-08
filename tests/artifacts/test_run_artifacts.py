@@ -385,3 +385,79 @@ def test_repeated_task_names_preserve_occurrence_metrics() -> None:
     assert summary.task_metrics["b#occurrence_1"]["forgetting"] == pytest.approx(0.2)
     assert summary.task_metrics["a#occurrence_2"]["forgetting"] == pytest.approx(0.1)
     assert "forgetting" not in summary.task_metrics["b#occurrence_2"]
+
+
+
+def _valid_manifest_payload() -> dict[str, object]:
+    return {
+        "run_id": "run",
+        "method": "method",
+        "setting": "stationary",
+        "benchmark": "LQR",
+        "seed": 0,
+        "git_commit": "abc123",
+    }
+
+
+@pytest.mark.parametrize(
+    ("field", "invalid"),
+    [
+        ("run_id", 7),
+        ("method", 7),
+        ("setting", 7),
+        ("benchmark", 7),
+        ("git_commit", 7),
+        ("status", 7),
+        ("config_file", 7),
+        ("metrics_file", 7),
+        ("summary_file", 7),
+        ("seed", True),
+        ("schema_version", True),
+    ],
+)
+def test_manifest_rejects_identity_string_coercion(
+    field: str,
+    invalid: object,
+) -> None:
+    payload = _valid_manifest_payload()
+    payload[field] = invalid
+    with pytest.raises(ValueError, match="invalid run manifest payload"):
+        RunManifest.from_dict(payload)
+
+
+def test_manifest_rejects_non_string_task_and_information_keys() -> None:
+    payload = _valid_manifest_payload()
+    payload["task_order"] = ["valid", 3]
+    with pytest.raises(ValueError, match="invalid run manifest payload"):
+        RunManifest.from_dict(payload)
+
+    payload = _valid_manifest_payload()
+    payload["information_access"] = {1: False}
+    with pytest.raises(ValueError, match="invalid run manifest payload"):
+        RunManifest.from_dict(payload)
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"run_id": 7},
+        {"run_id": "run", "metrics": {"score": "1.0"}},
+        {"run_id": "run", "metrics": {"score": True}},
+        {"run_id": "run", "task_metrics": {1: {"score": 1.0}}},
+        {"run_id": "run", "task_metrics": {"task": {1: 1.0}}},
+        {"run_id": "run", "resources": {1: 1.0}},
+        {"run_id": "run", "schema_version": True},
+    ],
+)
+def test_summary_rejects_schema_coercion(payload: dict[str, object]) -> None:
+    with pytest.raises(ValueError, match="invalid run summary payload"):
+        RunSummary.from_dict(payload)
+
+
+def test_direct_summary_validation_rejects_boolean_metric() -> None:
+    summary = RunSummary(
+        run_id="run",
+        metrics={"score": True},  # type: ignore[dict-item]
+    )
+    with pytest.raises(TypeError, match="must be numeric"):
+        summary.validate()
