@@ -9,6 +9,8 @@ from torch import Tensor
 
 from rl_bgd.envs.protocols import ContinuousEnv
 from rl_bgd.envs.synthetic.lqr import TensorBox
+from rl_bgd.utils.checkpoint_progress import checkpoint_finite_float, checkpoint_integer
+from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 
 
 class PreviousTransitionContextEnv:
@@ -180,9 +182,17 @@ class PreviousTransitionContextEnv:
         }
 
     def load_state_dict(self, state: dict[str, Any]) -> None:
-        if state.get("version") != 2:
+        version = checkpoint_integer(
+            state.get("version"),
+            name="context-wrapper checkpoint version",
+        )
+        if version != 2:
             raise ValueError("unsupported context-wrapper checkpoint version")
-        if state.get("reward_bound") != self.reward_bound:
+        reward_bound = checkpoint_finite_float(
+            state.get("reward_bound"),
+            name="context-wrapper checkpoint reward_bound",
+        )
+        if reward_bound != self.reward_bound:
             raise ValueError("context-wrapper checkpoint reward bound mismatch")
         load_fn = getattr(self.env, "load_state_dict", None)
         if not callable(load_fn):
@@ -190,4 +200,15 @@ class PreviousTransitionContextEnv:
         nested = state.get("env")
         if not isinstance(nested, dict):
             raise TypeError("context-wrapper nested checkpoint must be a mapping")
-        load_fn(nested)
+
+        def apply(payload: dict[str, Any]) -> None:
+            nested_payload = payload.get("env")
+            if not isinstance(nested_payload, dict):
+                raise TypeError("context-wrapper nested checkpoint must be a mapping")
+            load_fn(nested_payload)
+
+        transactional_state_load(
+            state,
+            current_state=self.state_dict,
+            apply=apply,
+        )

@@ -108,3 +108,63 @@ def test_previous_transition_context_checkpoint_round_trip() -> None:
 
     torch.testing.assert_close(actual[0], expected[0])
     assert actual[1:] == expected[1:]
+
+class PartiallyFailingCheckpointEnv(TinyEnv):
+    def __init__(self) -> None:
+        super().__init__()
+        self.value = 0
+
+    def state_dict(self) -> dict[str, object]:
+        return {"value": self.value, "fail": False}
+
+    def load_state_dict(self, state: dict[str, object]) -> None:
+        value = state.get("value")
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise TypeError("value must be an integer")
+        self.value = value
+        if state.get("fail") is True:
+            raise ValueError("synthetic nested restore failure")
+
+
+@pytest.mark.parametrize("invalid_version", [True, 2.0, "2"])
+def test_previous_transition_context_checkpoint_version_is_not_coerced(
+    invalid_version: object,
+) -> None:
+    env = PreviousTransitionContextEnv(LinearQuadraticControlEnv())
+    state = env.state_dict()
+    state["version"] = invalid_version
+
+    with pytest.raises(TypeError, match="must be an integer"):
+        env.load_state_dict(state)
+
+
+def test_previous_transition_context_rolls_back_partial_nested_restore() -> None:
+    base = PartiallyFailingCheckpointEnv()
+    base.value = 17
+    env = PreviousTransitionContextEnv(base)
+    state = env.state_dict()
+    nested = state["env"]
+    assert isinstance(nested, dict)
+    nested["value"] = 99
+    nested["fail"] = True
+
+    with pytest.raises(ValueError, match="synthetic nested restore failure"):
+        env.load_state_dict(state)
+
+    assert base.value == 17
+
+
+@pytest.mark.parametrize("invalid_bound", [True, "10.0", float("nan"), float("inf")])
+def test_previous_transition_context_reward_bound_is_strict(
+    invalid_bound: object,
+) -> None:
+    env = PreviousTransitionContextEnv(
+        LinearQuadraticControlEnv(),
+        reward_bound=10.0,
+    )
+    state = env.state_dict()
+    state["reward_bound"] = invalid_bound
+
+    with pytest.raises((TypeError, ValueError)):
+        env.load_state_dict(state)
+
