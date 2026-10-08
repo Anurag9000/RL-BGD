@@ -253,7 +253,9 @@ class ReplayBuffer:
                 dtype=self.transition_ids.dtype,
             )
             if not torch.equal(self.transition_ids[logical, 0], expected_ids):
-                raise ValueError("replay checkpoint chronological transition IDs are inconsistent")
+                raise ValueError(
+                    "replay checkpoint chronological transition IDs are inconsistent"
+                )
 
         self._size = size
         self._position = position
