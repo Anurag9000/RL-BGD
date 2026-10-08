@@ -10,6 +10,7 @@ from torch import Tensor
 
 from rl_bgd.continual.schedules import ContextSchedule
 from rl_bgd.envs.synthetic.lqr import LinearQuadraticControlEnv, TensorBox
+from rl_bgd.utils.checkpoint_progress import checkpoint_integer, checkpoint_nonnegative_integer
 
 _ALLOWED_CONTEXT_KEYS = {
     "dynamics",
@@ -83,33 +84,48 @@ class ScheduledLQREnv:
         }
 
     def load_state_dict(self, state: dict[str, Any]) -> None:
-        if state.get("version") != 1:
+        version = checkpoint_integer(
+            state.get("version"),
+            name="scheduled-LQR checkpoint version",
+        )
+        if version != 1:
             raise ValueError("unsupported scheduled-LQR checkpoint version")
         if state.get("schedule_config") != asdict(self.schedule.config):
             raise ValueError("scheduled-LQR checkpoint schedule mismatch")
-        environment_step = state.get("environment_step")
-        if (
-            isinstance(environment_step, bool)
-            or not isinstance(environment_step, int)
-            or environment_step < 0
-        ):
-            raise ValueError("scheduled-LQR environment_step is invalid")
+        environment_step = checkpoint_nonnegative_integer(
+            state.get("environment_step"),
+            name="scheduled-LQR environment_step",
+        )
         current_context = state.get("current_context")
         base_state = state.get("base_env")
         if not isinstance(current_context, dict):
             raise TypeError("scheduled-LQR current context must be a mapping")
         if not isinstance(base_state, dict):
             raise TypeError("scheduled-LQR base environment state must be a mapping")
-        normalized = {str(key): float(value) for key, value in current_context.items()}
+
+        normalized: dict[str, float] = {}
+        for key, value in current_context.items():
+            if not isinstance(key, str):
+                raise TypeError("scheduled-LQR context keys must be strings")
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise TypeError(f"scheduled-LQR context {key} must be numeric")
+            normalized[key] = float(value)
         expected_keys = set(self.schedule.config.anchors[0])
         if set(normalized) != expected_keys:
             raise ValueError("scheduled-LQR checkpoint context keys do not match the schedule")
         if not all(math.isfinite(value) for value in normalized.values()):
             raise ValueError("scheduled-LQR checkpoint context contains nonfinite values")
 
-        self.base_env.load_state_dict(base_state)
+        saved_parameters = base_state.get("current_parameters")
+        if not isinstance(saved_parameters, dict):
+            raise TypeError("scheduled-LQR base current parameters must be a mapping")
         for name, value in normalized.items():
-            if float(getattr(self.base_env, name)) != value:
+            base_value = saved_parameters.get(name)
+            if isinstance(base_value, bool) or not isinstance(base_value, (int, float)):
+                raise TypeError(f"scheduled-LQR base parameter {name} must be numeric")
+            if not math.isfinite(float(base_value)) or float(base_value) != value:
                 raise ValueError("scheduled-LQR checkpoint context disagrees with base environment")
+
+        self.base_env.load_state_dict(base_state)
         self.environment_step = environment_step
         self._current_context = normalized

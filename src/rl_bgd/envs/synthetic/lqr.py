@@ -9,6 +9,8 @@ from typing import Any
 import torch
 from torch import Tensor
 
+from rl_bgd.utils.checkpoint_progress import checkpoint_integer
+
 
 @dataclass(frozen=True)
 class TensorBox:
@@ -143,23 +145,34 @@ class LinearQuadraticControlEnv:
         }
 
     def load_state_dict(self, state: dict[str, Any]) -> None:
-        if state.get("version") != 1:
+        version = checkpoint_integer(
+            state.get("version"),
+            name="LQR checkpoint version",
+        )
+        if version != 1:
             raise ValueError("unsupported LQR checkpoint version")
         if state.get("initial_config") != self._initial_config:
             raise ValueError("LQR checkpoint configuration mismatch")
 
         saved_state = state.get("state")
         generator_state = state.get("generator_state")
-        step = state.get("step")
+        step = checkpoint_integer(
+            state.get("step"),
+            name="LQR checkpoint step",
+        )
         current = state.get("current_parameters")
         if not isinstance(saved_state, Tensor) or saved_state.shape != self._state.shape:
             raise ValueError("LQR checkpoint state shape mismatch")
-        if not torch.isfinite(saved_state).all():
+        if saved_state.dtype != self._state.dtype:
+            raise ValueError("LQR checkpoint state dtype mismatch")
+        if not torch.isfinite(saved_state).all().item():
             raise ValueError("LQR checkpoint contains nonfinite simulator state")
-        if isinstance(step, bool) or not isinstance(step, int) or not 0 <= step <= self.horizon:
+        if not 0 <= step <= self.horizon:
             raise ValueError("LQR checkpoint step is invalid")
         if not isinstance(generator_state, Tensor):
             raise TypeError("LQR checkpoint generator state must be a tensor")
+        if generator_state.dtype != torch.uint8 or generator_state.ndim != 1:
+            raise ValueError("LQR checkpoint generator state must be one-dimensional uint8")
         if not isinstance(current, dict):
             raise TypeError("LQR checkpoint current parameters must be a mapping")
 
@@ -171,21 +184,29 @@ class LinearQuadraticControlEnv:
         }
         if set(current) != required:
             raise ValueError("LQR checkpoint current parameters are incomplete")
-        values = {name: float(current[name]) for name in required}
+        values: dict[str, float] = {}
+        for name in required:
+            value = current[name]
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise TypeError(f"LQR checkpoint {name} must be numeric")
+            values[name] = float(value)
         if not all(math.isfinite(value) for value in values.values()):
             raise ValueError("LQR checkpoint contains nonfinite mutable parameters")
         if values["action_cost"] <= 0 or values["process_noise"] < 0:
             raise ValueError("LQR checkpoint contains invalid mutable parameters")
 
+        prepared_state = saved_state.to(device=self.device).clone()
+        prepared_generator_state = generator_state.detach().cpu().contiguous().clone()
+        generator_validator = torch.Generator(device=self.device)
+        try:
+            generator_validator.set_state(prepared_generator_state)
+        except RuntimeError as exc:
+            raise ValueError("LQR checkpoint generator state is invalid") from exc
+
         self.dynamics = values["dynamics"]
         self.control_gain = values["control_gain"]
         self.action_cost = values["action_cost"]
         self.process_noise = values["process_noise"]
-        self._state.copy_(
-            saved_state.to(
-                device=self.device,
-                dtype=self._state.dtype,
-            )
-        )
+        self._state.copy_(prepared_state)
         self._step = step
-        self._generator.set_state(generator_state.cpu())
+        self._generator.set_state(prepared_generator_state)
