@@ -83,7 +83,15 @@ agent configurations. SAC checkpoints also preserve replay contents,
 provenance/evidence-use metadata, replay-sampling RNG, environment state, and
 process RNG state. PPO checkpoints are written only at rollout boundaries;
 recurrent variants also preserve online hidden state and recurrent progress.
-Configuration mismatches fail closed on restore.
+Configuration mismatches fail closed on restore. Saved SAC progress must agree
+with the replay transition history; PPO progress must agree with completed
+rollout updates. Saved counters and recurrent episode-boundary flags are
+validated without implicit numerical or boolean coercion.
+
+Feed-forward and recurrent PPO rollout buffers validate checkpoint dimensions,
+tensor shapes/dtypes, and paired GAE advantages/returns before updating live
+on-policy buffers. Rejected corrupt rollout payloads do not partially overwrite
+existing behavior-policy statistics.
 
 Version-2 surprise-normalizer, TD-surprise and previous-transition
 context-wrapper checkpoints deliberately reject older payload formats that
