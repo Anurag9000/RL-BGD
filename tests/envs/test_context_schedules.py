@@ -73,3 +73,61 @@ def test_random_walk_is_seeded_bounded_and_order_stable() -> None:
     values_right = [right.context_at(i)["g"] for i in range(10)]
     assert values_left == values_right
     assert all(-0.5 <= value <= 0.5 for value in values_left)
+
+
+@pytest.mark.parametrize("mode", ["unknown", "random-walk", ""])
+def test_context_schedule_rejects_invalid_mode(mode: str) -> None:
+    with pytest.raises(ValueError, match="unsupported context schedule mode"):
+        ContextSchedule(
+            ContextScheduleConfig(
+                mode=mode,  # type: ignore[arg-type]
+                anchors=({"g": 0.0},),
+            )
+        )
+
+
+@pytest.mark.parametrize("bad_value", [float("nan"), float("inf"), -float("inf")])
+def test_context_schedule_rejects_nonfinite_anchors(bad_value: float) -> None:
+    with pytest.raises(ValueError, match="anchors must contain finite"):
+        ContextSchedule(
+            ContextScheduleConfig(
+                mode="abrupt",
+                anchors=({"g": bad_value},),
+            )
+        )
+
+
+@pytest.mark.parametrize("bad_value", [float("nan"), float("inf"), -float("inf")])
+def test_context_schedule_rejects_nonfinite_bounds(bad_value: float) -> None:
+    with pytest.raises(ValueError, match="bounds must be finite"):
+        ContextSchedule(
+            ContextScheduleConfig(
+                mode="random_walk",
+                anchors=({"g": 0.0},),
+                bounds={"g": (bad_value, 1.0)},
+            )
+        )
+
+
+@pytest.mark.parametrize("bad_value", [float("nan"), float("inf"), -float("inf")])
+def test_context_schedule_rejects_nonfinite_walk_std(bad_value: float) -> None:
+    with pytest.raises(ValueError, match="random_walk_std must be finite"):
+        ContextSchedule(
+            ContextScheduleConfig(
+                mode="random_walk",
+                anchors=({"g": 0.0},),
+                random_walk_std=bad_value,
+            )
+        )
+
+
+@pytest.mark.parametrize("step", [-1, 1.5, True])
+def test_context_schedule_rejects_invalid_step(step: object) -> None:
+    schedule = ContextSchedule(
+        ContextScheduleConfig(
+            mode="recurring",
+            anchors=({"g": 1.0},),
+        )
+    )
+    with pytest.raises(ValueError, match="step must be a non-negative integer"):
+        schedule.context_at(step)  # type: ignore[arg-type]

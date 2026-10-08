@@ -30,6 +30,8 @@ class ContextScheduleConfig:
     bounds: dict[str, tuple[float, float]] | None = None
 
     def validate(self) -> None:
+        if self.mode not in {"abrupt", "smooth", "periodic", "random_walk", "recurring"}:
+            raise ValueError(f"unsupported context schedule mode: {self.mode}")
         if not self.anchors:
             raise ValueError("at least one context anchor is required")
         keys = set(self.anchors[0])
@@ -37,12 +39,22 @@ class ContextScheduleConfig:
             raise ValueError("context anchors cannot be empty")
         if any(set(anchor) != keys for anchor in self.anchors):
             raise ValueError("all context anchors must share identical keys")
-        if self.phase_steps < 1:
-            raise ValueError("phase_steps must be positive")
-        if self.period_steps < 1:
-            raise ValueError("period_steps must be positive")
-        if self.random_walk_std < 0:
-            raise ValueError("random_walk_std cannot be negative")
+        if any(not math.isfinite(value) for anchor in self.anchors for value in anchor.values()):
+            raise ValueError("context anchors must contain finite values")
+        if (
+            isinstance(self.phase_steps, bool)
+            or not isinstance(self.phase_steps, int)
+            or self.phase_steps < 1
+        ):
+            raise ValueError("phase_steps must be a positive integer")
+        if (
+            isinstance(self.period_steps, bool)
+            or not isinstance(self.period_steps, int)
+            or self.period_steps < 1
+        ):
+            raise ValueError("period_steps must be a positive integer")
+        if not math.isfinite(self.random_walk_std) or self.random_walk_std < 0:
+            raise ValueError("random_walk_std must be finite and non-negative")
         if self.mode == "smooth" and len(self.anchors) < 2:
             raise ValueError("smooth schedules require at least two anchors")
         if self.mode == "periodic" and len(self.anchors) != 2:
@@ -51,6 +63,8 @@ class ContextScheduleConfig:
             if set(self.bounds) != keys:
                 raise ValueError("bounds keys must match context keys")
             for low, high in self.bounds.values():
+                if not math.isfinite(low) or not math.isfinite(high):
+                    raise ValueError("context bounds must be finite")
                 if low > high:
                     raise ValueError("context lower bound exceeds upper bound")
 
@@ -64,8 +78,8 @@ class ContextSchedule:
         self._random_walk_cache: list[Context] = [dict(config.anchors[0])]
 
     def context_at(self, step: int) -> Context:
-        if step < 0:
-            raise ValueError("step must be non-negative")
+        if isinstance(step, bool) or not isinstance(step, int) or step < 0:
+            raise ValueError("step must be a non-negative integer")
         mode = self.config.mode
         if mode == "abrupt":
             return self._abrupt(step)
