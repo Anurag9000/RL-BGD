@@ -5,11 +5,18 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 
-def checkpoint_step(value: object, *, name: str, limit: int) -> int:
-    """Accept only real integer counters within the declared training budget."""
+def checkpoint_integer(value: object, *, name: str) -> int:
+    """Disallow lossy conversion of scientific checkpoint integer metadata."""
 
     if isinstance(value, bool) or not isinstance(value, int):
         raise TypeError(f"{name} must be an integer")
+    return value
+
+
+def checkpoint_step(value: object, *, name: str, limit: int) -> int:
+    """Accept only real integer counters within the declared training budget."""
+
+    value = checkpoint_integer(value, name=name)
     if not 0 <= value <= limit:
         raise ValueError(f"{name} is invalid")
     return value
