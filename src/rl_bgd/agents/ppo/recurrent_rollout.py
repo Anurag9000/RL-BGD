@@ -371,6 +371,13 @@ class RecurrentRolloutBuffer:
                 raise ValueError("recurrent rollout has non-finite values for " + name)
             checked_tensors[name] = source
 
+        if size > 1:
+            previous_done = (
+                checked_tensors["terminated"][:-1] | checked_tensors["truncated"][:-1]
+            )
+            if not torch.equal(checked_tensors["episode_starts"][1:], previous_done):
+                raise ValueError("recurrent rollout episode_start boundary mismatch")
+
         advantages = state.get("advantages")
         returns = state.get("returns")
         if (advantages is None) != (returns is None):
@@ -395,6 +402,8 @@ class RecurrentRolloutBuffer:
                 raise ValueError("recurrent rollout has non-finite advantages")
             if not torch.isfinite(returns).all().item():
                 raise ValueError("recurrent rollout has non-finite returns")
+        if size == 0 and advantages is not None:
+            raise ValueError("empty recurrent rollout cannot have computed advantages")
 
         for name, target in fields.items():
             target[:size].copy_(checked_tensors[name].to(device=self.device))

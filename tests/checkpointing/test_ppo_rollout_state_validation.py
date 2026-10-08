@@ -113,3 +113,40 @@ def test_ppo_rollout_rejects_invalid_payload_without_mutating_live_state(
         with pytest.raises((TypeError, ValueError), match=message):
             target.load_state_dict(corrupt)
         _assert_equal_state(before, target.state_dict())
+
+
+
+def test_recurrent_rollout_checkpoint_validates_episode_boundaries() -> None:
+    source = RecurrentRolloutBuffer(4, 1, 1, 2, 2)
+    _fill(source, (1.0, 2.0), gae=False)
+    valid = source.state_dict()
+    terminated = valid["terminated"]
+    episode_starts = valid["episode_starts"]
+    assert isinstance(terminated, torch.Tensor)
+    assert isinstance(episode_starts, torch.Tensor)
+    terminated[0, 0] = True
+    episode_starts[1, 0] = True
+
+    target = RecurrentRolloutBuffer(4, 1, 1, 2, 2)
+    target.load_state_dict(valid)
+    _assert_equal_state(valid, target.state_dict())
+    before = target.state_dict()
+    invalid = dict(valid)
+    invalid["episode_starts"] = episode_starts.clone()
+    invalid["episode_starts"][1, 0] = False
+    with pytest.raises(ValueError, match="episode_start boundary mismatch"):
+        target.load_state_dict(invalid)
+    _assert_equal_state(before, target.state_dict())
+
+
+@pytest.mark.parametrize("recurrent", [False, True])
+def test_empty_rollout_checkpoint_rejects_computed_gae(recurrent: bool) -> None:
+    target = _new_buffer(recurrent)
+    _fill(target, (1.0,), gae=True)
+    before = target.state_dict()
+    empty = _new_buffer(recurrent).state_dict()
+    empty["advantages"] = torch.empty((0, 1))
+    empty["returns"] = torch.empty((0, 1))
+    with pytest.raises(ValueError, match="cannot have computed advantages"):
+        target.load_state_dict(empty)
+    _assert_equal_state(before, target.state_dict())

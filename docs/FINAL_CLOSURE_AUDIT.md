@@ -85,7 +85,10 @@ including rejection of non-finite saved replay transitions and rollout values,
 strict checkpoint integer and recurrent episode-boundary flags, and
 non-mutating checkpoint rejection in PPO rollout buffers. Rollout restore
 also rejects non-finite saved observations, actions, rewards, policy
-statistics, GAE estimates, and recurrent hidden states. These have focused
+statistics, GAE estimates, and recurrent hidden states. Recurrent rollout
+restore additionally verifies that interior episode-start flags agree with
+preceding terminal/truncation boundaries. Both PPO rollout variants reject
+computed GAE payloads for an empty buffer. These have focused
 corruption/round-trip tests alongside split-vs-uninterrupted runs.
 
 The audit also validates schedule mode/step inputs and finite context

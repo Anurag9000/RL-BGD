@@ -312,6 +312,8 @@ class RolloutBuffer:
                 raise ValueError("PPO rollout checkpoint has non-finite advantages")
             if not torch.isfinite(returns).all().item():
                 raise ValueError("PPO rollout checkpoint has non-finite returns")
+        if size == 0 and advantages is not None:
+            raise ValueError("empty PPO rollout cannot have computed advantages")
 
         for name, target in fields.items():
             target[:size].copy_(checked_tensors[name].to(device=self.device))
