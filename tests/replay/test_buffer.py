@@ -116,3 +116,56 @@ def test_replay_checkpoint_rejects_nonchronological_ring_ids() -> None:
     ids[0, 0], ids[1, 0] = ids[1, 0].item(), ids[0, 0].item()
     with pytest.raises(ValueError, match="chronological transition IDs"):
         ReplayBuffer(4, 1, 1).load_state_dict(state)
+
+
+def test_replay_checkpoint_preserves_wrapped_ring_and_future_samples() -> None:
+    source = ReplayBuffer(4, 1, 1)
+    for index in range(7):
+        source.add(
+            torch.tensor([float(index)]),
+            torch.tensor([0.0]),
+            float(index),
+            torch.tensor([float(index + 1)]),
+            terminated=False,
+            truncated=False,
+            insertion_step=index,
+        )
+    source.sample(2, generator=torch.Generator().manual_seed(4))
+    restored = ReplayBuffer(4, 1, 1)
+    restored.load_state_dict(source.state_dict())
+    assert len(restored) == 4
+    for field in ("observations", "transition_ids", "usage_counts", "fresh"):
+        torch.testing.assert_close(source.state_dict()[field], restored.state_dict()[field])
+    for buffer in (source, restored):
+        assert buffer.add(
+            torch.tensor([7.0]),
+            torch.tensor([0.0]),
+            7.0,
+            torch.tensor([8.0]),
+            terminated=False,
+            truncated=False,
+            insertion_step=7,
+        ) == 7
+    original = source.sample(3, generator=torch.Generator().manual_seed(9))
+    resumed = restored.sample(3, generator=torch.Generator().manual_seed(9))
+    for field in ("transition_ids", "usage_counts", "fresh", "observations"):
+        torch.testing.assert_close(getattr(original, field), getattr(resumed, field))
+
+
+def test_replay_checkpoint_rejects_tensor_dtype_drift() -> None:
+    source = ReplayBuffer(4, 1, 1)
+    source.add(
+        torch.tensor([1.0]),
+        torch.tensor([0.0]),
+        1.0,
+        torch.tensor([2.0]),
+        terminated=False,
+        truncated=False,
+        insertion_step=0,
+    )
+    state = source.state_dict()
+    observations = state["observations"]
+    assert isinstance(observations, torch.Tensor)
+    state["observations"] = observations.double()
+    with pytest.raises(ValueError, match="dtype mismatch for observations"):
+        ReplayBuffer(4, 1, 1).load_state_dict(state)
