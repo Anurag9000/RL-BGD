@@ -96,3 +96,23 @@ def test_replay_checkpoint_rejects_freshness_usage_disagreement() -> None:
     fresh[0, 0] = False
     with pytest.raises(ValueError, match="freshness disagrees"):
         ReplayBuffer(4, 1, 1).load_state_dict(state)
+
+
+def test_replay_checkpoint_rejects_nonchronological_ring_ids() -> None:
+    source = ReplayBuffer(4, 1, 1)
+    for index in range(7):
+        source.add(
+            torch.tensor([float(index)]),
+            torch.tensor([0.0]),
+            0.0,
+            torch.tensor([float(index + 1)]),
+            terminated=False,
+            truncated=False,
+            insertion_step=index,
+        )
+    state = source.state_dict()
+    ids = state["transition_ids"]
+    assert isinstance(ids, torch.Tensor)
+    ids[0, 0], ids[1, 0] = ids[1, 0].item(), ids[0, 0].item()
+    with pytest.raises(ValueError, match="chronological transition IDs"):
+        ReplayBuffer(4, 1, 1).load_state_dict(state)

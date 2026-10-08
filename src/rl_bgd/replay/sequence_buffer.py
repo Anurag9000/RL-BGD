@@ -440,6 +440,17 @@ class SequenceReplayBuffer:
             expected_next = 0
         if next_transition_id != expected_next:
             raise ValueError("sequence replay next transition ID is inconsistent")
+        if size:
+            oldest = (position - size) % self.capacity
+            logical = (oldest + torch.arange(size, device=self.device)) % self.capacity
+            expected_ids = torch.arange(
+                next_transition_id - size,
+                next_transition_id,
+                device=self.device,
+                dtype=self.transition_ids.dtype,
+            )
+            if not torch.equal(self.transition_ids[logical, 0], expected_ids):
+                raise ValueError("sequence replay chronological transition IDs are inconsistent")
 
         self._size = size
         self._position = position

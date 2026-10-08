@@ -209,3 +209,15 @@ def test_sequence_replay_checkpoint_rejects_freshness_usage_disagreement() -> No
     usage[0, 0] = 1
     with pytest.raises(ValueError, match="freshness disagrees"):
         SequenceReplayBuffer(6, 1, 1).load_state_dict(state)
+
+
+def test_sequence_replay_checkpoint_rejects_nonchronological_ring_ids() -> None:
+    source = SequenceReplayBuffer(4, 1, 1)
+    for index in range(7):
+        add_transition(source, index, episode_start=(index == 0))
+    state = source.state_dict()
+    ids = state["transition_ids"]
+    assert isinstance(ids, torch.Tensor)
+    ids[0, 0], ids[1, 0] = ids[1, 0].item(), ids[0, 0].item()
+    with pytest.raises(ValueError, match="chronological transition IDs"):
+        SequenceReplayBuffer(4, 1, 1).load_state_dict(state)
