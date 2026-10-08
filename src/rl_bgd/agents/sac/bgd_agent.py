@@ -34,6 +34,10 @@ from rl_bgd.surprise.predictive import (
     PredictiveSurprise,
 )
 from rl_bgd.surprise.td import AdaptiveTDRetentionConfig, TDSurprise
+from rl_bgd.utils.checkpoint_progress import (
+    checkpoint_boolean,
+    checkpoint_integer,
+)
 from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 
 BayesianizationMode = Literal[
@@ -563,7 +567,11 @@ class BGDSACAgent(SACAgent):
         self,
         state: dict[str, object],
     ) -> None:
-        if state.get("bgd_sac_version") != 2:
+        version = checkpoint_integer(
+            state.get("bgd_sac_version"),
+            name="BGD-SAC checkpoint version",
+        )
+        if version != 2:
             raise ValueError("unsupported BGD-SAC checkpoint version")
         if state.get("bgd_config") != asdict(self.bgd_config):
             raise ValueError("BGD-SAC checkpoint configuration mismatch")
@@ -572,15 +580,33 @@ class BGDSACAgent(SACAgent):
         if state.get("replay_evidence_mode", "all_replay") != self.bgd_config.replay_evidence.mode:
             raise ValueError("BGD-SAC checkpoint replay evidence mode mismatch")
         expected_td_adaptive = self.bgd_config.adaptive_td_retention is not None
-        if bool(state.get("adaptive_td_retention", False)) != expected_td_adaptive:
+        if (
+            checkpoint_boolean(
+                state.get("adaptive_td_retention", False),
+                name="BGD-SAC checkpoint adaptive_td_retention",
+            )
+            != expected_td_adaptive
+        ):
             raise ValueError("BGD-SAC checkpoint TD adaptive-retention configuration mismatch")
         expected_ensemble_adaptive = self.bgd_config.adaptive_ensemble_retention is not None
-        if bool(state.get("adaptive_ensemble_retention", False)) != expected_ensemble_adaptive:
+        if (
+            checkpoint_boolean(
+                state.get("adaptive_ensemble_retention", False),
+                name="BGD-SAC checkpoint adaptive_ensemble_retention",
+            )
+            != expected_ensemble_adaptive
+        ):
             raise ValueError(
                 "BGD-SAC checkpoint ensemble adaptive-retention configuration mismatch"
             )
         expected_predictive_adaptive = self.bgd_config.adaptive_predictive_retention is not None
-        if bool(state.get("adaptive_predictive_retention", False)) != expected_predictive_adaptive:
+        if (
+            checkpoint_boolean(
+                state.get("adaptive_predictive_retention", False),
+                name="BGD-SAC checkpoint adaptive_predictive_retention",
+            )
+            != expected_predictive_adaptive
+        ):
             raise ValueError(
                 "BGD-SAC checkpoint predictive adaptive-retention configuration mismatch"
             )

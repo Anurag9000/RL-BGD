@@ -19,6 +19,10 @@ from rl_bgd.baselines.importance import (
 from rl_bgd.baselines.mas import MASRegularizer
 from rl_bgd.baselines.si import SynapticIntelligence
 from rl_bgd.replay.buffer import ReplayBatch
+from rl_bgd.utils.checkpoint_progress import (
+    checkpoint_integer,
+    checkpoint_nonnegative_integer,
+)
 from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 from rl_bgd.utils.randomness import preserved_random_state
 
@@ -411,7 +415,13 @@ class RegularizedSACAgent(SACAgent):
 
     def load_state_dict(self, state: dict[str, Any]) -> None:
         regularized = state.get("regularized_sac")
-        if not isinstance(regularized, dict) or regularized.get("version") != 1:
+        if not isinstance(regularized, dict):
+            raise ValueError("missing or unsupported regularized SAC state")
+        version = checkpoint_integer(
+            regularized.get("version"),
+            name="regularized SAC checkpoint version",
+        )
+        if version != 1:
             raise ValueError("missing or unsupported regularized SAC state")
         if regularized.get("config") != asdict(self.regularization_config):
             raise ValueError("regularized SAC checkpoint configuration mismatch")
@@ -421,7 +431,10 @@ class RegularizedSACAgent(SACAgent):
             regularized_payload = payload["regularized_sac"]
             if not isinstance(regularized_payload, dict):
                 raise TypeError("regularized SAC checkpoint state must be a mapping")
-            self.consolidation_count = int(regularized_payload["consolidation_count"])
+            self.consolidation_count = checkpoint_nonnegative_integer(
+                regularized_payload.get("consolidation_count"),
+                name="regularized SAC checkpoint consolidation_count",
+            )
             for key, regularizer in (
                 ("actor_regularizer", self.actor_regularizer),
                 ("critic_regularizer", self.critic_regularizer),

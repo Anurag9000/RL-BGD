@@ -169,3 +169,84 @@ def test_derived_agent_checkpoint_rejection_restores_exact_prior_state(
         target.load_state_dict(payload)
 
     _assert_nested_equal(target.state_dict(), before)
+
+@pytest.mark.parametrize(
+    ("factory", "version_key"),
+    [
+        (_recurrent_bgd_ppo, "bgd_recurrent_ppo_version"),
+        (_bgd_sac, "bgd_sac_version"),
+        (_recurrent_bgd_sac, "bgd_recurrent_sac_version"),
+        (_ucl_ppo, "version"),
+    ],
+)
+@pytest.mark.parametrize("invalid_version", [True, 2.0, "2"])
+def test_derived_checkpoint_versions_are_not_coerced(
+    factory: Callable[[], Any],
+    version_key: str,
+    invalid_version: object,
+) -> None:
+    agent = factory()
+    payload = deepcopy(agent.state_dict())
+    expected = payload[version_key]
+    if expected == 1:
+        invalid_version = True if invalid_version is True else (
+            1.0 if isinstance(invalid_version, float) else "1"
+        )
+    payload[version_key] = invalid_version
+
+    with pytest.raises(TypeError, match="must be an integer"):
+        agent.load_state_dict(payload)
+
+
+@pytest.mark.parametrize("flag_name", ["adaptive_td_retention", "adaptive_ensemble_retention", "adaptive_predictive_retention"])
+def test_bgd_sac_adaptive_flags_require_real_booleans(flag_name: str) -> None:
+    agent = _bgd_sac()
+    payload = deepcopy(agent.state_dict())
+    payload[flag_name] = 0
+
+    with pytest.raises(TypeError, match="must be a boolean"):
+        agent.load_state_dict(payload)
+
+
+def test_recurrent_bgd_sac_adaptive_flag_requires_real_boolean() -> None:
+    agent = _recurrent_bgd_sac()
+    payload = deepcopy(agent.state_dict())
+    payload["adaptive_td_retention"] = "false"
+
+    with pytest.raises(TypeError, match="must be a boolean"):
+        agent.load_state_dict(payload)
+
+
+@pytest.mark.parametrize("counter_name", ["boundary_count", "update_count"])
+@pytest.mark.parametrize("invalid_count", [True, 1.5, "1", -1])
+def test_ucl_checkpoint_counters_are_strict(
+    counter_name: str,
+    invalid_count: object,
+) -> None:
+    agent = _ucl_ppo()
+    payload = deepcopy(agent.state_dict())
+    payload[counter_name] = invalid_count
+
+    with pytest.raises((TypeError, ValueError)):
+        agent.load_state_dict(payload)
+
+
+@pytest.mark.parametrize("invalid_count", [True, 1.5, "1", -1])
+def test_regularized_sac_consolidation_count_is_strict(invalid_count: object) -> None:
+    agent = _regularized_sac()
+    payload = deepcopy(agent.state_dict())
+    payload["regularized_sac"]["consolidation_count"] = invalid_count
+
+    with pytest.raises((TypeError, ValueError)):
+        agent.load_state_dict(payload)
+
+
+@pytest.mark.parametrize("invalid_version", [True, 1.0, "1"])
+def test_regularized_sac_version_is_not_coerced(invalid_version: object) -> None:
+    agent = _regularized_sac()
+    payload = deepcopy(agent.state_dict())
+    payload["regularized_sac"]["version"] = invalid_version
+
+    with pytest.raises(TypeError, match="must be an integer"):
+        agent.load_state_dict(payload)
+

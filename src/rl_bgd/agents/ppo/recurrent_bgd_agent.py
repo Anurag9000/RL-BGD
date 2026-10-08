@@ -28,6 +28,9 @@ from rl_bgd.bayes.bgd import (
 from rl_bgd.bayes.diagonal_gaussian import (
     DiagonalGaussianPosterior,
 )
+from rl_bgd.utils.checkpoint_progress import (
+    checkpoint_integer,
+)
 from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 
 
@@ -414,7 +417,11 @@ class BGDRecurrentPPOAgent(RecurrentPPOAgent):
         self,
         state: dict[str, Any],
     ) -> None:
-        if state.get("bgd_recurrent_ppo_version") != 2:
+        version = checkpoint_integer(
+            state.get("bgd_recurrent_ppo_version"),
+            name="BGD recurrent PPO checkpoint version",
+        )
+        if version != 2:
             raise ValueError("unsupported BGD recurrent PPO checkpoint version")
         if state.get("bgd_config") != asdict(self.bgd_config):
             raise ValueError("BGD recurrent PPO checkpoint configuration mismatch")

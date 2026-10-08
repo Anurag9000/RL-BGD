@@ -17,6 +17,10 @@ from rl_bgd.baselines.ucl import (
     ucl_regularization,
 )
 from rl_bgd.models.ucl_ppo import UCLPPOActor, UCLValueNetwork
+from rl_bgd.utils.checkpoint_progress import (
+    checkpoint_integer,
+    checkpoint_nonnegative_integer,
+)
 from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 
 
@@ -364,7 +368,11 @@ class UCLPPOAgent:
         }
 
     def load_state_dict(self, state: dict[str, Any]) -> None:
-        if state.get("version") != 1:
+        version = checkpoint_integer(
+            state.get("version"),
+            name="UCL-PPO checkpoint version",
+        )
+        if version != 1:
             raise ValueError("unsupported UCL-PPO checkpoint version")
         if state.get("ppo_config") != asdict(self.config):
             raise ValueError("UCL-PPO PPO configuration mismatch")
@@ -384,8 +392,14 @@ class UCLPPOAgent:
                 payload["value_snapshot"],
                 device=self.device,
             )
-            self.boundary_count = int(payload["boundary_count"])
-            self.update_count = int(payload["update_count"])
+            self.boundary_count = checkpoint_nonnegative_integer(
+                payload.get("boundary_count"),
+                name="UCL-PPO checkpoint boundary_count",
+            )
+            self.update_count = checkpoint_nonnegative_integer(
+                payload.get("update_count"),
+                name="UCL-PPO checkpoint update_count",
+            )
 
         transactional_state_load(
             state,

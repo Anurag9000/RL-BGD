@@ -38,6 +38,10 @@ from rl_bgd.surprise.base import (
     surprise_to_retention,
 )
 from rl_bgd.surprise.td import TDSurprise
+from rl_bgd.utils.checkpoint_progress import (
+    checkpoint_boolean,
+    checkpoint_integer,
+)
 from rl_bgd.utils.checkpoint_transaction import transactional_state_load
 
 
@@ -504,7 +508,11 @@ class BGDRecurrentSACAgent(RecurrentSACAgent):
         self,
         state: dict[str, Any],
     ) -> None:
-        if state.get("bgd_recurrent_sac_version") != 2:
+        version = checkpoint_integer(
+            state.get("bgd_recurrent_sac_version"),
+            name="BGD recurrent SAC checkpoint version",
+        )
+        if version != 2:
             raise ValueError("unsupported BGD recurrent SAC checkpoint version")
         if state.get("bgd_config") != asdict(self.bgd_config):
             raise ValueError("BGD recurrent SAC checkpoint configuration mismatch")
@@ -513,7 +521,13 @@ class BGDRecurrentSACAgent(RecurrentSACAgent):
         if state.get("replay_evidence_mode") != self.bgd_config.replay_evidence.mode:
             raise ValueError("BGD recurrent SAC evidence mode mismatch")
         expected_adaptive = self.bgd_config.adaptive_td_retention is not None
-        if bool(state.get("adaptive_td_retention", False)) != expected_adaptive:
+        if (
+            checkpoint_boolean(
+                state.get("adaptive_td_retention", False),
+                name="BGD recurrent SAC checkpoint adaptive_td_retention",
+            )
+            != expected_adaptive
+        ):
             raise ValueError("BGD recurrent SAC adaptive-retention mismatch")
 
         def apply(payload: dict[str, Any]) -> None:
