@@ -393,6 +393,7 @@ class SequenceReplayBuffer:
             "usage_counts": self.usage_counts,
             "fresh": self._fresh,
         }
+        checked_tensors: dict[str, Tensor] = {}
         for name, target in fields.items():
             source = state[name]
             if not isinstance(
@@ -404,12 +405,7 @@ class SequenceReplayBuffer:
                 raise ValueError(f"sequence replay shape mismatch for {name}")
             if source.dtype != target.dtype:
                 raise ValueError(f"sequence replay dtype mismatch for {name}")
-            target[:size].copy_(
-                source.to(
-                    device=self.device,
-                    dtype=target.dtype,
-                )
-            )
+            checked_tensors[name] = source
         position = state["position"]
         next_transition_id = state["next_transition_id"]
         if isinstance(position, bool) or not isinstance(position, int):
@@ -426,8 +422,8 @@ class SequenceReplayBuffer:
         if next_transition_id < 0:
             raise ValueError("sequence replay next transition id must be non-negative")
 
-        usage = self.usage_counts[:size]
-        fresh = self._fresh[:size]
+        usage = checked_tensors["usage_counts"]
+        fresh = checked_tensors["fresh"]
         if torch.any(usage < 0):
             raise ValueError("sequence replay contains negative usage counts")
         if not torch.equal(
@@ -437,7 +433,7 @@ class SequenceReplayBuffer:
             raise ValueError("sequence replay freshness disagrees with usage counts")
 
         if size:
-            transition_ids = self.transition_ids[:size, 0]
+            transition_ids = checked_tensors["transition_ids"][:, 0]
             if torch.any(transition_ids < 0):
                 raise ValueError("sequence replay contains negative transition IDs")
             if torch.unique(transition_ids).numel() != size:
@@ -449,15 +445,18 @@ class SequenceReplayBuffer:
             raise ValueError("sequence replay next transition ID is inconsistent")
         if size:
             oldest = (position - size) % self.capacity
-            logical = (oldest + torch.arange(size, device=self.device)) % self.capacity
+            logical = (oldest + torch.arange(size, device=transition_ids.device)) % self.capacity
             expected_ids = torch.arange(
                 next_transition_id - size,
                 next_transition_id,
-                device=self.device,
-                dtype=self.transition_ids.dtype,
+                device=transition_ids.device,
+                dtype=transition_ids.dtype,
             )
-            if not torch.equal(self.transition_ids[logical, 0], expected_ids):
+            if not torch.equal(checked_tensors["transition_ids"][logical, 0], expected_ids):
                 raise ValueError("sequence replay chronological transition IDs are inconsistent")
+
+        for name, target in fields.items():
+            target[:size].copy_(checked_tensors[name].to(device=self.device))
 
         self._size = size
         self._position = position

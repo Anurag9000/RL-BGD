@@ -194,6 +194,7 @@ class ReplayBuffer:
             "usage_counts": self.usage_counts,
             "fresh": self._fresh,
         }
+        checked_tensors: dict[str, Tensor] = {}
         for key, target in tensor_fields.items():
             source = state[key]
             if not isinstance(source, Tensor):
@@ -202,12 +203,7 @@ class ReplayBuffer:
                 raise ValueError(f"replay checkpoint shape mismatch for {key}")
             if source.dtype != target.dtype:
                 raise ValueError(f"replay checkpoint dtype mismatch for {key}")
-            target[:size].copy_(
-                source.to(
-                    device=self.device,
-                    dtype=target.dtype,
-                )
-            )
+            checked_tensors[key] = source
         position = _checkpoint_int(
             state["position"],
             name="replay position",
@@ -224,8 +220,8 @@ class ReplayBuffer:
         if next_transition_id < 0:
             raise ValueError("next transition id must be non-negative")
 
-        usage = self.usage_counts[:size]
-        fresh = self._fresh[:size]
+        usage = checked_tensors["usage_counts"]
+        fresh = checked_tensors["fresh"]
         if torch.any(usage < 0):
             raise ValueError("replay checkpoint contains negative usage counts")
         if not torch.equal(
@@ -235,7 +231,7 @@ class ReplayBuffer:
             raise ValueError("replay checkpoint freshness disagrees with usage counts")
 
         if size:
-            transition_ids = self.transition_ids[:size, 0]
+            transition_ids = checked_tensors["transition_ids"][:, 0]
             if torch.any(transition_ids < 0):
                 raise ValueError("replay checkpoint contains negative transition IDs")
             if torch.unique(transition_ids).numel() != size:
@@ -247,15 +243,18 @@ class ReplayBuffer:
             raise ValueError("replay checkpoint next transition ID is inconsistent")
         if size:
             oldest = (position - size) % self.capacity
-            logical = (oldest + torch.arange(size, device=self.device)) % self.capacity
+            logical = (oldest + torch.arange(size, device=transition_ids.device)) % self.capacity
             expected_ids = torch.arange(
                 next_transition_id - size,
                 next_transition_id,
-                device=self.device,
-                dtype=self.transition_ids.dtype,
+                device=transition_ids.device,
+                dtype=transition_ids.dtype,
             )
-            if not torch.equal(self.transition_ids[logical, 0], expected_ids):
+            if not torch.equal(checked_tensors["transition_ids"][logical, 0], expected_ids):
                 raise ValueError("replay checkpoint chronological transition IDs are inconsistent")
+
+        for key, target in tensor_fields.items():
+            target[:size].copy_(checked_tensors[key].to(device=self.device))
 
         self._size = size
         self._position = position
