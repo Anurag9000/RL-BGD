@@ -82,7 +82,9 @@ without claiming any final multi-seed scientific results.
 
 The audit also validates SAC/replay and PPO/rollout progress alignment,
 strict checkpoint integer and recurrent episode-boundary flags, and
-non-mutating checkpoint rejection in PPO rollout buffers. These have focused
+non-mutating checkpoint rejection in PPO rollout buffers. Rollout restore
+also rejects non-finite saved observations, actions, rewards, policy
+statistics, GAE estimates, and recurrent hidden states. These have focused
 corruption/round-trip tests alongside split-vs-uninterrupted runs.
 
 The audit also validates schedule mode/step inputs and finite context

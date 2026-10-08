@@ -88,13 +88,25 @@ def test_ppo_rollout_rejects_invalid_payload_without_mutating_live_state(
     assert isinstance(observations, torch.Tensor)
     assert isinstance(returns, torch.Tensor)
     corruptions = (
+        ("version", True, "must be an integer"),
         ("capacity", True, "must be an integer"),
         ("size", 2.0, "must be an integer"),
         ("observations", observations.double(), "dtype mismatch"),
         ("returns", torch.zeros(3, 1), "shape mismatch"),
         ("returns", returns.double(), "dtype mismatch"),
         ("advantages", None, "both advantages and returns or neither"),
+        ("observations", torch.tensor([[1.0], [float("nan")]]), "non-finite"),
+        ("rewards", torch.tensor([[float("inf")], [1.0]]), "non-finite"),
+        ("log_probs", torch.tensor([[-0.2], [float("-inf")]]), "non-finite"),
+        ("advantages", torch.full((2, 1), float("nan")), "non-finite"),
+        ("returns", torch.full((2, 1), float("inf")), "non-finite"),
     )
+    if recurrent:
+        actor_hiddens = saved["actor_hiddens"]
+        assert isinstance(actor_hiddens, torch.Tensor)
+        bad_hiddens = actor_hiddens.clone()
+        bad_hiddens[1, 0] = float("nan")
+        corruptions += (("actor_hiddens", bad_hiddens, "non-finite"),)
     for name, value, message in corruptions:
         corrupt = dict(saved)
         corrupt[name] = value

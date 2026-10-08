@@ -89,9 +89,10 @@ rollout updates. Saved counters and recurrent episode-boundary flags are
 validated without implicit numerical or boolean coercion.
 
 Feed-forward and recurrent PPO rollout buffers validate checkpoint dimensions,
-tensor shapes/dtypes, and paired GAE advantages/returns before updating live
-on-policy buffers. Rejected corrupt rollout payloads do not partially overwrite
-existing behavior-policy statistics.
+strict version metadata, tensor shapes/dtypes, finite floating-point behavior
+statistics (including hidden states and GAE results), and paired GAE
+advantages/returns before updating live on-policy buffers. NaN/Inf checkpoint
+payloads fail closed without partially overwriting behavior-policy statistics.
 
 Version-2 surprise-normalizer, TD-surprise and previous-transition
 context-wrapper checkpoints deliberately reject older payload formats that

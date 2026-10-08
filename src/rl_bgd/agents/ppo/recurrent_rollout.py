@@ -327,7 +327,7 @@ class RecurrentRolloutBuffer:
         self,
         state: dict[str, Any],
     ) -> None:
-        if state.get("version") != 1:
+        if checkpoint_integer(state.get("version"), name="recurrent rollout version") != 1:
             raise ValueError("unsupported recurrent rollout checkpoint version")
         checks = {
             "capacity": self.capacity,
@@ -367,6 +367,8 @@ class RecurrentRolloutBuffer:
                 raise ValueError(f"recurrent rollout shape mismatch for {name}")
             if source.dtype != target.dtype:
                 raise ValueError(f"recurrent rollout dtype mismatch for {name}")
+            if source.is_floating_point() and not torch.isfinite(source).all().item():
+                raise ValueError("recurrent rollout has non-finite values for " + name)
             checked_tensors[name] = source
 
         advantages = state.get("advantages")
@@ -389,6 +391,10 @@ class RecurrentRolloutBuffer:
                 raise ValueError("recurrent rollout advantage/return shape mismatch")
             if advantages.dtype != torch.float32 or returns.dtype != torch.float32:
                 raise ValueError("recurrent rollout advantage/return dtype mismatch")
+            if not torch.isfinite(advantages).all().item():
+                raise ValueError("recurrent rollout has non-finite advantages")
+            if not torch.isfinite(returns).all().item():
+                raise ValueError("recurrent rollout has non-finite returns")
 
         for name, target in fields.items():
             target[:size].copy_(checked_tensors[name].to(device=self.device))

@@ -250,7 +250,7 @@ class RolloutBuffer:
     ) -> None:
         """Restore behavior-policy statistics without recomputing them."""
 
-        if state.get("version") != 1:
+        if checkpoint_integer(state.get("version"), name="PPO rollout version") != 1:
             raise ValueError("unsupported PPO rollout checkpoint version")
         if checkpoint_integer(state["capacity"], name="PPO rollout capacity") != self.capacity:
             raise ValueError("PPO rollout checkpoint capacity mismatch")
@@ -284,6 +284,8 @@ class RolloutBuffer:
                 raise ValueError(f"PPO rollout checkpoint shape mismatch for {name}")
             if source.dtype != target.dtype:
                 raise ValueError(f"PPO rollout checkpoint dtype mismatch for {name}")
+            if source.is_floating_point() and not torch.isfinite(source).all().item():
+                raise ValueError("PPO rollout checkpoint has non-finite values for " + name)
             checked_tensors[name] = source
 
         advantages = state.get("advantages")
@@ -306,6 +308,10 @@ class RolloutBuffer:
                 raise ValueError("PPO rollout checkpoint advantage/return shape mismatch")
             if advantages.dtype != torch.float32 or returns.dtype != torch.float32:
                 raise ValueError("PPO rollout checkpoint advantage/return dtype mismatch")
+            if not torch.isfinite(advantages).all().item():
+                raise ValueError("PPO rollout checkpoint has non-finite advantages")
+            if not torch.isfinite(returns).all().item():
+                raise ValueError("PPO rollout checkpoint has non-finite returns")
 
         for name, target in fields.items():
             target[:size].copy_(checked_tensors[name].to(device=self.device))

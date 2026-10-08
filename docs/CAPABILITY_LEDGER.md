@@ -73,7 +73,7 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | BGD-PPO actor/value/both | COMPLETE | feed-forward BGD-PPO + stationary learning acceptance |
 | BGD-PPO repeated-rollout evidence accounting | COMPLETE | first-epoch-only default plus all-epochs/normalized modes + tests |
 | PPO task-agnostic recurring synthetic stream | COMPLETE | Adam/BGD recurring LQR runner without task ID/boundary input |
-| PPO rollout checkpointing | COMPLETE | partial/update-ready behavior statistics + GAE round trip, strict integer and tensor dtype/shape guards, non-mutating malformed-state rejection, and feed-forward/recurrent regression tests |
+| PPO rollout checkpointing | COMPLETE | partial/update-ready behavior statistics + GAE round trip, strict integer/version and tensor dtype/shape/finite-value guards, non-mutating malformed-state rejection, and feed-forward/recurrent regression tests |
 | PPO + Adam/BGD overall | COMPLETE | stationary and recurring task-agnostic validation |
 | Recurrent PPO Adam | COMPLETE | GRU actor/value + sequence rollout + checkpoint + smoke test |
 | Recurrent BGD-PPO | COMPLETE | matched GRU architecture + posterior/update/checkpoint tests + matched Adam/BGD stationary learning acceptance |
