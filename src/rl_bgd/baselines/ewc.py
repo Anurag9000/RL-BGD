@@ -15,6 +15,7 @@ from rl_bgd.baselines.importance import (
     snapshot_parameters,
     validate_importance,
 )
+from rl_bgd.utils.checkpoint_progress import checkpoint_integer
 
 
 @dataclass
@@ -115,7 +116,11 @@ class EWCRegularizer:
             Any,
         ],
     ) -> None:
-        if state.get("version") != 1:
+        version = checkpoint_integer(
+            state.get("version"),
+            name="EWC checkpoint version",
+        )
+        if version != 1:
             raise ValueError("unsupported EWC checkpoint version")
         self.strength = float(state["strength"])
         if self.strength < 0:
@@ -216,7 +221,11 @@ class OnlineEWCRegularizer:
             Any,
         ],
     ) -> None:
-        if state.get("version") != 1:
+        version = checkpoint_integer(
+            state.get("version"),
+            name="Online-EWC checkpoint version",
+        )
+        if version != 1:
             raise ValueError("unsupported Online-EWC checkpoint version")
         self.strength = float(state["strength"])
         self.decay = float(state["decay"])

@@ -115,7 +115,11 @@ class EMASurpriseNormalizer:
         }
 
     def load_state_dict(self, state: Mapping[str, object]) -> None:
-        if state.get("version") != 2:
+        version = _checkpoint_int(
+            state.get("version"),
+            name="surprise-normalizer checkpoint version",
+        )
+        if version != 2:
             raise ValueError("unsupported surprise-normalizer checkpoint version")
         if state.get("config") != asdict(self.config):
             raise ValueError("surprise-normalizer checkpoint configuration mismatch")

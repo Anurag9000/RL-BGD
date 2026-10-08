@@ -15,6 +15,7 @@ from rl_bgd.baselines.importance import (
     trainable_parameters,
     zeros_like_parameters,
 )
+from rl_bgd.utils.checkpoint_progress import checkpoint_integer
 
 
 class SynapticIntelligence:
@@ -140,7 +141,11 @@ class SynapticIntelligence:
             Any,
         ],
     ) -> None:
-        if state.get("version") != 1:
+        version = checkpoint_integer(
+            state.get("version"),
+            name="SI checkpoint version",
+        )
+        if version != 1:
             raise ValueError("unsupported SI checkpoint version")
         self.strength = float(state["strength"])
         self.damping = float(state["damping"])

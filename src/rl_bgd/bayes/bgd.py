@@ -14,6 +14,10 @@ from rl_bgd.bayes.diagnostics import posterior_diagnostics
 from rl_bgd.bayes.diagonal_gaussian import DiagonalGaussianPosterior
 from rl_bgd.bayes.mc_sampling import aggregate_bgd_statistics
 from rl_bgd.bayes.tempering import temper_diagonal_gaussian
+from rl_bgd.utils.checkpoint_progress import (
+    checkpoint_integer,
+    checkpoint_nonnegative_integer,
+)
 from rl_bgd.utils.checkpoint_progress import checkpoint_integer
 
 
@@ -336,9 +340,10 @@ class BGDUpdater:
                 for name in mismatches
             )
             raise ValueError(f"BGD updater checkpoint config mismatch: {details}")
-        step_count = state.get("step_count")
-        if isinstance(step_count, bool) or not isinstance(step_count, int) or step_count < 0:
-            raise ValueError("BGD updater checkpoint step_count must be non-negative integer")
+        step_count = checkpoint_nonnegative_integer(
+            state.get("step_count"),
+            name="BGD updater checkpoint step_count",
+        )
         saved_posterior = state.get("posterior")
         if not isinstance(saved_posterior, Mapping):
             raise TypeError("BGD updater checkpoint posterior must be a mapping")

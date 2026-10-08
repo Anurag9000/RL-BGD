@@ -14,6 +14,7 @@ from rl_bgd.baselines.importance import (
     snapshot_parameters,
     validate_importance,
 )
+from rl_bgd.utils.checkpoint_progress import checkpoint_integer
 
 
 class MASRegularizer:
@@ -98,7 +99,11 @@ class MASRegularizer:
             Any,
         ],
     ) -> None:
-        if state.get("version") != 1:
+        version = checkpoint_integer(
+            state.get("version"),
+            name="MAS checkpoint version",
+        )
+        if version != 1:
             raise ValueError("unsupported MAS checkpoint version")
         self.strength = float(state["strength"])
         if self.strength < 0:

@@ -15,6 +15,7 @@ from rl_bgd.surprise.base import (
     RetentionMappingConfig,
     SurpriseObservation,
 )
+from rl_bgd.utils.checkpoint_progress import checkpoint_integer
 
 
 @dataclass(frozen=True)
@@ -132,7 +133,11 @@ class PredictiveSurprise:
         return {"version": 1, "normalizer": self.normalizer.state_dict()}
 
     def load_state_dict(self, state: dict[str, object]) -> None:
-        if state.get("version") != 1:
+        version = checkpoint_integer(
+            state.get("version"),
+            name="predictive-surprise checkpoint version",
+        )
+        if version != 1:
             raise ValueError("unsupported predictive-surprise checkpoint version")
         payload = state["normalizer"]
         if not isinstance(payload, dict):

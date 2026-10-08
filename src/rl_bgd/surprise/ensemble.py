@@ -13,6 +13,7 @@ from rl_bgd.surprise.base import (
     RetentionMappingConfig,
     SurpriseObservation,
 )
+from rl_bgd.utils.checkpoint_progress import checkpoint_integer
 
 
 @dataclass(frozen=True)
@@ -48,7 +49,11 @@ class EnsembleDisagreementSurprise:
         return {"version": 1, "normalizer": self.normalizer.state_dict()}
 
     def load_state_dict(self, state: dict[str, object]) -> None:
-        if state.get("version") != 1:
+        version = checkpoint_integer(
+            state.get("version"),
+            name="ensemble-surprise checkpoint version",
+        )
+        if version != 1:
             raise ValueError("unsupported ensemble-surprise checkpoint version")
         payload = state["normalizer"]
         if not isinstance(payload, dict):

@@ -14,6 +14,7 @@ from rl_bgd.surprise.base import (
     RetentionMappingConfig,
     SurpriseObservation,
 )
+from rl_bgd.utils.checkpoint_progress import checkpoint_integer
 
 
 @dataclass(frozen=True)
@@ -67,7 +68,11 @@ class TDSurprise:
         }
 
     def load_state_dict(self, state: dict[str, object]) -> None:
-        if state.get("version") != 2:
+        version = checkpoint_integer(
+            state.get("version"),
+            name="TD-surprise checkpoint version",
+        )
+        if version != 2:
             raise ValueError("unsupported TD-surprise checkpoint version")
         if state.get("config") != asdict(self.config):
             raise ValueError("TD-surprise checkpoint configuration mismatch")
