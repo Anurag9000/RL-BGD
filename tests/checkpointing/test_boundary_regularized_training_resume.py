@@ -118,7 +118,8 @@ def test_boundary_regularized_training_resume_matches_uninterrupted(
     assert partial["completed"] is False
     assert partial["steps"] == 9
 
-    resumed_env, resumed_agent, resumed_config = _build(999)
+    resumed_env, resumed_agent, resumed_config = _build(123)
+    seed_everything(999, deterministic=True)
     resumed = train_boundary_regularized_sac(
         resumed_env,
         resumed_agent,
@@ -154,7 +155,7 @@ def test_boundary_regularized_resume_rejects_phase_replay_progress_mismatch(
     phase_replay["next_transition_id"] = 6
     torch.save(payload, checkpoint)
 
-    target_env, target_agent, target_config = _build(654)
+    target_env, target_agent, target_config = _build(321)
     before = deepcopy(target_agent.state_dict())
     with pytest.raises(ValueError, match="phase replay/step progress mismatch"):
         train_boundary_regularized_sac(
