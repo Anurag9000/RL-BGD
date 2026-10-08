@@ -255,8 +255,13 @@ class ReplayBuffer:
             if not torch.equal(checked_tensors["transition_ids"][logical, 0], expected_ids):
                 raise ValueError("replay checkpoint chronological transition IDs are inconsistent")
 
+        prepared_tensors = {
+            key: source.to(device=self.device).clone()
+            for key, source in checked_tensors.items()
+        }
+
         for key, target in tensor_fields.items():
-            target[:size].copy_(checked_tensors[key].to(device=self.device))
+            target[:size].copy_(prepared_tensors[key])
 
         self._size = size
         self._position = position

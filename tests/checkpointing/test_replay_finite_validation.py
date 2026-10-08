@@ -89,3 +89,39 @@ def test_replay_rejects_boolean_version_without_mutating_state(recurrent: bool) 
     with pytest.raises(TypeError, match="must be an integer"):
         target.load_state_dict(corrupt)
     _assert_same_state(before, target.state_dict())
+
+class _ReplayTransferFailTensor(torch.Tensor):
+    @staticmethod
+    def __new__(
+        cls,
+        source: torch.Tensor,
+    ) -> "_ReplayTransferFailTensor":
+        return torch.Tensor._make_subclass(cls, source, False)
+
+    def to(
+        self,
+        *args: object,
+        **kwargs: object,
+    ) -> torch.Tensor:
+        del args, kwargs
+        raise RuntimeError("synthetic replay transfer failure")
+
+
+@pytest.mark.parametrize("recurrent", [False, True])
+def test_replay_transfer_failure_does_not_mutate_live_state(recurrent: bool) -> None:
+    source = _new_buffer(recurrent)
+    _populate(source, (1.0, 2.0))
+    target = _new_buffer(recurrent)
+    _populate(target, (99.0,))
+    before = target.state_dict()
+
+    corrupt = source.state_dict()
+    terminated = corrupt["terminated"]
+    assert isinstance(terminated, torch.Tensor)
+    corrupt["terminated"] = _ReplayTransferFailTensor(terminated)
+
+    with pytest.raises(RuntimeError, match="synthetic replay transfer failure"):
+        target.load_state_dict(corrupt)
+
+    _assert_same_state(before, target.state_dict())
+
