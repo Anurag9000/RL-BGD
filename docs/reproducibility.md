@@ -96,7 +96,9 @@ Feed-forward and recurrent PPO rollout buffers validate checkpoint dimensions,
 strict version metadata, tensor shapes/dtypes, finite floating-point behavior
 statistics (including hidden states and GAE results), and paired GAE
 advantages/returns before updating live on-policy buffers. NaN/Inf checkpoint
-payloads fail closed without partially overwriting behavior-policy statistics.
+payloads fail closed without partially overwriting behavior-policy statistics. Validated
+payload tensors are also fully staged on the destination device before any live
+rollout storage is changed, so transfer/conversion failures are transactional.
 
 Version-2 surprise-normalizer, TD-surprise and previous-transition
 context-wrapper checkpoints deliberately reject older payload formats that

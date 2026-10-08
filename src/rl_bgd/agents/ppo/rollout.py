@@ -315,10 +315,19 @@ class RolloutBuffer:
         if size == 0 and advantages is not None:
             raise ValueError("empty PPO rollout cannot have computed advantages")
 
-        for name, target in fields.items():
-            target[:size].copy_(checked_tensors[name].to(device=self.device))
-        self.advantages = (
+        prepared_tensors = {
+            name: source.to(device=self.device).clone()
+            for name, source in checked_tensors.items()
+        }
+        prepared_advantages = (
             None if advantages is None else advantages.to(device=self.device).clone()
         )
-        self.returns = None if returns is None else returns.to(device=self.device).clone()
+        prepared_returns = (
+            None if returns is None else returns.to(device=self.device).clone()
+        )
+
+        for name, target in fields.items():
+            target[:size].copy_(prepared_tensors[name])
+        self.advantages = prepared_advantages
+        self.returns = prepared_returns
         self.size = size

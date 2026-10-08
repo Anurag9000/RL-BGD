@@ -87,7 +87,8 @@ transactional process RNG restore validation across Python, NumPy, PyTorch CPU,
 and CUDA state, and
 non-mutating checkpoint rejection in PPO rollout buffers. Rollout restore
 also rejects non-finite saved observations, actions, rewards, policy
-statistics, GAE estimates, and recurrent hidden states. Recurrent rollout
+statistics, GAE estimates, and recurrent hidden states, and stages all validated
+payload tensors on the destination device before mutating live rollout state. Recurrent rollout
 restore additionally verifies that interior episode-start flags agree with
 preceding terminal/truncation boundaries. Both PPO rollout variants reject
 computed GAE payloads for an empty buffer. These have focused

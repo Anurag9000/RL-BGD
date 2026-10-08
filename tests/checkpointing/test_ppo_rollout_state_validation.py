@@ -150,3 +150,42 @@ def test_empty_rollout_checkpoint_rejects_computed_gae(recurrent: bool) -> None:
     with pytest.raises(ValueError, match="cannot have computed advantages"):
         target.load_state_dict(empty)
     _assert_equal_state(before, target.state_dict())
+
+class _TransferFailTensor(torch.Tensor):
+    @staticmethod
+    def __new__(
+        cls,
+        source: torch.Tensor,
+    ) -> "_TransferFailTensor":
+        return torch.Tensor._make_subclass(cls, source, False)
+
+    def to(
+        self,
+        *args: object,
+        **kwargs: object,
+    ) -> torch.Tensor:
+        del args, kwargs
+        raise RuntimeError("synthetic checkpoint transfer failure")
+
+
+@pytest.mark.parametrize("recurrent", [False, True])
+def test_ppo_rollout_transfer_failure_does_not_mutate_live_state(
+    recurrent: bool,
+) -> None:
+    source = _new_buffer(recurrent)
+    _fill(source, (1.0, 2.0), gae=True)
+    target = _new_buffer(recurrent)
+    _fill(target, (99.0,), gae=True)
+    saved = source.state_dict()
+    before = target.state_dict()
+
+    terminated = saved["terminated"]
+    assert isinstance(terminated, torch.Tensor)
+    corrupt = dict(saved)
+    corrupt["terminated"] = _TransferFailTensor(terminated)
+
+    with pytest.raises(RuntimeError, match="synthetic checkpoint transfer failure"):
+        target.load_state_dict(corrupt)
+
+    _assert_equal_state(before, target.state_dict())
+
