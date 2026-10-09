@@ -69,3 +69,30 @@ def test_bootstrap_rejects_nonfinite_or_misaligned_inputs() -> None:
         )
     with pytest.raises(ValueError):
         hierarchical_bootstrap_mean({})
+
+
+@pytest.mark.parametrize("invalid", [True, "1.0"])
+def test_bootstrap_rejects_coerced_metric_values(invalid: object) -> None:
+    with pytest.raises(TypeError, match="real numeric scalars"):
+        bootstrap_mean_ci([invalid])  # type: ignore[list-item]
+
+
+@pytest.mark.parametrize("invalid", [True, 2.0, "2", 0, -2])
+def test_bootstrap_rejects_noninteger_or_nonpositive_resamples(invalid: object) -> None:
+    with pytest.raises((TypeError, ValueError), match="resamples"):
+        bootstrap_mean_ci([1.0], resamples=invalid)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("invalid", [True, 1.5, "1", -1])
+def test_bootstrap_rejects_invalid_rng_seed(invalid: object) -> None:
+    with pytest.raises((TypeError, ValueError), match="seed"):
+        bootstrap_mean_ci([1.0], seed=invalid)  # type: ignore[arg-type]
+    with pytest.raises((TypeError, ValueError), match="seed"):
+        hierarchical_bootstrap_mean({0: [1.0]}, seed=invalid)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("invalid", [True, 1.0, "1", -1])
+def test_hierarchical_bootstrap_rejects_coerced_seed_ids(invalid: object) -> None:
+    with pytest.raises((TypeError, ValueError), match="seed IDs"):
+        hierarchical_bootstrap_mean({invalid: [1.0]})  # type: ignore[dict-item]
+

@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
+from numbers import Real
 
 import numpy as np
 
@@ -30,10 +31,12 @@ def _values(
     *,
     name: str,
 ) -> np.ndarray:
-    array = np.asarray(
-        tuple(float(value) for value in values),
-        dtype=np.float64,
-    )
+    converted: list[float] = []
+    for value in values:
+        if isinstance(value, (bool, np.bool_)) or not isinstance(value, Real):
+            raise TypeError(f"{name} values must be real numeric scalars")
+        converted.append(float(value))
+    array = np.asarray(converted, dtype=np.float64)
     if array.ndim != 1 or array.size == 0:
         raise ValueError(f"{name} must contain at least one scalar")
     if not np.isfinite(array).all():
@@ -48,8 +51,19 @@ def _validate_bootstrap(
 ) -> None:
     if not 0.0 < confidence < 1.0:
         raise ValueError("confidence must lie strictly between 0 and 1")
+    if isinstance(resamples, bool) or not isinstance(resamples, int):
+        raise TypeError("bootstrap resamples must be an integer")
     if resamples < 1:
         raise ValueError("bootstrap resamples must be positive")
+
+
+def _validate_seed(seed: int) -> None:
+    """Keep random stream identities as explicit non-negative integer seeds."""
+
+    if isinstance(seed, bool) or not isinstance(seed, int):
+        raise TypeError("bootstrap seed must be an integer")
+    if seed < 0:
+        raise ValueError("bootstrap seed must be non-negative")
 
 
 def _percentile_interval(
@@ -81,6 +95,7 @@ def bootstrap_mean_ci(
         confidence=confidence,
         resamples=resamples,
     )
+    _validate_seed(seed)
     array = _values(
         values,
         name="bootstrap values",
@@ -95,13 +110,18 @@ def bootstrap_mean_ci(
         ),
     )
     sampled_means = array[indices].mean(axis=1)
+    if not np.isfinite(sampled_means).all():
+        raise FloatingPointError("bootstrap sampled means must be finite")
     ci_low, ci_high = _percentile_interval(
         sampled_means,
         confidence=confidence,
     )
     std = float(array.std(ddof=1)) if array.size > 1 else 0.0
+    mean = float(array.mean())
+    if not all(math.isfinite(value) for value in (mean, std, ci_low, ci_high)):
+        raise FloatingPointError("bootstrap estimate must be finite")
     return BootstrapEstimate(
-        mean=float(array.mean()),
+        mean=mean,
         std=std,
         ci_low=ci_low,
         ci_high=ci_high,
@@ -162,6 +182,7 @@ def hierarchical_bootstrap_mean(
         confidence=confidence,
         resamples=resamples,
     )
+    _validate_seed(seed)
     if not seed_task_values:
         raise ValueError("hierarchical bootstrap requires at least one seed")
 
@@ -170,7 +191,11 @@ def hierarchical_bootstrap_mean(
         np.ndarray,
     ] = {}
     for seed_id, values in seed_task_values.items():
-        normalized[int(seed_id)] = _values(
+        if isinstance(seed_id, bool) or not isinstance(seed_id, int):
+            raise TypeError("hierarchical bootstrap seed IDs must be integers")
+        if seed_id < 0:
+            raise ValueError("hierarchical bootstrap seed IDs must be non-negative")
+        normalized[seed_id] = _values(
             values,
             name=(f"hierarchical values for seed {seed_id}"),
         )

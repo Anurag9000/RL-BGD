@@ -179,6 +179,10 @@ Paper aggregation uses matched seed groups. Scalar metrics receive percentile
 bootstrap confidence intervals; paired method comparisons resample matched seed
 differences; task-within-seed measurements use hierarchical seed-then-task
 bootstrap instead of pretending correlated task scores are independent.
+The bootstrap primitives reject boolean/string metric values, non-integer
+resample counts and RNG seeds, and non-integer/negative hierarchical seed IDs
+rather than silently coercing them and risking seed identity collisions.
+Bootstrap estimates also reject non-finite numeric overflow.
 
 Suite revision 3 makes pairwise comparison opt-in through a declared
 `comparison_group` and records fully resolved runner-call defaults as part of
