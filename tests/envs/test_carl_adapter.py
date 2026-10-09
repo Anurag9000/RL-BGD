@@ -24,6 +24,18 @@ class FakeContextSpace:
         return {"g": 10.0, "m": 1.0, **context}
 
 
+class FakeStaticSelector:
+    def __init__(self, context: dict[str, float]) -> None:
+        self.contexts = {0: dict(context)}
+        self.contexts_keys = [0]
+        self.context_id: int | None = None
+
+    def select(self) -> dict[str, float]:
+        if self.context_id is None:
+            self.context_id = 0
+        return dict(self.contexts[self.contexts_keys[self.context_id]])
+
+
 class FakeCARL:
     def __init__(self) -> None:
         self.action_space = FakeSpace([-2.0], [2.0])
@@ -37,6 +49,8 @@ class FakeCARL:
         }
         self.applied: list[dict[str, float]] = []
         self.reset_contexts: list[dict[str, float]] = []
+        self.contexts = {0: dict(self.context)}
+        self.context_selector = FakeStaticSelector(self.context)
 
     def get_context_space(self) -> FakeContextSpace:
         return FakeContextSpace()
@@ -50,6 +64,10 @@ class FakeCARL:
         seed: int | None = None,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         del seed
+        previous_id = self.context_selector.context_id
+        self.context = self.context_selector.select()
+        if self.context_selector.context_id != previous_id:
+            self._update_context()
         self.reset_contexts.append(dict(self.context))
         return (
             {

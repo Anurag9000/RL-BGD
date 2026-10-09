@@ -79,6 +79,32 @@ class CARLContextStream:
         context = self.schedule.context_at(self.environment_step)
         context_space = self.env.get_context_space()
         context_with_defaults = context_space.insert_defaults(context)
+
+        # CARL reset() re-selects from context_selector before resetting the
+        # wrapped simulator. Keep the selector's active slot synchronized with
+        # the schedule so reset cannot silently restore the construction-time
+        # context and initialize an episode under stale physics.
+        selector = getattr(self.env, "context_selector", None)
+        if selector is not None:
+            selector_contexts = getattr(selector, "contexts", None)
+            selector_keys = getattr(selector, "contexts_keys", None)
+            selector_id = getattr(selector, "context_id", None)
+            if (
+                not isinstance(selector_contexts, dict)
+                or not isinstance(selector_keys, list)
+                or not selector_keys
+            ):
+                raise TypeError("CARL context selector does not expose mutable contexts")
+            selector_index = 0 if selector_id is None else int(selector_id)
+            if not 0 <= selector_index < len(selector_keys):
+                raise ValueError("CARL context selector has an invalid active context id")
+            selector_key = selector_keys[selector_index]
+            selector_contexts[selector_key] = dict(context_with_defaults)
+
+            env_contexts = getattr(self.env, "contexts", None)
+            if isinstance(env_contexts, dict) and selector_key in env_contexts:
+                env_contexts[selector_key] = dict(context_with_defaults)
+
         self.env.context = context_with_defaults
         update_context = getattr(self.env, "_update_context", None)
         if update_context is None:
