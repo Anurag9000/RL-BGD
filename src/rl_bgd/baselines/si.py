@@ -71,39 +71,80 @@ class SynapticIntelligence:
         parameters = trainable_parameters(module)
         if set(gradients) != set(parameters):
             raise ValueError("SI gradient keys do not match trainable parameters")
+        if set(self.previous) != set(parameters) or set(self.path_integral) != set(
+            parameters
+        ):
+            raise ValueError("SI accumulated parameter keys do not match the model")
+
+        staged_previous: ParameterState = {}
+        staged_path_integral: ParameterState = {}
         for name, parameter in parameters.items():
             current = parameter.detach().float()
             previous = self.previous[name].to(current.device)
+            path = self.path_integral[name].to(current.device)
             gradient = gradients[name].to(
                 current.device,
                 dtype=torch.float32,
             )
-            if gradient.shape != current.shape:
-                raise ValueError(f"SI gradient shape mismatch for {name}")
-            delta = current - previous
-            self.path_integral[name] = (
-                self.path_integral[name].to(current.device) - gradient * delta
-            )
-            self.previous[name] = current.clone()
+            if (
+                current.shape != previous.shape
+                or current.shape != path.shape
+                or current.shape != gradient.shape
+            ):
+                raise ValueError(f"SI accumulation shape mismatch for {name}")
+            if not all(
+                torch.isfinite(tensor).all().item()
+                for tensor in (current, previous, path, gradient)
+            ):
+                raise FloatingPointError(f"nonfinite SI accumulation input for {name}")
+            updated_path = path - gradient * (current - previous)
+            if not torch.isfinite(updated_path).all().item():
+                raise FloatingPointError(f"nonfinite SI accumulated path for {name}")
+            staged_path_integral[name] = updated_path
+            staged_previous[name] = current.clone()
+
+        self.path_integral = staged_path_integral
+        self.previous = staged_previous
 
     def consolidate(
         self,
         module: nn.Module,
     ) -> None:
         current = snapshot_parameters(module)
-        if set(current) != set(self.anchor):
-            raise ValueError("SI parameter set changed before consolidation")
+        for state in (self.anchor, self.previous, self.path_integral, self.importance):
+            validate_checkpoint_parameter_layout(
+                current,
+                state,
+                name="SI consolidation",
+            )
+
+        staged_importance: ParameterState = {}
         for name, value in current.items():
             anchor = self.anchor[name].to(value.device)
+            path = self.path_integral[name].to(value.device)
+            importance = self.importance[name].to(value.device)
+            if not all(
+                torch.isfinite(tensor).all().item()
+                for tensor in (value, anchor, path, importance)
+            ):
+                raise FloatingPointError(f"nonfinite SI consolidation input for {name}")
+            if torch.any(importance < 0).item():
+                raise ValueError(f"SI importance must be non-negative for {name}")
             displacement = value - anchor
-            contribution = torch.clamp(
-                self.path_integral[name].to(value.device),
-                min=0.0,
-            ) / (displacement.square() + self.damping)
-            self.importance[name] = self.importance[name].to(value.device) + contribution
-            self.anchor[name] = value.clone()
-            self.previous[name] = value.clone()
-            self.path_integral[name] = torch.zeros_like(value)
+            contribution = torch.clamp(path, min=0.0) / (
+                displacement.square() + self.damping
+            )
+            updated_importance = importance + contribution
+            if not torch.isfinite(updated_importance).all().item():
+                raise FloatingPointError(f"nonfinite SI consolidated importance for {name}")
+            staged_importance[name] = updated_importance
+
+        self.importance = staged_importance
+        self.anchor = {name: value.clone() for name, value in current.items()}
+        self.previous = {name: value.clone() for name, value in current.items()}
+        self.path_integral = {
+            name: torch.zeros_like(value) for name, value in current.items()
+        }
 
     def penalty(
         self,

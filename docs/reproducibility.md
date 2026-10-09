@@ -184,4 +184,7 @@ task anchors. Online-EWC and MAS reject changed parameter layouts before
 accumulating importance, including changes that would otherwise be silently
 broadcast by PyTorch. SI checkpoint restore checks incoming parameter layout
 against the live model as well as the other saved SI fields. These checks
-reject invalid state before mutating the active regularizer.
+reject invalid state before mutating the active regularizer. SI's online
+path-integral accumulation and boundary consolidation stage every parameter
+before committing state, rejecting invalid later tensors and arithmetic overflow
+without leaving earlier parameters partially updated.
