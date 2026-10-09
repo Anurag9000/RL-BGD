@@ -81,3 +81,37 @@ but strict task-agnostic runners must not call it from true task boundaries.
 Run the dependency-light hidden-context smoke path with:
 
     python scripts/run_regularized_sac_continual_lqr.py --method ewc
+
+## Oracle-boundary SAC checkpoint and configuration contracts
+
+The synthetic scheduled-LQR oracle-boundary runner supports a resumable
+`train_boundary_regularized_sac` path. This is **not** the strict task-agnostic
+protocol: its true consolidation steps are supplied explicitly. A complete
+training checkpoint records the agent and regularizers, active environment,
+global and phase-specific replay, both sampling generators, process RNG,
+in-progress observation/episode accounting, and consolidation events. Resume
+requires the identical training configuration and a restorable environment.
+
+Global replay transitions are numbered from the beginning of the run; phase
+replay IDs restart at each oracle boundary, but their insertion timestamps
+remain in **global environment steps**. On restore, replay occupancy must
+match the completed transition count (capped by capacity), and every saved
+transition must have an insertion timestamp consistent with its logical ID.
+The contract applies equally when either replay ring has overwritten older
+transitions. Inconsistent provenance fails before live environment or agent
+state is restored. Boundary events reset the phase replay only after
+consolidation. Regression coverage includes split/resume across wrapped
+replay rings and tampered timestamps; it is not evidence that a training
+benchmark has been executed.
+
+`RegularizedSACConfig` accepts only declared regularization methods and
+actor/critic target scopes. Strength, Online-EWC decay, and SI damping must
+be finite numeric scalars; update intervals and importance sample counts must
+be strictly positive **integers**, never bools or coercible strings. Invalid
+controls fail before the training agent is constructed. Surprise-normalizer
+checkpoints reject negative smoothed surprise and inconsistent unobserved
+statistics; surprise retention also rejects non-numeric or non-finite inputs.
+
+Canonical Continual World/MetaWorld mid-run resume must not be described as
+exact until the simulator adapter exposes a complete, restorable state; the
+synthetic LQR checkpoint guarantees do not automatically carry over.
