@@ -76,8 +76,10 @@ def test_rejected_overrides_preserve_posterior(override: str, value: float) -> N
     updater = make_updater()
     updater.posterior.stds["weight"].fill_(0.2)
     before = snapshot(updater)
+    overrides = {"retention": 0.5}
+    overrides[override] = value
     with pytest.raises(ValueError):
-        updater.step(zero_loss, retention=0.5, **{override: value})
+        updater.step(zero_loss, **overrides)
     assert_unchanged(updater, *before)
 
 
