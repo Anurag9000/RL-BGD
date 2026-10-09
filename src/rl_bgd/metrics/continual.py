@@ -42,7 +42,9 @@ def forgetting(
     """
 
     matrix = _performance_matrix(performance_matrix)
-    tasks = min(matrix.shape[0], matrix.shape[1])
+    if matrix.shape[0] < matrix.shape[1]:
+        raise ValueError("forgetting requires a learning-stage row for every task")
+    tasks = matrix.shape[1]
     if tasks < 2:
         return np.empty(0, dtype=np.float64), 0.0
     values = np.asarray(
