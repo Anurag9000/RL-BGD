@@ -87,6 +87,7 @@ def test_random_state_checkpoint_rejection_is_non_mutating(corruption: str) -> N
     assert actual[1] == expected[1]
     torch.testing.assert_close(actual[2], expected[2])
 
+
 @pytest.mark.parametrize("version", [True, 1.0])
 def test_random_state_checkpoint_rejects_coerced_version_without_mutating_rng(
     version: object,
@@ -105,4 +106,3 @@ def test_random_state_checkpoint_rejects_coerced_version_without_mutating_rng(
     assert actual[0] == expected[0]
     assert actual[1] == expected[1]
     torch.testing.assert_close(actual[2], expected[2])
-
