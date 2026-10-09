@@ -132,6 +132,7 @@ def test_context_schedule_rejects_invalid_step(step: object) -> None:
     with pytest.raises(ValueError, match="step must be a non-negative integer"):
         schedule.context_at(step)  # type: ignore[arg-type]
 
+
 @pytest.mark.parametrize("bad_value", [True, "1.0", object()])
 def test_context_schedule_rejects_non_numeric_anchor_values(bad_value: object) -> None:
     with pytest.raises(TypeError, match="anchor values must be real numbers"):
@@ -192,6 +193,58 @@ def test_context_schedule_rejects_malformed_bounds(bad_bounds: object) -> None:
                 mode="random_walk",
                 anchors=({"g": 0.0},),
                 bounds=bad_bounds,  # type: ignore[arg-type]
+            )
+        )
+
+def test_random_walk_rejects_extra_ignored_anchors() -> None:
+    with pytest.raises(ValueError, match="exactly one starting anchor"):
+        ContextSchedule(
+            ContextScheduleConfig(
+                mode="random_walk",
+                anchors=({"g": 0.0}, {"g": 1.0}),
+            )
+        )
+
+
+def test_non_random_walk_rejects_ignored_bounds() -> None:
+    with pytest.raises(ValueError, match="only supported for random-walk"):
+        ContextSchedule(
+            ContextScheduleConfig(
+                mode="abrupt",
+                anchors=({"g": 0.0},),
+                bounds={"g": (-1.0, 1.0)},
+            )
+        )
+
+
+def test_random_walk_rejects_start_outside_declared_bounds() -> None:
+    with pytest.raises(ValueError, match="starting anchor must lie within bounds"):
+        ContextSchedule(
+            ContextScheduleConfig(
+                mode="random_walk",
+                anchors=({"g": 2.0},),
+                bounds={"g": (-1.0, 1.0)},
+            )
+        )
+
+
+def test_context_schedule_rejects_non_mapping_anchor() -> None:
+    with pytest.raises(TypeError, match="anchors must be dictionaries"):
+        ContextSchedule(
+            ContextScheduleConfig(
+                mode="abrupt",
+                anchors=(("g", 0.0),),  # type: ignore[arg-type]
+            )
+        )
+
+
+def test_context_schedule_rejects_non_mapping_bounds() -> None:
+    with pytest.raises(TypeError, match="bounds must be a dictionary"):
+        ContextSchedule(
+            ContextScheduleConfig(
+                mode="random_walk",
+                anchors=({"g": 0.0},),
+                bounds=(("g", (-1.0, 1.0)),),  # type: ignore[arg-type]
             )
         )
 

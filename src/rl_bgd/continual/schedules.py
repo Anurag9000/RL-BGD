@@ -41,6 +41,8 @@ class ContextScheduleConfig:
             raise ValueError(f"unsupported context schedule mode: {self.mode}")
         if not self.anchors:
             raise ValueError("at least one context anchor is required")
+        if any(not isinstance(anchor, dict) for anchor in self.anchors):
+            raise TypeError("context anchors must be dictionaries")
         keys = set(self.anchors[0])
         if not keys:
             raise ValueError("context anchors cannot be empty")
@@ -76,7 +78,13 @@ class ContextScheduleConfig:
             raise ValueError("smooth schedules require at least two anchors")
         if self.mode == "periodic" and len(self.anchors) != 2:
             raise ValueError("periodic schedules require center and amplitude anchors")
+        if self.mode == "random_walk" and len(self.anchors) != 1:
+            raise ValueError("random-walk schedules require exactly one starting anchor")
         if self.bounds is not None:
+            if self.mode != "random_walk":
+                raise ValueError("context bounds are only supported for random-walk schedules")
+            if not isinstance(self.bounds, dict):
+                raise TypeError("context bounds must be a dictionary")
             if set(self.bounds) != keys:
                 raise ValueError("bounds keys must match context keys")
             for bounds in self.bounds.values():
@@ -94,6 +102,10 @@ class ContextScheduleConfig:
                     raise ValueError("context bounds must be finite")
                 if low > high:
                     raise ValueError("context lower bound exceeds upper bound")
+            start = self.anchors[0]
+            for key, (low, high) in self.bounds.items():
+                if not low <= start[key] <= high:
+                    raise ValueError("random-walk starting anchor must lie within bounds")
 
 
 class ContextSchedule:
