@@ -177,6 +177,8 @@ def test_regularizer_checkpoint_rejects_nonfinite_tensor_payload(
         owner.load_state_dict(corrupt)
 
     _assert_nested_equal(owner.state_dict(), before)
+
+
 @pytest.mark.parametrize(
     ("factory", "path"),
     [

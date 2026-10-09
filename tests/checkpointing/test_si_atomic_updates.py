@@ -54,8 +54,7 @@ def test_si_accumulation_rejects_nonfinite_arithmetic_result() -> None:
         for parameter in module.parameters():
             parameter.fill_(1e38)
     gradient = {
-        name: torch.full_like(parameter, 1e38)
-        for name, parameter in module.named_parameters()
+        name: torch.full_like(parameter, 1e38) for name, parameter in module.named_parameters()
     }
     before = deepcopy(si.state_dict())
 
@@ -75,9 +74,7 @@ def test_si_consolidation_late_corruption_is_transactional(
     if corruption == "shape":
         si.path_integral["bias"] = torch.zeros(2)
     else:
-        si.path_integral["bias"] = torch.full_like(
-            si.path_integral["bias"], float("nan")
-        )
+        si.path_integral["bias"] = torch.full_like(si.path_integral["bias"], float("nan"))
     before = deepcopy(si.state_dict())
 
     with pytest.raises((ValueError, FloatingPointError)):

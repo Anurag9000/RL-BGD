@@ -99,9 +99,7 @@ def test_importance_accumulation_rejects_broadcastable_layout_change(
 
 @pytest.mark.parametrize("regularizer_type", [EWCRegularizer, OnlineEWCRegularizer, MASRegularizer])
 def test_unchanged_model_layout_still_allows_repeated_consolidation(
-    regularizer_type: type[EWCRegularizer]
-    | type[OnlineEWCRegularizer]
-    | type[MASRegularizer],
+    regularizer_type: type[EWCRegularizer] | type[OnlineEWCRegularizer] | type[MASRegularizer],
 ) -> None:
     model = nn.Linear(1, 2)
     owner = regularizer_type()

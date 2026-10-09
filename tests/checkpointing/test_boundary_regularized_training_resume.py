@@ -168,17 +168,22 @@ def test_boundary_regularized_resume_rejects_phase_replay_progress_mismatch(
         )
     _assert_nested_equal(target_agent.state_dict(), before)
 
+
 @pytest.mark.parametrize(
     ("buffer_name", "resume_step"),
     [("replay", 7), ("phase_replay", 7), ("phase_replay", 16)],
 )
 def test_boundary_regularized_resume_rejects_insertion_clock(
-    tmp_path: Path, buffer_name: str, resume_step: int,
+    tmp_path: Path,
+    buffer_name: str,
+    resume_step: int,
 ) -> None:
     env, agent, config = _build(721)
     checkpoint = tmp_path / "invalid_clock.pt"
     train_boundary_regularized_sac(
-        env, agent, config=config,
+        env,
+        agent,
+        config=config,
         checkpoint_path=checkpoint,
         max_steps_this_call=resume_step,
     )
@@ -196,7 +201,9 @@ def test_boundary_regularized_resume_rejects_insertion_clock(
     before_env = deepcopy(target_env.state_dict())
     with pytest.raises(ValueError, match="insertion-step chronology mismatch"):
         train_boundary_regularized_sac(
-            target_env, target_agent, config=target_config,
+            target_env,
+            target_agent,
+            config=target_config,
             resume_from=checkpoint,
         )
     _assert_nested_equal(target_agent.state_dict(), before_agent)
@@ -205,7 +212,8 @@ def test_boundary_regularized_resume_rejects_insertion_clock(
 
 @pytest.mark.parametrize("buffer_name", ["replay", "phase_replay"])
 def test_boundary_regularized_resume_rejects_dropped_history(
-    tmp_path: Path, buffer_name: str,
+    tmp_path: Path,
+    buffer_name: str,
 ) -> None:
     env, agent, config = _build(722)
     checkpoint = tmp_path / "invalid_size.pt"
@@ -226,4 +234,3 @@ def test_boundary_regularized_resume_rejects_dropped_history(
             resume_from=checkpoint,
         )
     _assert_nested_equal(target_agent.state_dict(), before)
-

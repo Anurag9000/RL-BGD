@@ -20,6 +20,7 @@ def test_predictive_surprise_uses_mean_nll() -> None:
     result = estimator.observe_nll(torch.tensor([1.0, 2.0, 3.0]))
     assert result.raw == 2.0
 
+
 @pytest.mark.parametrize(
     "kwargs",
     [
@@ -58,4 +59,3 @@ def test_gaussian_transition_model_rejects_invalid_constructor_config(
     parameters.update(kwargs)
     with pytest.raises((TypeError, ValueError)):
         GaussianTransitionModel(**parameters)
-

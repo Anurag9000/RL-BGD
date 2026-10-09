@@ -125,6 +125,7 @@ def test_retention_config_rejects_nonfinite_and_coerced_values(
     with pytest.raises((TypeError, ValueError)):
         RetentionMappingConfig(**kwargs).validate()
 
+
 def test_surprise_normalizer_runtime_overflow_is_non_mutating() -> None:
     normalizer = EMASurpriseNormalizer()
     normalizer.observe(1e308)
@@ -143,4 +144,3 @@ def test_surprise_normalizer_rejects_coerced_observations(invalid: object) -> No
     with pytest.raises(TypeError, match="must be numeric"):
         normalizer.observe(invalid)
     assert normalizer.state_dict() == before
-
