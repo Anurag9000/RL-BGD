@@ -112,6 +112,32 @@ def _phase_transition_count(
     return completed_steps - latest_boundary
 
 
+def _validate_replay_checkpoint_progress(
+    state: dict[str, Any],
+    *,
+    name: str,
+    transition_count: int,
+    first_global_step: int,
+    capacity: int,
+) -> None:
+    """Bind saved replay provenance to the completed training steps."""
+
+    size = checkpoint_integer(state.get("size"), name=f"{name} size")
+    if size != min(transition_count, capacity):
+        raise ValueError(f"{name} size disagrees with checkpoint progress")
+
+    ids = state.get("transition_ids")
+    insertion_steps = state.get("insertion_steps")
+    if not isinstance(ids, torch.Tensor) or not isinstance(insertion_steps, torch.Tensor):
+        raise TypeError(f"{name} transition IDs/insertion steps must be tensors")
+    if ids.shape != (size, 1) or insertion_steps.shape != (size, 1):
+        raise ValueError(f"{name} transition IDs/insertion steps shape mismatch")
+    if ids.dtype != torch.int64 or insertion_steps.dtype != torch.int64:
+        raise ValueError(f"{name} transition IDs/insertion steps dtype mismatch")
+    if not torch.equal(insertion_steps, ids + first_global_step):
+        raise ValueError(f"{name} insertion-step chronology mismatch")
+
+
 def _checkpoint_consolidation_log(
     value: object,
     *,
@@ -241,6 +267,21 @@ def train_boundary_regularized_sac(
         )
         if phase_transition_id != expected_phase_transitions:
             raise ValueError("boundary-regularized SAC phase replay/step progress mismatch")
+
+        _validate_replay_checkpoint_progress(
+            replay_state,
+            name="boundary-regularized SAC replay",
+            transition_count=start_step,
+            first_global_step=0,
+            capacity=config.replay_capacity,
+        )
+        _validate_replay_checkpoint_progress(
+            phase_replay_state,
+            name="boundary-regularized SAC phase replay",
+            transition_count=expected_phase_transitions,
+            first_global_step=start_step - expected_phase_transitions,
+            capacity=config.replay_capacity,
+        )
 
         observation = checkpoint_observation(
             checkpoint.get("observation"),

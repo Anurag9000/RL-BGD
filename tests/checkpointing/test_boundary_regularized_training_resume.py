@@ -167,3 +167,63 @@ def test_boundary_regularized_resume_rejects_phase_replay_progress_mismatch(
             resume_from=checkpoint,
         )
     _assert_nested_equal(target_agent.state_dict(), before)
+
+@pytest.mark.parametrize(
+    ("buffer_name", "resume_step"),
+    [("replay", 7), ("phase_replay", 7), ("phase_replay", 16)],
+)
+def test_boundary_regularized_resume_rejects_insertion_clock(
+    tmp_path: Path, buffer_name: str, resume_step: int,
+) -> None:
+    env, agent, config = _build(721)
+    checkpoint = tmp_path / "invalid_clock.pt"
+    train_boundary_regularized_sac(
+        env, agent, config=config,
+        checkpoint_path=checkpoint,
+        max_steps_this_call=resume_step,
+    )
+    payload = torch.load(checkpoint, map_location="cpu", weights_only=False)
+    saved = payload[buffer_name]
+    timestamps = saved["insertion_steps"]
+    assert isinstance(timestamps, torch.Tensor) and timestamps.numel() > 0
+    altered = timestamps.clone()
+    altered[0, 0] += 1
+    saved["insertion_steps"] = altered
+    torch.save(payload, checkpoint)
+
+    target_env, target_agent, target_config = _build(721)
+    before_agent = deepcopy(target_agent.state_dict())
+    before_env = deepcopy(target_env.state_dict())
+    with pytest.raises(ValueError, match="insertion-step chronology mismatch"):
+        train_boundary_regularized_sac(
+            target_env, target_agent, config=target_config,
+            resume_from=checkpoint,
+        )
+    _assert_nested_equal(target_agent.state_dict(), before_agent)
+    _assert_nested_equal(target_env.state_dict(), before_env)
+
+
+@pytest.mark.parametrize("buffer_name", ["replay", "phase_replay"])
+def test_boundary_regularized_resume_rejects_dropped_history(
+    tmp_path: Path, buffer_name: str,
+) -> None:
+    env, agent, config = _build(722)
+    checkpoint = tmp_path / "invalid_size.pt"
+    train_boundary_regularized_sac(
+        env, agent, config=config,
+        checkpoint_path=checkpoint,
+        max_steps_this_call=7,
+    )
+    payload = torch.load(checkpoint, map_location="cpu", weights_only=False)
+    payload[buffer_name]["size"] = 6
+    torch.save(payload, checkpoint)
+
+    target_env, target_agent, target_config = _build(722)
+    before = deepcopy(target_agent.state_dict())
+    with pytest.raises(ValueError, match="size disagrees with checkpoint progress"):
+        train_boundary_regularized_sac(
+            target_env, target_agent, config=target_config,
+            resume_from=checkpoint,
+        )
+    _assert_nested_equal(target_agent.state_dict(), before)
+
