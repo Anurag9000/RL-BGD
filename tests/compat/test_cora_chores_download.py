@@ -210,6 +210,31 @@ def test_download_rejects_non_zip_payload(
         )
 
 
+def test_non_zip_rejection_never_loads_entire_archive(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Malformed large downloads must not be read fully for error reporting."""
+
+    payload = b"x" * 512
+
+    def opener(request: Request, timeout: float) -> _FakeResponse:
+        del request, timeout
+        return _FakeResponse(payload, content_type="application/octet-stream")
+
+    def forbid_read_bytes(self: Path) -> bytes:
+        raise AssertionError("non-ZIP diagnostics must use bounded reads")
+
+    monkeypatch.setattr(Path, "read_bytes", forbid_read_bytes)
+    with pytest.raises(ChoresArchiveDownloadError, match="not a ZIP archive"):
+        download_chores_archive(
+            destination=tmp_path / "invalid.zip",
+            urls=("https://invalid.example/archive",),
+            opener=opener,
+            attempts_per_url=1,
+        )
+
+
 def test_safe_extract_rejects_parent_traversal(
     tmp_path: Path,
 ) -> None:
