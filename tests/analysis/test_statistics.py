@@ -95,4 +95,3 @@ def test_bootstrap_rejects_invalid_rng_seed(invalid: object) -> None:
 def test_hierarchical_bootstrap_rejects_coerced_seed_ids(invalid: object) -> None:
     with pytest.raises((TypeError, ValueError), match="seed IDs"):
         hierarchical_bootstrap_mean({invalid: [1.0]})  # type: ignore[dict-item]
-

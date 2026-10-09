@@ -44,7 +44,7 @@ def test_sync_rejects_incompatible_shape_without_mutating_model() -> None:
 
 def test_sync_rejects_dtype_mismatch_without_mutating_model() -> None:
     source = nn.Linear(1, 1, bias=False)
-    target = HalfScale()
+    target = nn.Linear(1, 1, bias=False, dtype=torch.float16)
     posterior = DiagonalGaussianPosterior.from_module(source)
     old = target.weight.detach().clone()
 
@@ -64,7 +64,9 @@ def test_step_module_rolls_back_posterior_when_fp16_sync_overflows() -> None:
 
     with pytest.raises(FloatingPointError, match="after conversion"):
         updater.step_module(
-            module, lambda output: output, torch.ones(1, dtype=torch.float16),
+            module,
+            lambda output: output,
+            torch.ones(1, dtype=torch.float16),
             generator=torch.Generator().manual_seed(21),
         )
 

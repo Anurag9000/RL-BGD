@@ -162,9 +162,7 @@ class EMASurpriseNormalizer:
         if smoothed < 0:
             raise ValueError("surprise-normalizer smoothed surprise must be non-negative")
         if count == 0 and (
-            center != 0.0
-            or smoothed != 0.0
-            or variance != self.config.initial_variance
+            center != 0.0 or smoothed != 0.0 or variance != self.config.initial_variance
         ):
             raise ValueError("surprise-normalizer unobserved checkpoint state is inconsistent")
         self.count = count
@@ -199,6 +197,4 @@ def surprise_to_retention(
     surprise = config_finite_float(smoothed_surprise, name="smoothed_surprise")
     if surprise < 0:
         raise ValueError("smoothed_surprise must be non-negative")
-    return config.lambda_min + (1.0 - config.lambda_min) * math.exp(
-        -config.kappa * surprise
-    )
+    return config.lambda_min + (1.0 - config.lambda_min) * math.exp(-config.kappa * surprise)

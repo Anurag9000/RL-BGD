@@ -21,7 +21,9 @@ def make_updater(*, eta: float = 0.2, std: float = 0.5) -> BGDUpdater:
 
 
 def assert_unchanged(
-    updater: BGDUpdater, means: dict[str, torch.Tensor], stds: dict[str, torch.Tensor],
+    updater: BGDUpdater,
+    means: dict[str, torch.Tensor],
+    stds: dict[str, torch.Tensor],
     count: int,
 ) -> None:
     for name in means:

@@ -659,4 +659,3 @@ def test_run_artifacts_refuse_to_overwrite_a_published_run(tmp_path: Path) -> No
 
     assert {path.name: path.read_bytes() for path in root.iterdir()} == before
     assert load_run_directory(root).manifest == manifest
-
