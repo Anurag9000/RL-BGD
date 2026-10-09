@@ -18,6 +18,11 @@ from rl_bgd.utils.checkpoint_progress import (
     checkpoint_integer,
     checkpoint_nonnegative_integer,
 )
+from rl_bgd.utils.config_validation import (
+    config_boolean,
+    config_finite_float,
+    config_positive_integer,
+)
 
 
 @dataclass(frozen=True)
@@ -42,15 +47,20 @@ class BGDConfig:
     evidence_temperature: float = 1.0
 
     def validate(self) -> None:
-        if self.eta <= 0:
+        eta = config_finite_float(self.eta, name="BGD eta")
+        samples = config_positive_integer(self.mc_samples, name="BGD mc_samples")
+        antithetic = config_boolean(self.antithetic, name="BGD antithetic")
+        retention = config_finite_float(self.temper_retention, name="BGD temper_retention")
+        temperature = config_finite_float(
+            self.evidence_temperature, name="BGD evidence_temperature"
+        )
+        if eta <= 0:
             raise ValueError("eta must be strictly positive")
-        if self.mc_samples < 1:
-            raise ValueError("mc_samples must be >= 1")
-        if self.antithetic and self.mc_samples % 2:
+        if antithetic and samples % 2:
             raise ValueError("antithetic sampling requires an even mc_samples")
-        if not 0.0 <= self.temper_retention <= 1.0:
+        if not 0.0 <= retention <= 1.0:
             raise ValueError("temper_retention must lie in [0, 1]")
-        if self.evidence_temperature <= 0:
+        if temperature <= 0:
             raise ValueError("evidence_temperature must be strictly positive")
 
 
@@ -82,7 +92,10 @@ class BGDUpdater:
         self.step_count = 0
 
     def _temper(self, retention: float | None) -> float:
-        applied = self.config.temper_retention if retention is None else retention
+        applied = config_finite_float(
+            self.config.temper_retention if retention is None else retention,
+            name="BGD retention override",
+        )
         if not 0.0 <= applied <= 1.0:
             raise ValueError("retention override must lie in [0, 1]")
         if applied == 1.0:
@@ -104,10 +117,11 @@ class BGDUpdater:
         self,
         evidence_temperature: float | None,
     ) -> float:
-        applied = (
+        applied = config_finite_float(
             self.config.evidence_temperature
             if evidence_temperature is None
-            else float(evidence_temperature)
+            else evidence_temperature,
+            name="BGD evidence_temperature override",
         )
         if applied <= 0:
             raise ValueError("evidence_temperature override must be strictly positive")
@@ -115,6 +129,8 @@ class BGDUpdater:
 
     @staticmethod
     def _check_scalar_loss(loss: Tensor, name: str) -> None:
+        if not isinstance(loss, Tensor):
+            raise TypeError(f"BGD {name} objective must return a tensor")
         if loss.ndim != 0:
             raise ValueError(f"BGD {name} objective must return a scalar loss")
         if not torch.isfinite(loss):
@@ -128,10 +144,40 @@ class BGDUpdater:
         retention: float | None = None,
         evidence_temperature: float | None = None,
     ) -> BGDStepResult:
-        """Take one BGD step using distinct mean/evidence gradient channels."""
+        """Apply a BGD update atomically with respect to posterior state and progress."""
 
-        applied_retention = self._temper(retention)
+        before_means = {name: value.clone() for name, value in self.posterior.means.items()}
+        before_stds = {name: value.clone() for name, value in self.posterior.stds.items()}
+        before_step_count = self.step_count
+        try:
+            return self._step_impl(
+                objective,
+                generator=generator,
+                retention=retention,
+                evidence_temperature=evidence_temperature,
+            )
+        except Exception:
+            with torch.no_grad():
+                for name, value in before_means.items():
+                    self.posterior.means[name].copy_(value)
+                for name, value in before_stds.items():
+                    self.posterior.stds[name].copy_(value)
+            self.step_count = before_step_count
+            raise
+
+    def _step_impl(
+        self,
+        objective: Objective,
+        *,
+        generator: torch.Generator | None,
+        retention: float | None,
+        evidence_temperature: float | None,
+    ) -> BGDStepResult:
+        """Evaluate samples and commit a numerically checked BGD update."""
+
         applied_evidence_temperature = self._evidence_temperature(evidence_temperature)
+        applied_retention = self._temper(retention)
+        self.posterior.assert_finite()
         epsilons = self.posterior.sample_epsilons(
             samples=self.config.mc_samples,
             antithetic=self.config.antithetic,
@@ -153,6 +199,8 @@ class BGDUpdater:
                 self._check_scalar_loss(uncertainty_loss, "uncertainty")
                 tempered_mean_loss = applied_evidence_temperature * mean_loss
                 tempered_uncertainty_loss = applied_evidence_temperature * uncertainty_loss
+                self._check_scalar_loss(tempered_mean_loss, "scaled mean")
+                self._check_scalar_loss(tempered_uncertainty_loss, "scaled uncertainty")
                 grads_tuple = torch.autograd.grad(
                     tempered_mean_loss,
                     tuple(sampled[name] for name in ordered_names),
@@ -171,6 +219,7 @@ class BGDUpdater:
                 uncertainty_loss = objective_value
                 self._check_scalar_loss(mean_loss, "mean")
                 tempered_mean_loss = applied_evidence_temperature * mean_loss
+                self._check_scalar_loss(tempered_mean_loss, "scaled mean")
                 grads_tuple = torch.autograd.grad(
                     tempered_mean_loss,
                     tuple(sampled[name] for name in ordered_names),
@@ -178,6 +227,10 @@ class BGDUpdater:
                     create_graph=False,
                 )
                 uncertainty_grads_tuple = grads_tuple
+
+            for gradient in (*grads_tuple, *uncertainty_grads_tuple):
+                if not torch.isfinite(gradient).all().item():
+                    raise FloatingPointError("nonfinite BGD gradient")
 
             gradients.append(
                 {
@@ -211,6 +264,9 @@ class BGDUpdater:
             uncertainty_gradients,
             epsilons,
         )
+        for signal in (g_bar, c, uncertainty_g_bar):
+            if any(not torch.isfinite(value).all().item() for value in signal.values()):
+                raise FloatingPointError("nonfinite aggregated BGD statistics")
         with torch.no_grad():
             for name in ordered_names:
                 sigma = self.posterior.stds[name]
@@ -223,8 +279,10 @@ class BGDUpdater:
                 new_sigma -= 0.5 * sigma.square() * curvature_signal
                 sigma.copy_(new_sigma)
 
-        self.posterior.clamp_stds_()
         self.posterior.assert_finite()
+        if any(torch.any(std <= 0).item() for std in self.posterior.stds.values()):
+            raise FloatingPointError("nonpositive updated BGD standard deviation")
+        self.posterior.clamp_stds_()
         self.step_count += 1
 
         gradient_norm = (

@@ -212,3 +212,15 @@ reject invalid state before mutating the active regularizer. SI's online
 path-integral accumulation and boundary consolidation stage every parameter
 before committing state, rejecting invalid later tensors and arithmetic overflow
 without leaving earlier parameters partially updated.
+
+## BGD failed-update behavior
+
+BGD updater controls and per-step retention/temperature overrides reject nonfinite
+or coerced numeric values. Every posterior update checks scaled objectives,
+gradients, aggregated Monte Carlo signals, and the unconstrained updated
+mean/standard deviation before accepting the update. If an update fails at
+any stage, the updater restores its previous posterior means, standard
+deviations, and completed-step count, including changes from adaptive
+posterior tempering. This guarantee covers updater state, not user-objective
+side effects or consumed random-number-generator draws. It does not imply
+that training or benchmark experiments have been executed.
