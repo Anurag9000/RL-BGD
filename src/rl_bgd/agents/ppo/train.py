@@ -23,6 +23,10 @@ from rl_bgd.utils.checkpoint_progress import (
     checkpoint_ppo_progress,
 )
 from rl_bgd.utils.checkpoint_transaction import transactional_state_load
+from rl_bgd.utils.config_validation import (
+    config_nonnegative_integer,
+    config_positive_integer,
+)
 from rl_bgd.utils.randomness import (
     load_random_state_dict,
     preserved_random_state,
@@ -70,6 +74,11 @@ class PPOTrainConfig:
     total_steps: int = 10_000
     rollout_steps: int = 1024
     seed: int = 0
+
+    def validate(self) -> None:
+        config_positive_integer(self.total_steps, name="total_steps")
+        config_positive_integer(self.rollout_steps, name="rollout_steps")
+        config_nonnegative_integer(self.seed, name="seed")
 
 
 def _environment_state_dict(env: ContinuousTensorEnv) -> dict[str, Any]:
@@ -119,14 +128,19 @@ def train_ppo(
     resume_from: str | Path | None = None,
     max_rollouts_this_call: int | None = None,
 ) -> dict[str, object]:
-    if config.total_steps < 1 or config.rollout_steps < 1:
-        raise ValueError("PPO training budgets must be positive")
-    if checkpoint_interval_rollouts is not None and checkpoint_interval_rollouts < 1:
-        raise ValueError("checkpoint_interval_rollouts must be positive")
+    config.validate()
+    if checkpoint_interval_rollouts is not None:
+        config_positive_integer(
+            checkpoint_interval_rollouts,
+            name="checkpoint_interval_rollouts",
+        )
     if checkpoint_interval_rollouts is not None and checkpoint_path is None:
         raise ValueError("checkpoint_interval_rollouts requires checkpoint_path")
-    if max_rollouts_this_call is not None and max_rollouts_this_call < 1:
-        raise ValueError("max_rollouts_this_call must be positive")
+    if max_rollouts_this_call is not None:
+        config_positive_integer(
+            max_rollouts_this_call,
+            name="max_rollouts_this_call",
+        )
 
     episode_return = 0.0
     completed_returns: list[float] = []

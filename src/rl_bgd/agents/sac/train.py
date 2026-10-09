@@ -22,6 +22,10 @@ from rl_bgd.utils.checkpoint_payload import (
 )
 from rl_bgd.utils.checkpoint_progress import checkpoint_integer, checkpoint_step
 from rl_bgd.utils.checkpoint_transaction import transactional_state_load
+from rl_bgd.utils.config_validation import (
+    config_nonnegative_integer,
+    config_positive_integer,
+)
 from rl_bgd.utils.randomness import (
     load_random_state_dict,
     preserved_random_state,
@@ -43,6 +47,16 @@ class SACTrainConfig:
     replay_capacity: int = 100_000
     updates_per_step: int = 1
     seed: int = 0
+
+    def validate(self) -> None:
+        config_positive_integer(self.total_steps, name="total_steps")
+        config_nonnegative_integer(self.random_steps, name="random_steps")
+        config_positive_integer(self.batch_size, name="batch_size")
+        config_positive_integer(self.replay_capacity, name="replay_capacity")
+        config_positive_integer(self.updates_per_step, name="updates_per_step")
+        config_nonnegative_integer(self.seed, name="seed")
+        if self.replay_capacity < self.batch_size:
+            raise ValueError("replay_capacity must be at least batch_size")
 
 
 def _environment_state_dict(env: ContinuousTensorEnv) -> dict[str, Any]:
@@ -95,20 +109,13 @@ def train_sac(
     resume_from: str | Path | None = None,
     max_steps_this_call: int | None = None,
 ) -> dict[str, object]:
-    if (
-        config.total_steps < 1
-        or config.batch_size < 1
-        or config.replay_capacity < config.batch_size
-    ):
-        raise ValueError("invalid SAC training budget/replay configuration")
-    if config.random_steps < 0 or config.updates_per_step < 1:
-        raise ValueError("invalid SAC warmup/update configuration")
-    if checkpoint_interval is not None and checkpoint_interval < 1:
-        raise ValueError("checkpoint_interval must be positive")
+    config.validate()
+    if checkpoint_interval is not None:
+        config_positive_integer(checkpoint_interval, name="checkpoint_interval")
     if checkpoint_interval is not None and checkpoint_path is None:
         raise ValueError("checkpoint_interval requires checkpoint_path")
-    if max_steps_this_call is not None and max_steps_this_call < 1:
-        raise ValueError("max_steps_this_call must be positive")
+    if max_steps_this_call is not None:
+        config_positive_integer(max_steps_this_call, name="max_steps_this_call")
 
     action_dim = int(env.action_space.low.numel())
     observation_dim = int(env.observation_space.low.numel())

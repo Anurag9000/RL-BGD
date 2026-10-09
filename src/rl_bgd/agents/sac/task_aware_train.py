@@ -10,6 +10,11 @@ import torch
 from rl_bgd.agents.sac.task_aware_agent import TaskAwareSACAgent
 from rl_bgd.envs.protocols import TaskAwareTensorEnv
 from rl_bgd.replay.buffer import ReplayBuffer
+from rl_bgd.utils.config_validation import (
+    config_boolean,
+    config_nonnegative_integer,
+    config_positive_integer,
+)
 
 StageObserver = Callable[[int, TaskAwareSACAgent], None]
 UpdateObserver = Callable[[int, dict[str, float]], None]
@@ -31,12 +36,25 @@ class CanonicalSACTrainConfig:
     agent_policy_exploration: bool = False
 
     def validate(self) -> None:
-        if self.total_steps < 1:
-            raise ValueError("total_steps must be positive")
-        if self.start_steps < 0 or self.update_after < 0:
-            raise ValueError("exploration/update delays must be non-negative")
-        if self.update_every < 1 or self.batch_size < 1:
-            raise ValueError("update_every and batch_size must be positive")
+        config_positive_integer(self.total_steps, name="total_steps")
+        config_nonnegative_integer(self.start_steps, name="start_steps")
+        config_nonnegative_integer(self.update_after, name="update_after")
+        config_positive_integer(self.update_every, name="update_every")
+        config_positive_integer(self.batch_size, name="batch_size")
+        config_positive_integer(self.replay_capacity, name="replay_capacity")
+        config_nonnegative_integer(self.seed, name="seed")
+        config_boolean(
+            self.reset_buffer_on_task_change,
+            name="reset_buffer_on_task_change",
+        )
+        config_boolean(
+            self.reset_optimizer_on_task_change,
+            name="reset_optimizer_on_task_change",
+        )
+        config_boolean(
+            self.agent_policy_exploration,
+            name="agent_policy_exploration",
+        )
         if self.replay_capacity < self.batch_size:
             raise ValueError("replay_capacity must be at least batch_size")
 
