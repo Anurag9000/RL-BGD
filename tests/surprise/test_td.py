@@ -94,6 +94,7 @@ def test_td_surprise_checkpoint_round_trip_preserves_future_statistics() -> None
     actual = restored.observe(torch.tensor([4.0, 5.0, 6.0]))
     assert actual == expected
 
+
 @pytest.mark.parametrize(
     ("field", "invalid"),
     [
@@ -123,4 +124,23 @@ def test_retention_config_rejects_nonfinite_and_coerced_values(
     kwargs = {field: invalid}
     with pytest.raises((TypeError, ValueError)):
         RetentionMappingConfig(**kwargs).validate()
+
+def test_surprise_normalizer_runtime_overflow_is_non_mutating() -> None:
+    normalizer = EMASurpriseNormalizer()
+    normalizer.observe(1e308)
+    before = normalizer.state_dict()
+
+    with pytest.raises(FloatingPointError, match="non-finite statistics"):
+        normalizer.observe(-1e308)
+
+    assert normalizer.state_dict() == before
+
+
+@pytest.mark.parametrize("invalid", [True, "1.0"])
+def test_surprise_normalizer_rejects_coerced_observations(invalid: object) -> None:
+    normalizer = EMASurpriseNormalizer()
+    before = normalizer.state_dict()
+    with pytest.raises(TypeError, match="must be numeric"):
+        normalizer.observe(invalid)
+    assert normalizer.state_dict() == before
 
