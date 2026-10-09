@@ -8,6 +8,7 @@ from urllib.request import Request
 
 import pytest
 
+from rl_bgd.compat import cora_chores_download as chores_download
 from rl_bgd.compat.cora_chores_download import (
     ChoresArchiveDownloadError,
     download_chores_archive,
@@ -233,6 +234,34 @@ def test_non_zip_rejection_never_loads_entire_archive(
             opener=opener,
             attempts_per_url=1,
         )
+
+
+def test_download_attempts_use_distinct_temporary_paths(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Separate download attempts must never reuse a staging pathname."""
+
+    destinations: list[Path] = []
+
+    def reject_candidate(**kwargs: object) -> int:
+        destination = kwargs["destination"]
+        assert isinstance(destination, Path)
+        destinations.append(destination)
+        raise ChoresArchiveDownloadError("invalid candidate")
+
+    monkeypatch.setattr(chores_download, "_download_candidate", reject_candidate)
+    for _ in range(2):
+        with pytest.raises(ChoresArchiveDownloadError, match="no CORA CHORES archive"):
+            download_chores_archive(
+                destination=tmp_path / "archive.zip",
+                urls=("https://invalid.example/archive",),
+                attempts_per_url=1,
+            )
+
+    assert len(destinations) == 2
+    assert destinations[0] != destinations[1]
+    assert all(not destination.exists() for destination in destinations)
 
 
 def test_safe_extract_rejects_parent_traversal(

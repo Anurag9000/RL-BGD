@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import tempfile
 import zipfile
 from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass
@@ -192,9 +193,13 @@ def download_chores_archive(
     failures: list[str] = []
     for candidate_index, url in enumerate(candidates):
         for attempt_index in range(attempts_per_url):
-            temporary = target.with_name(
-                f".{target.name}.candidate-{candidate_index}-attempt-{attempt_index}.tmp"
+            descriptor, temporary_name = tempfile.mkstemp(
+                prefix=f".{target.name}.candidate-{candidate_index}-attempt-{attempt_index}-",
+                suffix=".tmp",
+                dir=target.parent,
             )
+            os.close(descriptor)
+            temporary = Path(temporary_name)
             try:
                 bytes_written = _download_candidate(
                     url=url,
