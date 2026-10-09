@@ -151,9 +151,7 @@ class EWCRegularizer:
                 importance,
                 name="EWC checkpoint importance",
             )
-            staged_states.append(
-                EWCConsolidation(anchor=anchor, importance=importance)
-            )
+            staged_states.append(EWCConsolidation(anchor=anchor, importance=importance))
         self.strength = strength
         self.states = staged_states
 

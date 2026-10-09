@@ -111,10 +111,13 @@ def train_recurrent_ppo(
             resume_from,
             device=agent.device,
         )
-        if checkpoint_integer(
-            checkpoint.get("version"),
-            name="recurrent PPO training checkpoint version",
-        ) != _RECURRENT_PPO_TRAINING_CHECKPOINT_VERSION:
+        if (
+            checkpoint_integer(
+                checkpoint.get("version"),
+                name="recurrent PPO training checkpoint version",
+            )
+            != _RECURRENT_PPO_TRAINING_CHECKPOINT_VERSION
+        ):
             raise ValueError("unsupported recurrent PPO training checkpoint version")
         if checkpoint.get("train_config") != asdict(config):
             raise ValueError("recurrent PPO training checkpoint configuration mismatch")

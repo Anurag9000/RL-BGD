@@ -372,9 +372,7 @@ class RecurrentRolloutBuffer:
             checked_tensors[name] = source
 
         if size > 1:
-            previous_done = (
-                checked_tensors["terminated"][:-1] | checked_tensors["truncated"][:-1]
-            )
+            previous_done = checked_tensors["terminated"][:-1] | checked_tensors["truncated"][:-1]
             if not torch.equal(checked_tensors["episode_starts"][1:], previous_done):
                 raise ValueError("recurrent rollout episode_start boundary mismatch")
 
@@ -406,15 +404,12 @@ class RecurrentRolloutBuffer:
             raise ValueError("empty recurrent rollout cannot have computed advantages")
 
         prepared_tensors = {
-            name: source.to(device=self.device).clone()
-            for name, source in checked_tensors.items()
+            name: source.to(device=self.device).clone() for name, source in checked_tensors.items()
         }
         prepared_advantages = (
             None if advantages is None else advantages.to(device=self.device).clone()
         )
-        prepared_returns = (
-            None if returns is None else returns.to(device=self.device).clone()
-        )
+        prepared_returns = None if returns is None else returns.to(device=self.device).clone()
 
         for name, target in fields.items():
             target[:size].copy_(prepared_tensors[name])

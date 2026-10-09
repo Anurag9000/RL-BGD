@@ -132,10 +132,13 @@ def train_sac(
             resume_from,
             device=agent.device,
         )
-        if checkpoint_integer(
-            checkpoint.get("version"),
-            name="SAC training checkpoint version",
-        ) != _SAC_TRAINING_CHECKPOINT_VERSION:
+        if (
+            checkpoint_integer(
+                checkpoint.get("version"),
+                name="SAC training checkpoint version",
+            )
+            != _SAC_TRAINING_CHECKPOINT_VERSION
+        ):
             raise ValueError("unsupported SAC training checkpoint version")
         if checkpoint.get("train_config") != asdict(config):
             raise ValueError("SAC training checkpoint configuration mismatch")

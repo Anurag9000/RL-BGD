@@ -145,10 +145,13 @@ def train_recurrent_sac(
             resume_from,
             device=agent.device,
         )
-        if checkpoint_integer(
-            checkpoint.get("version"),
-            name="recurrent SAC training checkpoint version",
-        ) != _RECURRENT_SAC_TRAINING_CHECKPOINT_VERSION:
+        if (
+            checkpoint_integer(
+                checkpoint.get("version"),
+                name="recurrent SAC training checkpoint version",
+            )
+            != _RECURRENT_SAC_TRAINING_CHECKPOINT_VERSION
+        ):
             raise ValueError("unsupported recurrent SAC training checkpoint version")
         if checkpoint.get("train_config") != asdict(config):
             raise ValueError("recurrent SAC training checkpoint configuration mismatch")

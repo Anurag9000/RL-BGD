@@ -141,10 +141,13 @@ def train_ppo(
             resume_from,
             device=agent.device,
         )
-        if checkpoint_integer(
-            checkpoint.get("version"),
-            name="PPO training checkpoint version",
-        ) != _PPO_TRAINING_CHECKPOINT_VERSION:
+        if (
+            checkpoint_integer(
+                checkpoint.get("version"),
+                name="PPO training checkpoint version",
+            )
+            != _PPO_TRAINING_CHECKPOINT_VERSION
+        ):
             raise ValueError("unsupported PPO training checkpoint version")
         if checkpoint.get("train_config") != asdict(config):
             raise ValueError("PPO training checkpoint configuration mismatch")

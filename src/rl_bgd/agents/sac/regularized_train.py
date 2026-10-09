@@ -120,9 +120,7 @@ def _checkpoint_consolidation_log(
 ) -> list[dict[str, float]]:
     if not isinstance(value, list):
         raise TypeError("boundary-regularized SAC consolidation_log must be a list")
-    expected_steps = [
-        boundary for boundary in consolidation_steps if boundary <= completed_steps
-    ]
+    expected_steps = [boundary for boundary in consolidation_steps if boundary <= completed_steps]
     if len(value) != len(expected_steps):
         raise ValueError(
             "boundary-regularized SAC consolidation log disagrees with checkpoint progress"
@@ -130,31 +128,23 @@ def _checkpoint_consolidation_log(
 
     result: list[dict[str, float]] = []
     previous_count = 0
-    for index, (entry, expected_step) in enumerate(
-        zip(value, expected_steps, strict=True)
-    ):
+    for index, (entry, expected_step) in enumerate(zip(value, expected_steps, strict=True)):
         metrics = checkpoint_float_mapping(
             entry,
             name=f"boundary-regularized SAC consolidation_log[{index}]",
         )
         if set(metrics) != {"environment_step", "consolidation_count"}:
-            raise ValueError(
-                "boundary-regularized SAC consolidation log fields are invalid"
-            )
+            raise ValueError("boundary-regularized SAC consolidation log fields are invalid")
         environment_step = metrics["environment_step"]
         consolidation_count = metrics["consolidation_count"]
         if not environment_step.is_integer() or int(environment_step) != expected_step:
-            raise ValueError(
-                "boundary-regularized SAC consolidation log step is inconsistent"
-            )
+            raise ValueError("boundary-regularized SAC consolidation log step is inconsistent")
         if (
             not consolidation_count.is_integer()
             or int(consolidation_count) < 1
             or int(consolidation_count) <= previous_count
         ):
-            raise ValueError(
-                "boundary-regularized SAC consolidation count is inconsistent"
-            )
+            raise ValueError("boundary-regularized SAC consolidation count is inconsistent")
         previous_count = int(consolidation_count)
         result.append(metrics)
     return result
@@ -194,9 +184,7 @@ def train_boundary_regularized_sac(
     replay = new_replay(config.replay_capacity)
     phase_replay = new_replay(config.replay_capacity)
     train_generator = torch.Generator(device=agent.device).manual_seed(config.seed + 17)
-    consolidation_generator = torch.Generator(device=agent.device).manual_seed(
-        config.seed + 9_001
-    )
+    consolidation_generator = torch.Generator(device=agent.device).manual_seed(config.seed + 9_001)
 
     start_step = 0
     episode_return = 0.0
@@ -219,9 +207,7 @@ def train_boundary_regularized_sac(
         if version != _BOUNDARY_REGULARIZED_SAC_CHECKPOINT_VERSION:
             raise ValueError("unsupported boundary-regularized SAC checkpoint version")
         if checkpoint.get("train_config") != asdict(config):
-            raise ValueError(
-                "boundary-regularized SAC checkpoint configuration mismatch"
-            )
+            raise ValueError("boundary-regularized SAC checkpoint configuration mismatch")
         start_step = checkpoint_step(
             checkpoint.get("next_step"),
             name="boundary-regularized SAC checkpoint next_step",
@@ -234,25 +220,17 @@ def train_boundary_regularized_sac(
         environment_state = checkpoint.get("environment")
         if not isinstance(agent_state, dict):
             raise TypeError("boundary-regularized SAC agent checkpoint must be a dictionary")
-        if not isinstance(replay_state, dict) or not isinstance(
-            phase_replay_state, dict
-        ):
-            raise TypeError(
-                "boundary-regularized SAC replay checkpoints must be dictionaries"
-            )
+        if not isinstance(replay_state, dict) or not isinstance(phase_replay_state, dict):
+            raise TypeError("boundary-regularized SAC replay checkpoints must be dictionaries")
         if not isinstance(environment_state, dict):
-            raise TypeError(
-                "boundary-regularized SAC environment checkpoint must be a dictionary"
-            )
+            raise TypeError("boundary-regularized SAC environment checkpoint must be a dictionary")
 
         replay_transition_id = checkpoint_integer(
             replay_state.get("next_transition_id"),
             name="boundary-regularized SAC replay next_transition_id",
         )
         if replay_transition_id != start_step:
-            raise ValueError(
-                "boundary-regularized SAC replay/step progress mismatch"
-            )
+            raise ValueError("boundary-regularized SAC replay/step progress mismatch")
         phase_transition_id = checkpoint_integer(
             phase_replay_state.get("next_transition_id"),
             name="boundary-regularized SAC phase replay next_transition_id",
@@ -262,9 +240,7 @@ def train_boundary_regularized_sac(
             config.consolidation_steps,
         )
         if phase_transition_id != expected_phase_transitions:
-            raise ValueError(
-                "boundary-regularized SAC phase replay/step progress mismatch"
-            )
+            raise ValueError("boundary-regularized SAC phase replay/step progress mismatch")
 
         observation = checkpoint_observation(
             checkpoint.get("observation"),
@@ -300,9 +276,7 @@ def train_boundary_regularized_sac(
         )
         process_rng = checkpoint.get("process_rng")
         if not isinstance(process_rng, dict):
-            raise TypeError(
-                "boundary-regularized SAC process RNG checkpoint must be a dictionary"
-            )
+            raise TypeError("boundary-regularized SAC process RNG checkpoint must be a dictionary")
         with preserved_random_state():
             load_random_state_dict(process_rng)
 
@@ -323,9 +297,7 @@ def train_boundary_regularized_sac(
                 "phase_replay": phase_replay.state_dict(),
                 "environment": _environment_state_dict(env),
                 "train_generator_state": train_generator.get_state().clone(),
-                "consolidation_generator_state": (
-                    consolidation_generator.get_state().clone()
-                ),
+                "consolidation_generator_state": (consolidation_generator.get_state().clone()),
                 "process_rng": random_state_dict(),
             }
 
@@ -335,9 +307,7 @@ def train_boundary_regularized_sac(
             phase_replay.load_state_dict(payload["phase_replay"])
             _load_environment_state(env, payload["environment"])
             train_generator.set_state(payload["train_generator_state"].cpu())
-            consolidation_generator.set_state(
-                payload["consolidation_generator_state"].cpu()
-            )
+            consolidation_generator.set_state(payload["consolidation_generator_state"].cpu())
             load_random_state_dict(payload["process_rng"])
 
         transactional_state_load(
@@ -370,13 +340,9 @@ def train_boundary_regularized_sac(
                 "episode_return": episode_return,
                 "completed_returns": list(completed_returns),
                 "last_metrics": dict(last_metrics),
-                "consolidation_log": [
-                    dict(entry) for entry in consolidation_log
-                ],
+                "consolidation_log": [dict(entry) for entry in consolidation_log],
                 "train_generator_state": train_generator.get_state().clone(),
-                "consolidation_generator_state": (
-                    consolidation_generator.get_state().clone()
-                ),
+                "consolidation_generator_state": (consolidation_generator.get_state().clone()),
                 "process_rng": random_state_dict(),
             },
         )
@@ -452,9 +418,7 @@ def train_boundary_regularized_sac(
         "completed": call_end >= config.total_steps,
         "episodes": len(completed_returns),
         "mean_episode_return": (
-            sum(completed_returns) / len(completed_returns)
-            if completed_returns
-            else float("nan")
+            sum(completed_returns) / len(completed_returns) if completed_returns else float("nan")
         ),
         "final_10_mean_return": (
             sum(completed_returns[-10:]) / min(10, len(completed_returns))

@@ -355,9 +355,7 @@ class UCLPPOAgent:
             "bias_sigma",
         }
         restored: list[UCLLayerSnapshot] = []
-        for index, (item, expected) in enumerate(
-            zip(saved, reference, strict=True)
-        ):
+        for index, (item, expected) in enumerate(zip(saved, reference, strict=True)):
             if not isinstance(item, dict):
                 raise TypeError(f"{name}[{index}] must be a dictionary")
             if set(item) != required:
@@ -373,13 +371,9 @@ class UCLPPOAgent:
                 if value.dtype != expected_value.dtype:
                     raise ValueError(f"{name}[{index}].{field} dtype mismatch")
                 if not torch.isfinite(value).all().item():
-                    raise ValueError(
-                        f"{name}[{index}].{field} contains non-finite values"
-                    )
+                    raise ValueError(f"{name}[{index}].{field} contains non-finite values")
                 if field.endswith("_sigma") and torch.any(value <= 0).item():
-                    raise ValueError(
-                        f"{name}[{index}].{field} must be strictly positive"
-                    )
+                    raise ValueError(f"{name}[{index}].{field} must be strictly positive")
                 prepared[field] = value.detach().to(device=device).clone()
             restored.append(
                 UCLLayerSnapshot(
