@@ -86,11 +86,7 @@ def post_change_auc(
         raise ValueError("window_steps must be positive and finite")
     x, y = _validated_trace(steps, values)
     window_end = switch_step + window_steps
-    if (
-        not math.isfinite(window_end)
-        or switch_step < x[0]
-        or window_end > x[-1]
-    ):
+    if not math.isfinite(window_end) or switch_step < x[0] or window_end > x[-1]:
         raise ValueError("post-change window must be covered by the observed trace")
 
     interior = x[(x > switch_step) & (x < window_end)]

@@ -38,7 +38,6 @@ def test_recurrence_metrics() -> None:
     assert result.recovered_performance == pytest.approx(8.5)
 
 
-
 @pytest.mark.parametrize(
     ("steps", "values"),
     [
@@ -71,9 +70,7 @@ def test_adaptation_threshold_rejects_nonfinite_parameters(field: str) -> None:
 def test_post_change_auc_interpolates_exact_window_boundaries() -> None:
     steps = [0.0, 10.0, 20.0]
     values = [0.0, 10.0, 20.0]
-    assert post_change_auc(
-        steps, values, switch_step=5.0, window_steps=10.0
-    ) == pytest.approx(10.0)
+    assert post_change_auc(steps, values, switch_step=5.0, window_steps=10.0) == pytest.approx(10.0)
     assert post_change_auc(
         steps,
         values,
