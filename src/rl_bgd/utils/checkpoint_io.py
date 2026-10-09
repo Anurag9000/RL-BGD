@@ -10,8 +10,21 @@ from typing import Any
 import torch
 
 
+def _fsync_directory(path: Path) -> None:
+    """Persist a directory entry after atomic publication on POSIX systems."""
+
+    if os.name == "nt":
+        return
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    descriptor = os.open(path, flags)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
 def save_training_checkpoint(path: str | Path, state: dict[str, Any]) -> None:
-    """Save with an fsynced, same-directory staging file and atomic replacement.
+    """Save with fsynced staging bytes and crash-durable atomic publication.
 
     Parallel writers use independent staging files. If multiple runs target the
     same destination, the last completed replacement wins; run IDs should still
@@ -33,6 +46,7 @@ def save_training_checkpoint(path: str | Path, state: dict[str, Any]) -> None:
             output.flush()
             os.fsync(output.fileno())
         os.replace(temporary, destination)
+        _fsync_directory(destination.parent)
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)

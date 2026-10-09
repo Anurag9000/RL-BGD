@@ -1,5 +1,6 @@
 """Atomic save preserves prior checkpoint and isolates concurrent staging files."""
 
+import os
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Barrier, Lock
@@ -20,6 +21,24 @@ def test_atomic_save_round_trip(tmp_path: Path) -> None:
         torch.tensor([2.0]),
     )
     assert list(target.parent.glob(".model.pt.*.tmp")) == []
+
+
+def test_atomic_save_fsyncs_parent_directory_after_replace(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    target = tmp_path / "model.pt"
+    original_fsync = os.fsync
+    calls: list[int] = []
+
+    def observed_fsync(descriptor: int) -> None:
+        calls.append(descriptor)
+        original_fsync(descriptor)
+
+    monkeypatch.setattr(os, "fsync", observed_fsync)
+    save_training_checkpoint(target, {"value": torch.tensor([3.0])})
+
+    expected_calls = 1 if os.name == "nt" else 2
+    assert len(calls) == expected_calls
 
 
 def test_failed_save_leaves_last_complete_checkpoint(tmp_path: Path, monkeypatch: Any) -> None:
