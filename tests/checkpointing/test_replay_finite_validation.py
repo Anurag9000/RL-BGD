@@ -90,6 +90,7 @@ def test_replay_rejects_boolean_version_without_mutating_state(recurrent: bool) 
         target.load_state_dict(corrupt)
     _assert_same_state(before, target.state_dict())
 
+
 class _ReplayTransferFailTensor(torch.Tensor):
     @staticmethod
     def __new__(
@@ -125,6 +126,7 @@ def test_replay_transfer_failure_does_not_mutate_live_state(recurrent: bool) -> 
 
     _assert_same_state(before, target.state_dict())
 
+
 def test_sequence_replay_checkpoint_validates_wrapped_episode_boundaries() -> None:
     source = SequenceReplayBuffer(3, 1, 1)
     for index in range(5):
@@ -158,4 +160,3 @@ def test_sequence_replay_checkpoint_validates_wrapped_episode_boundaries() -> No
     with pytest.raises(ValueError, match="episode_start boundary mismatch"):
         restored.load_state_dict(corrupt)
     _assert_same_state(before, restored.state_dict())
-

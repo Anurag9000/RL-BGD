@@ -167,7 +167,6 @@ def test_lqr_checkpoint_version_is_not_coerced(invalid_version: object) -> None:
     with pytest.raises(TypeError, match="must be an integer"):
         env.load_state_dict(state)
 
-
 def test_lqr_checkpoint_generator_rejection_is_non_mutating() -> None:
     source = LinearQuadraticControlEnv(process_noise=0.1)
     source.reset(seed=11)

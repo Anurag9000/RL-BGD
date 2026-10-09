@@ -109,6 +109,7 @@ def test_previous_transition_context_checkpoint_round_trip() -> None:
     torch.testing.assert_close(actual[0], expected[0])
     assert actual[1:] == expected[1:]
 
+
 class PartiallyFailingCheckpointEnv(TinyEnv):
     def __init__(self) -> None:
         super().__init__()
@@ -136,7 +137,6 @@ def test_previous_transition_context_checkpoint_version_is_not_coerced(
 
     with pytest.raises(TypeError, match="must be an integer"):
         env.load_state_dict(state)
-
 
 def test_previous_transition_context_rolls_back_partial_nested_restore() -> None:
     base = PartiallyFailingCheckpointEnv()

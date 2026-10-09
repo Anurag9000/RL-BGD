@@ -135,6 +135,7 @@ def test_updater_checkpoint_rejects_extra_config_keys() -> None:
     with pytest.raises(ValueError, match="config mismatch"):
         updater.load_state_dict(state)
 
+
 def _posterior_state_equal(
     left: dict[str, object],
     right: dict[str, object],
@@ -227,4 +228,3 @@ def test_bgd_updater_checkpoint_version_is_not_coerced(invalid_version: object) 
     state["version"] = invalid_version
     with pytest.raises(TypeError, match="must be an integer"):
         updater.load_state_dict(state)
-

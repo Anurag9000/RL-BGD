@@ -112,6 +112,7 @@ def test_si_late_field_failure_does_not_mutate_hyperparameters() -> None:
 
     _assert_nested_equal(target.state_dict(), before)
 
+
 def _consolidated_ewc() -> EWCRegularizer:
     owner = EWCRegularizer()
     model = nn.Linear(2, 1)
@@ -176,8 +177,6 @@ def test_regularizer_checkpoint_rejects_nonfinite_tensor_payload(
         owner.load_state_dict(corrupt)
 
     _assert_nested_equal(owner.state_dict(), before)
-
-
 @pytest.mark.parametrize(
     ("factory", "path"),
     [

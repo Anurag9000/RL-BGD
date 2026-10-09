@@ -121,7 +121,6 @@ def test_ppo_rejects_invalid_saved_rollout_progress(tmp_path: Path) -> None:
             )
 
 
-
 def test_ppo_resume_rejects_noncanonical_payload_before_mutation(
     tmp_path: Path,
 ) -> None:

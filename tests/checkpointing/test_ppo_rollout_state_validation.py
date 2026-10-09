@@ -115,7 +115,6 @@ def test_ppo_rollout_rejects_invalid_payload_without_mutating_live_state(
         _assert_equal_state(before, target.state_dict())
 
 
-
 def test_recurrent_rollout_checkpoint_validates_episode_boundaries() -> None:
     source = RecurrentRolloutBuffer(4, 1, 1, 2, 2)
     _fill(source, (1.0, 2.0), gae=False)
@@ -150,6 +149,7 @@ def test_empty_rollout_checkpoint_rejects_computed_gae(recurrent: bool) -> None:
     with pytest.raises(ValueError, match="cannot have computed advantages"):
         target.load_state_dict(empty)
     _assert_equal_state(before, target.state_dict())
+
 
 class _TransferFailTensor(torch.Tensor):
     @staticmethod
@@ -188,4 +188,3 @@ def test_ppo_rollout_transfer_failure_does_not_mutate_live_state(
         target.load_state_dict(corrupt)
 
     _assert_equal_state(before, target.state_dict())
-

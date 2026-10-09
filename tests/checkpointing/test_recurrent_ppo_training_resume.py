@@ -131,7 +131,6 @@ def test_recurrent_ppo_rejects_invalid_progress_and_episode_flag(
             )
 
 
-
 def test_recurrent_ppo_resume_rolls_back_agent_and_environment_on_late_failure(
     tmp_path: Path,
 ) -> None:

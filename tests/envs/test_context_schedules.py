@@ -133,6 +133,7 @@ def test_context_schedule_rejects_invalid_step(step: object) -> None:
         schedule.context_at(step)  # type: ignore[arg-type]
 
 
+
 @pytest.mark.parametrize("bad_value", [True, "1.0", object()])
 def test_context_schedule_rejects_non_numeric_anchor_values(bad_value: object) -> None:
     with pytest.raises(TypeError, match="anchor values must be real numbers"):
@@ -142,7 +143,6 @@ def test_context_schedule_rejects_non_numeric_anchor_values(bad_value: object) -
                 anchors=({"g": bad_value},),  # type: ignore[dict-item]
             )
         )
-
 
 @pytest.mark.parametrize("bad_seed", [True, 1.5, "7"])
 def test_context_schedule_rejects_non_integer_seed(bad_seed: object) -> None:

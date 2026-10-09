@@ -166,9 +166,7 @@ def test_recurrent_sac_resume_rolls_back_on_late_environment_failure(
     torch.save(saved, corrupt)
 
     target_env, target_agent = _make()
-    actor_before = [
-        parameter.detach().clone() for parameter in target_agent.actor.parameters()
-    ]
+    actor_before = [parameter.detach().clone() for parameter in target_agent.actor.parameters()]
     hidden_before = target_agent.actor_hidden.detach().clone()
     env_before = target_env.state_dict()
     with pytest.raises(ValueError, match="step is invalid"):
