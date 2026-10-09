@@ -163,6 +163,16 @@ and non-finite losses, preventing silent NaN gradients or invalid evidence
 mass from corrupting posterior updates. The weighting formulas and normal
 valid-batch behavior remain unchanged; failure paths have focused unit tests.
 
+## Adaptation-metric trace contracts
+
+Adaptation and recurrence metrics reject non-finite scores, reference values,
+duplicate or out-of-order evaluation steps. Fixed-window post-change AUC
+integrates over the exact declared time window, linearly interpolating scores
+at its boundaries from neighboring observed samples. A window extending outside
+the observed trace is rejected rather than silently scored over a shortened
+duration. Threshold recovery time remains the first *observed* checkpoint that
+reaches the target; no unobserved crossing time is inferred.
+
 ## Paper statistics
 
 Paper aggregation uses matched seed groups. Scalar metrics receive percentile

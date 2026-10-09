@@ -63,7 +63,7 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Predictive-NLL adaptive retention | COMPLETE | online Gaussian transition/reward model + pre-update NLL surprise + BGD-SAC retention wiring + checkpoint/tests |
 | Final average / forgetting / BWT / generic FWT metrics | COMPLETE | metrics/continual.py + tests |
 | Lifetime AUC / plasticity retention | COMPLETE | metrics/continual.py + tests |
-| T80/T90 primitive / post-change AUC / recurrence metrics | COMPLETE | metrics/adaptation.py + tests |
+| T80/T90 primitive / post-change AUC / recurrence metrics | COMPLETE | metrics/adaptation.py + tests; finite, strictly ordered evaluation traces and exact-window AUC interpolation/coverage |
 | Surprise change-detection event metrics | COMPLETE | delay/FPR/precision/recall/F1/false alarms + tests |
 | Surprise AUROC primitive | COMPLETE | rank-based binary AUROC + tests + evaluator-only recurring-LQR source-comparison wiring |
 | Adaptive surprise causal timeline runner | COMPLETE | recurring-LQR BGD-SAC supports none/TD/ensemble/predictive source selection + matched suite jobs + slow integration coverage without boundary input |
