@@ -596,6 +596,7 @@ def test_run_writer_rejects_invalid_metric_column_names(
         )
     assert not root.exists()
 
+
 def test_run_artifacts_are_not_published_on_csv_serialization_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

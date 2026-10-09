@@ -41,6 +41,14 @@ from one another and from `manifest.json`; both writing and reading reject
 paths that resolve outside the run directory, including symlink escapes.
 The writer rejects blank or non-string metric-column names, and the loader
 checks raw CSV headers for duplicates before pandas could rename them.
+Raw-run publication stages configuration, summary, metrics, and manifest bytes in
+temporary files. The payloads are published and synchronized before
+`manifest.json` is published last as the completion marker. Failed
+serialization leaves no discoverable completed run, and an existing published
+manifest cannot be overwritten: rerun with a fresh run directory or archive the
+old directory first. POSIX directory entries are fsynced before completion
+publication. Simultaneous writers to the same previously empty run ID are not
+a supported concurrency mode; workers must use unique run IDs.
 Every loaded source file receives a SHA-256 digest in the generated paper
 provenance manifest. Failed runs receive a failed manifest and are rejected by
 the strict paper builder rather than silently disappearing from a seed aggregate.
