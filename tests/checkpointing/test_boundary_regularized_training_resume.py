@@ -218,7 +218,9 @@ def test_boundary_regularized_resume_rejects_dropped_history(
     env, agent, config = _build(722)
     checkpoint = tmp_path / "invalid_size.pt"
     train_boundary_regularized_sac(
-        env, agent, config=config,
+        env,
+        agent,
+        config=config,
         checkpoint_path=checkpoint,
         max_steps_this_call=7,
     )
@@ -230,7 +232,9 @@ def test_boundary_regularized_resume_rejects_dropped_history(
     before = deepcopy(target_agent.state_dict())
     with pytest.raises(ValueError, match="size disagrees with checkpoint progress"):
         train_boundary_regularized_sac(
-            target_env, target_agent, config=target_config,
+            target_env,
+            target_agent,
+            config=target_config,
             resume_from=checkpoint,
         )
     _assert_nested_equal(target_agent.state_dict(), before)
