@@ -4,7 +4,6 @@ from collections.abc import Callable
 from typing import Any
 
 import pytest
-import torch
 from torch import nn
 
 from rl_bgd.baselines.ewc import EWCRegularizer, OnlineEWCRegularizer

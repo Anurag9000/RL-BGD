@@ -1,7 +1,8 @@
 """Regularizer checkpoints validate completely before mutating live state."""
 
+from collections.abc import Callable
 from copy import deepcopy
-from typing import Any, Callable
+from typing import Any
 
 import pytest
 import torch

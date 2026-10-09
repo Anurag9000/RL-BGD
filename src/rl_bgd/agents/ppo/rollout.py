@@ -254,9 +254,15 @@ class RolloutBuffer:
             raise ValueError("unsupported PPO rollout checkpoint version")
         if checkpoint_integer(state["capacity"], name="PPO rollout capacity") != self.capacity:
             raise ValueError("PPO rollout checkpoint capacity mismatch")
-        if checkpoint_integer(state["observation_dim"], name="PPO rollout observation_dim") != int(self.observations.shape[1]):
+        if checkpoint_integer(
+            state["observation_dim"],
+            name="PPO rollout observation_dim",
+        ) != int(self.observations.shape[1]):
             raise ValueError("PPO rollout observation dimension mismatch")
-        if checkpoint_integer(state["action_dim"], name="PPO rollout action_dim") != int(self.actions.shape[1]):
+        if checkpoint_integer(
+            state["action_dim"],
+            name="PPO rollout action_dim",
+        ) != int(self.actions.shape[1]):
             raise ValueError("PPO rollout action dimension mismatch")
 
         size = checkpoint_integer(state["size"], name="PPO rollout size")

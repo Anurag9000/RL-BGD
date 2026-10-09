@@ -5,7 +5,7 @@ from __future__ import annotations
 import random
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -85,6 +85,8 @@ def load_random_state_dict(state: dict[str, Any]) -> None:
         raise ValueError("unsupported random-state checkpoint version")
 
     python_state = state.get("python")
+    if not isinstance(python_state, tuple):
+        raise ValueError("invalid Python RNG checkpoint state")
     python_validator = random.Random()
     try:
         python_validator.setstate(python_state)
@@ -92,9 +94,12 @@ def load_random_state_dict(state: dict[str, Any]) -> None:
         raise ValueError("invalid Python RNG checkpoint state") from exc
 
     numpy_state = state.get("numpy")
+    if not isinstance(numpy_state, tuple) or len(numpy_state) != 5:
+        raise ValueError("invalid NumPy RNG checkpoint state")
+    typed_numpy_state = cast(tuple[str, np.ndarray, int, int, float], numpy_state)
     numpy_validator = np.random.RandomState()
     try:
-        numpy_validator.set_state(numpy_state)
+        numpy_validator.set_state(typed_numpy_state)
     except (TypeError, ValueError) as exc:
         raise ValueError("invalid NumPy RNG checkpoint state") from exc
 
@@ -125,7 +130,7 @@ def load_random_state_dict(state: dict[str, Any]) -> None:
         ]
 
     random.setstate(python_state)
-    np.random.set_state(numpy_state)
+    np.random.set_state(typed_numpy_state)
     torch.set_rng_state(torch_cpu)
     if checked_cuda is not None:
         torch.cuda.set_rng_state_all(checked_cuda)
