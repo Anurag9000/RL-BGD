@@ -48,4 +48,3 @@ def config_finite_float(value: object, *, name: str) -> float:
     if not math.isfinite(result):
         raise ValueError(f"{name} must be finite")
     return result
-

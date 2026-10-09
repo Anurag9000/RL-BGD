@@ -594,4 +594,3 @@ def test_run_writer_rejects_invalid_metric_column_names(
             metrics_rows=[{invalid_name: 1.0}],  # type: ignore[dict-item]
         )
     assert not root.exists()
-

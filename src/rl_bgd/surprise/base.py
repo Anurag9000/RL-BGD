@@ -44,9 +44,7 @@ class EMANormalizerConfig:
     def validate(self) -> None:
         decay = config_finite_float(self.decay, name="decay")
         smoothing_decay = config_finite_float(self.smoothing_decay, name="smoothing_decay")
-        initial_variance = config_finite_float(
-            self.initial_variance, name="initial_variance"
-        )
+        initial_variance = config_finite_float(self.initial_variance, name="initial_variance")
         epsilon = config_finite_float(self.epsilon, name="epsilon")
         if not 0.0 <= decay < 1.0:
             raise ValueError("decay must lie in [0, 1)")

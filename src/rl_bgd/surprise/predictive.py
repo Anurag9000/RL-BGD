@@ -50,12 +50,8 @@ class AdaptivePredictiveRetentionConfig:
             )
             if clip <= 0:
                 raise ValueError("predictive-model gradient clip must be positive")
-        min_log_std = config_finite_float(
-            self.min_log_std, name="predictive-model min_log_std"
-        )
-        max_log_std = config_finite_float(
-            self.max_log_std, name="predictive-model max_log_std"
-        )
+        min_log_std = config_finite_float(self.min_log_std, name="predictive-model min_log_std")
+        max_log_std = config_finite_float(self.max_log_std, name="predictive-model max_log_std")
         if min_log_std >= max_log_std:
             raise ValueError("predictive-model log-std bounds are invalid")
 
@@ -77,12 +73,8 @@ class GaussianTransitionModel(nn.Module):
         config_positive_integer(action_dim, name="predictive-model action_dim")
         for index, width in enumerate(hidden_dims):
             config_positive_integer(width, name=f"predictive-model hidden width {index}")
-        min_log_std = config_finite_float(
-            min_log_std, name="predictive-model min_log_std"
-        )
-        max_log_std = config_finite_float(
-            max_log_std, name="predictive-model max_log_std"
-        )
+        min_log_std = config_finite_float(min_log_std, name="predictive-model min_log_std")
+        max_log_std = config_finite_float(max_log_std, name="predictive-model max_log_std")
         if min_log_std >= max_log_std:
             raise ValueError("predictive-model log-std bounds are invalid")
         self.observation_dim = observation_dim

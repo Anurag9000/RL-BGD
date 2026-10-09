@@ -53,7 +53,6 @@ class ReplayEvidenceSummary:
     effective_sample_size: float
 
 
-
 def _validated_replay_metadata(
     usage_counts: Tensor,
     fresh: Tensor,
@@ -65,11 +64,7 @@ def _validated_replay_metadata(
 
     if not isinstance(usage_counts, Tensor) or not isinstance(fresh, Tensor):
         raise TypeError(f"{label} evidence metadata must be tensors")
-    if (
-        usage_counts.ndim != ndim
-        or usage_counts.shape[-1] != 1
-        or usage_counts.numel() == 0
-    ):
+    if usage_counts.ndim != ndim or usage_counts.shape[-1] != 1 or usage_counts.numel() == 0:
         raise ValueError(f"{label} usage_counts must have a non-empty trailing singleton dimension")
     if usage_counts.dtype not in (
         torch.uint8,

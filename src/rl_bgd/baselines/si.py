@@ -71,9 +71,7 @@ class SynapticIntelligence:
         parameters = trainable_parameters(module)
         if set(gradients) != set(parameters):
             raise ValueError("SI gradient keys do not match trainable parameters")
-        if set(self.previous) != set(parameters) or set(self.path_integral) != set(
-            parameters
-        ):
+        if set(self.previous) != set(parameters) or set(self.path_integral) != set(parameters):
             raise ValueError("SI accumulated parameter keys do not match the model")
 
         staged_previous: ParameterState = {}
@@ -124,16 +122,13 @@ class SynapticIntelligence:
             path = self.path_integral[name].to(value.device)
             importance = self.importance[name].to(value.device)
             if not all(
-                torch.isfinite(tensor).all().item()
-                for tensor in (value, anchor, path, importance)
+                torch.isfinite(tensor).all().item() for tensor in (value, anchor, path, importance)
             ):
                 raise FloatingPointError(f"nonfinite SI consolidation input for {name}")
             if torch.any(importance < 0).item():
                 raise ValueError(f"SI importance must be non-negative for {name}")
             displacement = value - anchor
-            contribution = torch.clamp(path, min=0.0) / (
-                displacement.square() + self.damping
-            )
+            contribution = torch.clamp(path, min=0.0) / (displacement.square() + self.damping)
             updated_importance = importance + contribution
             if not torch.isfinite(updated_importance).all().item():
                 raise FloatingPointError(f"nonfinite SI consolidated importance for {name}")
@@ -142,9 +137,7 @@ class SynapticIntelligence:
         self.importance = staged_importance
         self.anchor = {name: value.clone() for name, value in current.items()}
         self.previous = {name: value.clone() for name, value in current.items()}
-        self.path_integral = {
-            name: torch.zeros_like(value) for name, value in current.items()
-        }
+        self.path_integral = {name: torch.zeros_like(value) for name, value in current.items()}
 
     def penalty(
         self,
