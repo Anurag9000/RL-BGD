@@ -131,3 +131,67 @@ def test_context_schedule_rejects_invalid_step(step: object) -> None:
     )
     with pytest.raises(ValueError, match="step must be a non-negative integer"):
         schedule.context_at(step)  # type: ignore[arg-type]
+
+@pytest.mark.parametrize("bad_value", [True, "1.0", object()])
+def test_context_schedule_rejects_non_numeric_anchor_values(bad_value: object) -> None:
+    with pytest.raises(TypeError, match="anchor values must be real numbers"):
+        ContextSchedule(
+            ContextScheduleConfig(
+                mode="abrupt",
+                anchors=({"g": bad_value},),  # type: ignore[dict-item]
+            )
+        )
+
+
+@pytest.mark.parametrize("bad_seed", [True, 1.5, "7"])
+def test_context_schedule_rejects_non_integer_seed(bad_seed: object) -> None:
+    with pytest.raises(TypeError, match="seed must be an integer"):
+        ContextSchedule(
+            ContextScheduleConfig(
+                mode="abrupt",
+                anchors=({"g": 0.0},),
+                seed=bad_seed,  # type: ignore[arg-type]
+            )
+        )
+
+
+@pytest.mark.parametrize("bad_std", [True, "0.1"])
+def test_context_schedule_rejects_non_numeric_walk_std(bad_std: object) -> None:
+    with pytest.raises(TypeError, match="random_walk_std must be a real number"):
+        ContextSchedule(
+            ContextScheduleConfig(
+                mode="random_walk",
+                anchors=({"g": 0.0},),
+                random_walk_std=bad_std,  # type: ignore[arg-type]
+            )
+        )
+
+
+def test_context_schedule_rejects_non_string_anchor_key() -> None:
+    with pytest.raises(ValueError, match="keys must be non-empty strings"):
+        ContextSchedule(
+            ContextScheduleConfig(
+                mode="abrupt",
+                anchors=({1: 0.0},),  # type: ignore[dict-item]
+            )
+        )
+
+
+@pytest.mark.parametrize(
+    "bad_bounds",
+    [
+        {"g": [0.0, 1.0]},
+        {"g": (False, 1.0)},
+        {"g": ("0.0", 1.0)},
+    ],
+)
+def test_context_schedule_rejects_malformed_bounds(bad_bounds: object) -> None:
+    with pytest.raises(TypeError, match="context bounds"):
+        ContextSchedule(
+            ContextScheduleConfig(
+                mode="random_walk",
+                anchors=({"g": 0.0},),
+                bounds=bad_bounds,  # type: ignore[arg-type]
+            )
+        )
+

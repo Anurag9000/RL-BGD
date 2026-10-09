@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import random
 from dataclasses import dataclass
+from numbers import Real
 from typing import Literal
 
 Context = dict[str, float]
@@ -43,10 +44,16 @@ class ContextScheduleConfig:
         keys = set(self.anchors[0])
         if not keys:
             raise ValueError("context anchors cannot be empty")
+        if any(not isinstance(key, str) or not key for key in keys):
+            raise ValueError("context anchor keys must be non-empty strings")
         if any(set(anchor) != keys for anchor in self.anchors):
             raise ValueError("all context anchors must share identical keys")
-        if any(not math.isfinite(value) for anchor in self.anchors for value in anchor.values()):
-            raise ValueError("context anchors must contain finite values")
+        for anchor in self.anchors:
+            for value in anchor.values():
+                if isinstance(value, bool) or not isinstance(value, Real):
+                    raise TypeError("context anchor values must be real numbers")
+                if not math.isfinite(float(value)):
+                    raise ValueError("context anchors must contain finite values")
         if (
             isinstance(self.phase_steps, bool)
             or not isinstance(self.phase_steps, int)
@@ -59,8 +66,12 @@ class ContextScheduleConfig:
             or self.period_steps < 1
         ):
             raise ValueError("period_steps must be a positive integer")
-        if not math.isfinite(self.random_walk_std) or self.random_walk_std < 0:
+        if isinstance(self.random_walk_std, bool) or not isinstance(self.random_walk_std, Real):
+            raise TypeError("random_walk_std must be a real number")
+        if not math.isfinite(float(self.random_walk_std)) or self.random_walk_std < 0:
             raise ValueError("random_walk_std must be finite and non-negative")
+        if isinstance(self.seed, bool) or not isinstance(self.seed, int):
+            raise TypeError("seed must be an integer")
         if self.mode == "smooth" and len(self.anchors) < 2:
             raise ValueError("smooth schedules require at least two anchors")
         if self.mode == "periodic" and len(self.anchors) != 2:
@@ -68,8 +79,18 @@ class ContextScheduleConfig:
         if self.bounds is not None:
             if set(self.bounds) != keys:
                 raise ValueError("bounds keys must match context keys")
-            for low, high in self.bounds.values():
-                if not math.isfinite(low) or not math.isfinite(high):
+            for bounds in self.bounds.values():
+                if not isinstance(bounds, tuple) or len(bounds) != 2:
+                    raise TypeError("context bounds must be two-value tuples")
+                low, high = bounds
+                if (
+                    isinstance(low, bool)
+                    or isinstance(high, bool)
+                    or not isinstance(low, Real)
+                    or not isinstance(high, Real)
+                ):
+                    raise TypeError("context bounds must contain real numbers")
+                if not math.isfinite(float(low)) or not math.isfinite(float(high)):
                     raise ValueError("context bounds must be finite")
                 if low > high:
                     raise ValueError("context lower bound exceeds upper bound")
