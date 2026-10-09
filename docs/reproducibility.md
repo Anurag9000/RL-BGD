@@ -36,10 +36,14 @@ settings that were previously hard-coded in the stationary SAC/PPO runners are
 now explicit function arguments so they appear in this resolved contract.
 
 The loader validates schema versions, finite scalar values, run-ID consistency,
-artifact presence, and completion status. Every loaded source file receives a
-SHA-256 digest in the generated paper provenance manifest. Failed runs receive
-a failed manifest and are rejected by the strict paper builder rather than
-silently disappearing from a seed aggregate.
+artifact presence, and completion status. Artifact filenames must be distinct
+from one another and from `manifest.json`; both writing and reading reject
+paths that resolve outside the run directory, including symlink escapes.
+The writer rejects blank or non-string metric-column names, and the loader
+checks raw CSV headers for duplicates before pandas could rename them.
+Every loaded source file receives a SHA-256 digest in the generated paper
+provenance manifest. Failed runs receive a failed manifest and are rejected by
+the strict paper builder rather than silently disappearing from a seed aggregate.
 
 ## Checkpointing
 
