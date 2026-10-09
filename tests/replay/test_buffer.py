@@ -195,3 +195,41 @@ def test_replay_rejected_checkpoint_does_not_mutate_live_buffer() -> None:
         torch.testing.assert_close(after[field], before[field])
     for field in ("size", "position", "next_transition_id"):
         assert after[field] == before[field]
+
+@pytest.mark.parametrize(
+    ("field", "invalid", "error", "message"),
+    [
+        ("observation", torch.tensor([0.0, 1.0]), ValueError, "shape mismatch"),
+        ("action", torch.tensor([float("nan")]), ValueError, "non-finite"),
+        ("reward", float("inf"), ValueError, "reward must be finite"),
+        ("terminated", 1, TypeError, "terminated must be a boolean"),
+        ("truncated", 0, TypeError, "truncated must be a boolean"),
+        ("insertion_step", -1, ValueError, "insertion_step must be non-negative"),
+    ],
+)
+def test_replay_add_rejects_invalid_transition_without_mutation(
+    field: str,
+    invalid: object,
+    error: type[Exception],
+    message: str,
+) -> None:
+    buffer = ReplayBuffer(4, 1, 1)
+    payload: dict[str, object] = {
+        "observation": torch.tensor([1.0]),
+        "action": torch.tensor([0.0]),
+        "reward": 1.0,
+        "next_observation": torch.tensor([2.0]),
+        "terminated": False,
+        "truncated": False,
+        "insertion_step": 0,
+    }
+    payload[field] = invalid
+
+    with pytest.raises(error, match=message):
+        buffer.add(**payload)  # type: ignore[arg-type]
+
+    state = buffer.state_dict()
+    assert state["size"] == 0
+    assert state["position"] == 0
+    assert state["next_transition_id"] == 0
+

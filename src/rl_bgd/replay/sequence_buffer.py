@@ -8,6 +8,12 @@ from typing import Any
 import torch
 from torch import Tensor
 
+from rl_bgd.replay.transition_validation import (
+    replay_boolean,
+    replay_insertion_step,
+    replay_reward,
+    replay_vector,
+)
 from rl_bgd.utils.checkpoint_progress import checkpoint_integer
 
 
@@ -162,35 +168,49 @@ class SequenceReplayBuffer:
         insertion_step: int,
     ) -> int:
         index = self._position
-        self.observations[index].copy_(
-            observation.to(
-                self.device,
-                dtype=self.observations.dtype,
-            )
+        staged_observation = replay_vector(
+            observation,
+            name="sequence replay observation",
+            reference=self.observations[index],
         )
-        self.actions[index].copy_(
-            action.to(
-                self.device,
-                dtype=self.actions.dtype,
-            )
+        staged_action = replay_vector(
+            action,
+            name="sequence replay action",
+            reference=self.actions[index],
         )
-        self.rewards[index, 0] = torch.as_tensor(
+        staged_reward = replay_reward(
             reward,
-            device=self.device,
-            dtype=self.rewards.dtype,
+            reference=self.rewards[index, 0],
         )
-        self.next_observations[index].copy_(
-            next_observation.to(
-                self.device,
-                dtype=self.next_observations.dtype,
-            )
+        staged_next_observation = replay_vector(
+            next_observation,
+            name="sequence replay next_observation",
+            reference=self.next_observations[index],
         )
-        self.terminated[index, 0] = terminated
-        self.truncated[index, 0] = truncated
-        self.episode_starts[index, 0] = episode_start
+        staged_terminated = replay_boolean(
+            terminated,
+            name="sequence replay terminated",
+        )
+        staged_truncated = replay_boolean(
+            truncated,
+            name="sequence replay truncated",
+        )
+        staged_episode_start = replay_boolean(
+            episode_start,
+            name="sequence replay episode_start",
+        )
+        staged_insertion_step = replay_insertion_step(insertion_step)
+
+        self.observations[index].copy_(staged_observation)
+        self.actions[index].copy_(staged_action)
+        self.rewards[index, 0].copy_(staged_reward)
+        self.next_observations[index].copy_(staged_next_observation)
+        self.terminated[index, 0] = staged_terminated
+        self.truncated[index, 0] = staged_truncated
+        self.episode_starts[index, 0] = staged_episode_start
         transition_id = self._next_transition_id
         self.transition_ids[index, 0] = transition_id
-        self.insertion_steps[index, 0] = insertion_step
+        self.insertion_steps[index, 0] = staged_insertion_step
         self.usage_counts[index, 0] = 0
         self._fresh[index, 0] = True
         self._next_transition_id += 1

@@ -314,3 +314,41 @@ def test_sequence_replay_rejected_checkpoint_does_not_mutate_live_buffer() -> No
         torch.testing.assert_close(after[field], before[field])
     for field in ("size", "position", "next_transition_id"):
         assert after[field] == before[field]
+
+@pytest.mark.parametrize(
+    ("field", "invalid", "error", "message"),
+    [
+        ("observation", torch.tensor([0.0, 1.0]), ValueError, "shape mismatch"),
+        ("next_observation", torch.tensor([float("inf")]), ValueError, "non-finite"),
+        ("reward", torch.tensor([1.0, 2.0]), ValueError, "exactly one value"),
+        ("episode_start", 1, TypeError, "episode_start must be a boolean"),
+        ("insertion_step", True, TypeError, "insertion_step must be an integer"),
+    ],
+)
+def test_sequence_replay_add_rejects_invalid_transition_without_mutation(
+    field: str,
+    invalid: object,
+    error: type[Exception],
+    message: str,
+) -> None:
+    buffer = SequenceReplayBuffer(4, 1, 1)
+    payload: dict[str, object] = {
+        "observation": torch.tensor([1.0]),
+        "action": torch.tensor([0.0]),
+        "reward": 1.0,
+        "next_observation": torch.tensor([2.0]),
+        "terminated": False,
+        "truncated": False,
+        "episode_start": True,
+        "insertion_step": 0,
+    }
+    payload[field] = invalid
+
+    with pytest.raises(error, match=message):
+        buffer.add(**payload)  # type: ignore[arg-type]
+
+    state = buffer.state_dict()
+    assert state["size"] == 0
+    assert state["position"] == 0
+    assert state["next_transition_id"] == 0
+

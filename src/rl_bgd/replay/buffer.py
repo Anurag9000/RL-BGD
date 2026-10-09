@@ -7,6 +7,13 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor
 
+from rl_bgd.replay.transition_validation import (
+    replay_boolean,
+    replay_insertion_step,
+    replay_reward,
+    replay_vector,
+)
+
 
 def _checkpoint_int(
     value: object,
@@ -93,19 +100,44 @@ class ReplayBuffer:
         insertion_step: int,
     ) -> int:
         index = self._position
-        self.observations[index].copy_(observation.to(self.device))
-        self.actions[index].copy_(action.to(self.device))
-        self.rewards[index, 0] = torch.as_tensor(
-            reward,
-            device=self.device,
-            dtype=self.rewards.dtype,
+        staged_observation = replay_vector(
+            observation,
+            name="replay observation",
+            reference=self.observations[index],
         )
-        self.next_observations[index].copy_(next_observation.to(self.device))
-        self.terminated[index, 0] = terminated
-        self.truncated[index, 0] = truncated
+        staged_action = replay_vector(
+            action,
+            name="replay action",
+            reference=self.actions[index],
+        )
+        staged_reward = replay_reward(
+            reward,
+            reference=self.rewards[index, 0],
+        )
+        staged_next_observation = replay_vector(
+            next_observation,
+            name="replay next_observation",
+            reference=self.next_observations[index],
+        )
+        staged_terminated = replay_boolean(
+            terminated,
+            name="replay terminated",
+        )
+        staged_truncated = replay_boolean(
+            truncated,
+            name="replay truncated",
+        )
+        staged_insertion_step = replay_insertion_step(insertion_step)
+
+        self.observations[index].copy_(staged_observation)
+        self.actions[index].copy_(staged_action)
+        self.rewards[index, 0].copy_(staged_reward)
+        self.next_observations[index].copy_(staged_next_observation)
+        self.terminated[index, 0] = staged_terminated
+        self.truncated[index, 0] = staged_truncated
         transition_id = self._next_transition_id
         self.transition_ids[index, 0] = transition_id
-        self.insertion_steps[index, 0] = insertion_step
+        self.insertion_steps[index, 0] = staged_insertion_step
         self.usage_counts[index, 0] = 0
         self._fresh[index, 0] = True
         self._next_transition_id += 1
