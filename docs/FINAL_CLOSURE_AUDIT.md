@@ -82,12 +82,16 @@ without claiming any final multi-seed scientific results.
 
 The audit also validates SAC/replay and PPO/rollout progress alignment,
 including rejection of non-finite saved replay transitions and rollout values,
-transactional staging of replay payloads before live-buffer mutation,
-wrapped recurrent-replay episode-boundary validation,
-strict checkpoint integer and recurrent episode-boundary flags,
-strict integer version metadata plus transactional process RNG restore
-validation across Python, NumPy, PyTorch CPU, and CUDA state, and
-non-mutating checkpoint rejection in PPO rollout buffers. Rollout restore
+non-negative replay insertion provenance, transactional staging of replay
+payloads before live-buffer mutation, and transactional validation of complete
+live replay transitions before insertion. Wrapped recurrent replay validates
+episode boundaries as well. Checkpoints enforce strict integer and recurrent
+episode-boundary flags, strict integer version metadata, exact restored
+observation shapes in SAC/PPO and recurrent variants, and transactional process
+RNG restore across Python, NumPy, PyTorch CPU, and CUDA state. RNG restore also
+fails closed on incompatible CPU/CUDA checkpoint-runtime topology rather than
+silently leaving a CUDA stream unrestored. PPO rollout checkpoint rejection is
+non-mutating. Rollout restore
 also rejects non-finite saved observations, actions, rewards, policy
 statistics, GAE estimates, and recurrent hidden states, and stages all validated
 payload tensors on the destination device before mutating live rollout state. Recurrent rollout
@@ -96,15 +100,20 @@ preceding terminal/truncation boundaries. Both PPO rollout variants reject
 computed GAE payloads for an empty buffer. These have focused
 corruption/round-trip tests alongside split-vs-uninterrupted runs.
 
-The audit also validates schedule mode/step inputs and finite context
-parameters, and guards posterior bounds/precision and surprise normalization
-settings against silent checkpoint drift. Scheduled-LQR restore cross-checks
+The audit also validates schedule mode/step inputs, strict seed and context
+types, finite context parameters, random-walk anchor cardinality, mode-specific
+bounds usage, and bounded-walk starting states. It guards posterior
+bounds/precision and surprise normalization settings against silent checkpoint
+drift. Scheduled-LQR restore cross-checks
 saved context against both the base simulator parameters and the context implied
 by saved stream progress. The strict CARL adapter also synchronizes each hidden
 scheduled context through CARL's reset-time selector before the wrapped
 environment resets, preventing stale-context episode initialization. Version-2
 surprise checkpoints intentionally reject incompatible earlier payloads rather
-than silently guessing their unrecorded configuration.
+than silently guessing their unrecorded configuration. Training checkpoints are
+published through unique same-directory staging files; data are fsynced before
+atomic replacement and POSIX parent directories are fsynced afterward so a
+completed publication is crash-durable at the directory-entry level.
 
 The opening commit-specific CI statement above is a historical evidence
 snapshot, not a claim that every later commit has already passed all gates.

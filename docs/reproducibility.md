@@ -7,10 +7,13 @@ its imports or launch path work.
 ## Deterministic controls
 
 The shared seeding utility seeds Python, NumPy, PyTorch CPU, and CUDA RNGs and
-supports deterministic debug behavior. Environment, replay, task-stream, and
-evaluation seeds are passed explicitly by runners. Bitwise equality across
-different GPU architectures, CUDA versions, or third-party simulators is not
-promised.
+supports deterministic debug behavior. Seeds are strict non-negative integers;
+booleans and numerically coercible non-integers are rejected. Environment,
+replay, task-stream, and evaluation seeds are passed explicitly by runners.
+Exact process-RNG restore also fails closed when checkpoint and runtime CUDA
+availability/device topology differ rather than silently leaving a CUDA stream
+unrestored. Bitwise equality across different GPU architectures, CUDA versions,
+or third-party simulators is not promised.
 
 ## Canonical raw-run artifacts
 
@@ -47,13 +50,18 @@ tests in their owning components. Resume semantics are tested at the component
 level; exact cross-hardware floating-point identity is not claimed.
 
 Stationary and recurrent replay checkpoint loaders validate integer metadata,
-tensor shapes/dtypes, physical ring chronology, transition IDs, recurrent
-episode-start boundaries, and evidence usage/freshness before copying any
-tensors into the live buffer. Validated
-payload tensors are staged completely on the destination device before live
-storage is touched, so transfer/conversion failures are transactional. Rejected
-payloads therefore leave existing replay state intact; wrapped-ring round-trip
-regression tests compare subsequent seeded samples after restoration.
+tensor shapes/dtypes, physical ring chronology, transition IDs, non-negative
+insertion-step provenance, recurrent episode-start boundaries, and evidence
+usage/freshness before copying any tensors into the live buffer. Live replay
+insertion uses the same fail-closed contract: observations/actions must have
+exact vector shapes and finite floating values, rewards must be finite real
+scalars, boundary flags must be booleans, and insertion steps must be
+non-negative integers. Each complete transition is staged before any replay
+slot is mutated. Validated checkpoint payload tensors are likewise staged
+completely on the destination device before live storage is touched, so
+transfer/conversion failures are transactional. Rejected payloads therefore
+leave existing replay state intact; wrapped-ring round-trip regression tests
+compare subsequent seeded samples after restoration.
 
 ## Resumable stationary training
 
@@ -91,8 +99,10 @@ Examples:
 Stationary and recurrent SAC/PPO training checkpoint writers, including the
 oracle-boundary regularized SAC variant, use independent same-directory staging
 files followed by an atomic replacement. Checkpoint bytes are flushed and
-fsynced before publication, and failed serialization preserves the preceding
-complete checkpoint. Multiple writers targeting the exact same final path
+fsynced before publication; on POSIX the parent directory is fsynced after
+replacement so the published directory entry is crash-durable. Failed
+serialization preserves the preceding complete checkpoint. Multiple writers
+targeting the exact same final path
 remain last-completed-writer-wins; use distinct run IDs and checkpoint paths
 for independent scientific workers.
 
@@ -100,12 +110,15 @@ Training checkpoints bind the saved learner state to the complete training and
 agent configurations. SAC checkpoints also preserve replay contents,
 provenance/evidence-use metadata, replay-sampling RNG, environment state, and
 process RNG state. Process RNG restore validates strict integer version metadata,
-Python, NumPy, PyTorch CPU, and CUDA payloads before mutating any live global
-RNG stream, so malformed late
-fields fail without perturbing the running experiment. Ordinary and recurrent
-SAC replay restores reject NaN/Inf
-transition tensors and non-integer checkpoint versions before any live buffer
-state is modified. PPO checkpoints are written only at rollout boundaries;
+Python, NumPy, PyTorch CPU, CUDA payloads, and compatible CUDA runtime topology
+before mutating any live global RNG stream, so malformed late fields fail
+without perturbing the running experiment. Restored current observations in
+SAC/PPO, recurrent SAC/PPO, and boundary-regularized SAC must exactly match the
+environment observation shape; recurrent SAC history observations are checked
+the same way. Ordinary and recurrent SAC replay restores reject NaN/Inf
+transition tensors, negative insertion provenance, and non-integer checkpoint
+versions before any live buffer state is modified. PPO checkpoints are written
+only at rollout boundaries;
 recurrent variants also preserve online hidden state and recurrent progress.
 Configuration mismatches fail closed on restore. Saved SAC progress must agree
 with the replay transition history; PPO progress must agree with completed
@@ -131,7 +144,10 @@ deserialization and should only be loaded from trusted local sources.
 
 Environment restore also rejects nonfinite mutable dynamics and inconsistent
 scheduled-context state. Nonstationary schedule constructors reject unknown
-modes and nonfinite parameterization before any training begins.
+modes, malformed anchor keys/values, non-integer seeds, nonfinite
+parameterization, extra random-walk anchors that would be ignored, bounds on
+modes that do not consume them, and random-walk starting states outside their
+declared bounds before any training begins.
 
 ## Paper statistics
 
