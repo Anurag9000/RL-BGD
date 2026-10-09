@@ -546,3 +546,52 @@ def test_run_writer_rejects_symlink_escape_without_writing_outside(
     assert outside.read_text(encoding="utf-8") == original
     assert not (root / "manifest.json").exists()
 
+
+def test_run_loader_rejects_duplicate_metrics_csv_headers(tmp_path: Path) -> None:
+    root = tmp_path / "run"
+    write_run_artifacts(
+        root,
+        manifest=RunManifest(
+            run_id="run",
+            method="SAC",
+            setting="stationary",
+            benchmark="LQR",
+            seed=0,
+            git_commit="abc",
+        ),
+        summary=RunSummary(run_id="run", metrics={"score": 1.0}),
+        resolved_config={"seed": 0},
+        metrics_rows=[{"score": 1.0}],
+    )
+    (root / "metrics.csv").write_text(
+        "score,score\n1.0,2.0\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="duplicate column names"):
+        load_run_directory(root)
+
+
+@pytest.mark.parametrize("invalid_name", ["", 0, None])
+def test_run_writer_rejects_invalid_metric_column_names(
+    tmp_path: Path,
+    invalid_name: object,
+) -> None:
+    root = tmp_path / "run"
+    with pytest.raises(ValueError, match="column names must be non-empty strings"):
+        write_run_artifacts(
+            root,
+            manifest=RunManifest(
+                run_id="run",
+                method="SAC",
+                setting="stationary",
+                benchmark="LQR",
+                seed=0,
+                git_commit="abc",
+            ),
+            summary=RunSummary(run_id="run", metrics={"score": 1.0}),
+            resolved_config={"seed": 0},
+            metrics_rows=[{invalid_name: 1.0}],  # type: ignore[dict-item]
+        )
+    assert not root.exists()
+

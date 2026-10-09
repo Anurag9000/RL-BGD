@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
 import math
@@ -450,6 +451,15 @@ def load_run_directory(
     if summary.run_id != manifest.run_id:
         raise ValueError("manifest and summary run_id mismatch")
 
+    try:
+        with metrics_path.open(encoding="utf-8", newline="") as handle:
+            header = next(csv.reader(handle))
+    except (OSError, csv.Error, StopIteration) as exc:
+        raise ValueError(f"cannot read metrics CSV: {metrics_path}") from exc
+    if not header or any(not name.strip() for name in header):
+        raise ValueError("metrics CSV must have non-empty column names")
+    if len(header) != len(set(header)):
+        raise ValueError("metrics CSV contains duplicate column names")
     try:
         metrics = pd.read_csv(metrics_path)
     except Exception as exc:
@@ -953,6 +963,10 @@ def write_run_artifacts(
     metrics = pd.DataFrame(list(metrics_rows))
     if metrics.columns.empty:
         raise ValueError("metrics_rows must produce at least one column")
+    if not all(isinstance(name, str) and name.strip() for name in metrics.columns):
+        raise ValueError("metrics_rows column names must be non-empty strings")
+    if not metrics.columns.is_unique:
+        raise ValueError("metrics_rows column names must be unique")
 
     root = Path(run_dir)
     root.mkdir(
