@@ -143,6 +143,7 @@ def test_scheduled_lqr_checkpoint_rejects_context_key_mismatch() -> None:
             ContextSchedule(config),
         ).load_state_dict(state)
 
+
 def _assert_env_state_equal(left: dict[str, object], right: dict[str, object]) -> None:
     assert left.keys() == right.keys()
     for key in left:
@@ -228,6 +229,43 @@ def test_scheduled_lqr_context_mismatch_is_non_mutating() -> None:
     before = target.state_dict()
 
     with pytest.raises(ValueError, match="disagrees with base environment"):
+        target.load_state_dict(corrupt)
+
+    _assert_env_state_equal(before, target.state_dict())
+
+
+def test_scheduled_lqr_rejects_self_consistent_schedule_context_corruption() -> None:
+    config = ContextScheduleConfig(
+        mode="recurring",
+        anchors=({"dynamics": 0.9}, {"dynamics": 0.2}),
+        phase_steps=1,
+    )
+    source = ScheduledLQREnv(
+        LinearQuadraticControlEnv(horizon=10),
+        ContextSchedule(config),
+    )
+    source.reset(seed=7)
+    source.step(torch.zeros(1))
+    source.step(torch.zeros(1))
+    corrupt = source.state_dict()
+    context = corrupt["current_context"]
+    base_state = corrupt["base_env"]
+    assert isinstance(context, dict)
+    assert isinstance(base_state, dict)
+    parameters = base_state["current_parameters"]
+    assert isinstance(parameters, dict)
+    context["dynamics"] = 0.9
+    parameters["dynamics"] = 0.9
+
+    target = ScheduledLQREnv(
+        LinearQuadraticControlEnv(horizon=10),
+        ContextSchedule(config),
+    )
+    target.reset(seed=13)
+    target.step(torch.zeros(1))
+    before = target.state_dict()
+
+    with pytest.raises(ValueError, match="does not match the schedule"):
         target.load_state_dict(corrupt)
 
     _assert_env_state_equal(before, target.state_dict())

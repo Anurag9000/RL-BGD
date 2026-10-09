@@ -126,6 +126,24 @@ class ScheduledLQREnv:
             if not math.isfinite(float(base_value)) or float(base_value) != value:
                 raise ValueError("scheduled-LQR checkpoint context disagrees with base environment")
 
+        base_step = checkpoint_integer(
+            base_state.get("step"),
+            name="scheduled-LQR base environment step",
+        )
+        if base_step < 0 or base_step > self.base_env.horizon:
+            raise ValueError("scheduled-LQR base environment step is invalid")
+        if base_step > environment_step:
+            raise ValueError("scheduled-LQR checkpoint environment progress is inconsistent")
+        context_step = environment_step if base_step == 0 else environment_step - 1
+        if context_step < 0:
+            raise ValueError("scheduled-LQR checkpoint environment progress is inconsistent")
+        expected_context = {
+            key: float(value)
+            for key, value in self.schedule.context_at(context_step).items()
+        }
+        if normalized != expected_context:
+            raise ValueError("scheduled-LQR checkpoint context does not match the schedule")
+
         self.base_env.load_state_dict(base_state)
         self.environment_step = environment_step
         self._current_context = normalized
