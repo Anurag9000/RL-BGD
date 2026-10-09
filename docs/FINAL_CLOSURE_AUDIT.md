@@ -128,7 +128,9 @@ CORA CHORES is the only capability still marked BLOCKED.
 The implementation side is complete: a pinned isolated Xvfb/crl_alfred runtime,
 secure official-source/mirror downloader, bounded invalid-archive diagnostics,
 collision-free temporary download staging, atomic archive publication, optional
-SHA-256 verification, safe ZIP extraction, metadata closure checks, complete
+SHA-256 verification, duplicate ZIP member rejection, transactional ZIP
+extraction into a unique sibling directory, protection against overwriting
+nonempty extracted datasets, metadata closure checks, complete
 27-trajectory/raw-image validation, and the exact published trajectory smoke
 path are present. The recovery workflow defaults to CORA's historical OneDrive
 URL and can accept an authoritative replacement mirror without code changes.
