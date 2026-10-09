@@ -82,25 +82,35 @@ class EMASurpriseNormalizer:
         self.smoothed = 0.0
 
     def observe(self, value: float) -> SurpriseObservation:
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise TypeError("surprise statistic must be numeric")
         if not math.isfinite(value):
             raise FloatingPointError("surprise statistic must be finite")
         if self.count == 0:
-            self.center = value
-            self.variance = self.config.initial_variance
+            next_center = float(value)
+            next_variance = self.config.initial_variance
             normalized = 0.0
-            self.smoothed = 0.0
+            next_smoothed = 0.0
         else:
             scale_before = math.sqrt(max(self.variance, self.config.epsilon))
-            normalized = abs(value - self.center) / (scale_before + self.config.epsilon)
             delta = value - self.center
-            self.center = self.config.decay * self.center + (1.0 - self.config.decay) * value
-            self.variance = (
+            normalized = abs(delta) / (scale_before + self.config.epsilon)
+            next_center = self.config.decay * self.center + (1.0 - self.config.decay) * value
+            next_variance = (
                 self.config.decay * self.variance + (1.0 - self.config.decay) * delta * delta
             )
-            self.smoothed = (
+            next_smoothed = (
                 self.config.smoothing_decay * self.smoothed
                 + (1.0 - self.config.smoothing_decay) * normalized
             )
+        if not all(
+            math.isfinite(number)
+            for number in (next_center, next_variance, normalized, next_smoothed)
+        ):
+            raise FloatingPointError("surprise normalization produced non-finite statistics")
+        self.center = next_center
+        self.variance = next_variance
+        self.smoothed = next_smoothed
         self.count += 1
         scale = math.sqrt(max(self.variance, self.config.epsilon))
         return SurpriseObservation(
