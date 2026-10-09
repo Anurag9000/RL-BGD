@@ -16,6 +16,10 @@ from rl_bgd.surprise.base import (
     SurpriseObservation,
 )
 from rl_bgd.utils.checkpoint_progress import checkpoint_integer
+from rl_bgd.utils.config_validation import (
+    config_finite_float,
+    config_positive_integer,
+)
 
 
 @dataclass(frozen=True)
@@ -33,13 +37,26 @@ class AdaptivePredictiveRetentionConfig:
     def validate(self) -> None:
         self.normalizer.validate()
         self.mapping.validate()
-        if any(width < 1 for width in self.hidden_dims):
-            raise ValueError("predictive-model hidden widths must be positive")
-        if self.learning_rate <= 0:
+        for index, width in enumerate(self.hidden_dims):
+            config_positive_integer(width, name=f"predictive-model hidden width {index}")
+        learning_rate = config_finite_float(
+            self.learning_rate, name="predictive-model learning rate"
+        )
+        if learning_rate <= 0:
             raise ValueError("predictive-model learning rate must be positive")
-        if self.gradient_clip_norm is not None and self.gradient_clip_norm <= 0:
-            raise ValueError("predictive-model gradient clip must be positive")
-        if self.min_log_std >= self.max_log_std:
+        if self.gradient_clip_norm is not None:
+            clip = config_finite_float(
+                self.gradient_clip_norm, name="predictive-model gradient clip"
+            )
+            if clip <= 0:
+                raise ValueError("predictive-model gradient clip must be positive")
+        min_log_std = config_finite_float(
+            self.min_log_std, name="predictive-model min_log_std"
+        )
+        max_log_std = config_finite_float(
+            self.max_log_std, name="predictive-model max_log_std"
+        )
+        if min_log_std >= max_log_std:
             raise ValueError("predictive-model log-std bounds are invalid")
 
 
@@ -56,10 +73,16 @@ class GaussianTransitionModel(nn.Module):
         max_log_std: float = 2.0,
     ) -> None:
         super().__init__()
-        if observation_dim < 1 or action_dim < 1:
-            raise ValueError("predictive-model dimensions must be positive")
-        if any(width < 1 for width in hidden_dims):
-            raise ValueError("predictive-model hidden widths must be positive")
+        config_positive_integer(observation_dim, name="predictive-model observation_dim")
+        config_positive_integer(action_dim, name="predictive-model action_dim")
+        for index, width in enumerate(hidden_dims):
+            config_positive_integer(width, name=f"predictive-model hidden width {index}")
+        min_log_std = config_finite_float(
+            min_log_std, name="predictive-model min_log_std"
+        )
+        max_log_std = config_finite_float(
+            max_log_std, name="predictive-model max_log_std"
+        )
         if min_log_std >= max_log_std:
             raise ValueError("predictive-model log-std bounds are invalid")
         self.observation_dim = observation_dim

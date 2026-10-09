@@ -6,6 +6,8 @@ import math
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 
+from rl_bgd.utils.config_validation import config_finite_float
+
 
 def _checkpoint_int(
     value: object,
@@ -40,13 +42,19 @@ class EMANormalizerConfig:
     epsilon: float = 1e-6
 
     def validate(self) -> None:
-        if not 0.0 <= self.decay < 1.0:
+        decay = config_finite_float(self.decay, name="decay")
+        smoothing_decay = config_finite_float(self.smoothing_decay, name="smoothing_decay")
+        initial_variance = config_finite_float(
+            self.initial_variance, name="initial_variance"
+        )
+        epsilon = config_finite_float(self.epsilon, name="epsilon")
+        if not 0.0 <= decay < 1.0:
             raise ValueError("decay must lie in [0, 1)")
-        if not 0.0 <= self.smoothing_decay < 1.0:
+        if not 0.0 <= smoothing_decay < 1.0:
             raise ValueError("smoothing_decay must lie in [0, 1)")
-        if self.initial_variance <= 0:
+        if initial_variance <= 0:
             raise ValueError("initial_variance must be positive")
-        if self.epsilon <= 0:
+        if epsilon <= 0:
             raise ValueError("epsilon must be positive")
 
 
@@ -157,9 +165,11 @@ class RetentionMappingConfig:
     kappa: float = 1.0
 
     def validate(self) -> None:
-        if not 0.0 < self.lambda_min <= 1.0:
+        lambda_min = config_finite_float(self.lambda_min, name="lambda_min")
+        kappa = config_finite_float(self.kappa, name="kappa")
+        if not 0.0 < lambda_min <= 1.0:
             raise ValueError("lambda_min must lie in (0, 1]")
-        if self.kappa < 0:
+        if kappa < 0:
             raise ValueError("kappa must be non-negative")
 
 

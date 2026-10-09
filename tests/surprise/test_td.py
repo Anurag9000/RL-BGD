@@ -93,3 +93,34 @@ def test_td_surprise_checkpoint_round_trip_preserves_future_statistics() -> None
     expected = source.observe(torch.tensor([4.0, 5.0, 6.0]))
     actual = restored.observe(torch.tensor([4.0, 5.0, 6.0]))
     assert actual == expected
+
+@pytest.mark.parametrize(
+    ("field", "invalid"),
+    [
+        ("initial_variance", float("nan")),
+        ("epsilon", float("inf")),
+        ("decay", True),
+        ("smoothing_decay", "0.9"),
+    ],
+)
+def test_surprise_configs_reject_nonfinite_and_coerced_values(
+    field: str,
+    invalid: object,
+) -> None:
+    kwargs = {field: invalid}
+    with pytest.raises((TypeError, ValueError)):
+        EMASurpriseNormalizer(EMANormalizerConfig(**kwargs))
+
+
+@pytest.mark.parametrize(
+    ("field", "invalid"),
+    [("kappa", float("nan")), ("lambda_min", float("inf")), ("kappa", "1")],
+)
+def test_retention_config_rejects_nonfinite_and_coerced_values(
+    field: str,
+    invalid: object,
+) -> None:
+    kwargs = {field: invalid}
+    with pytest.raises((TypeError, ValueError)):
+        RetentionMappingConfig(**kwargs).validate()
+
