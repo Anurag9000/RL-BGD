@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -135,6 +136,77 @@ def test_boundary_regularized_training_resume_matches_uninterrupted(
     assert resumed["consolidations"] == full_result["consolidations"]
     assert resumed["last_update_metrics"] == full_result["last_update_metrics"]
     _assert_nested_equal(resumed_agent.state_dict(), full_state)
+
+
+
+@pytest.mark.parametrize("split_step", [11, 21])
+def test_boundary_regularized_resume_matches_after_both_rings_wrap(
+    tmp_path: Path,
+    split_step: int,
+) -> None:
+    full_env, full_agent, base = _build(124)
+    config = replace(base, replay_capacity=6)
+    full_result = train_boundary_regularized_sac(full_env, full_agent, config=config)
+    full_state = deepcopy(full_agent.state_dict())
+
+    split_env, split_agent, _ = _build(124)
+    checkpoint = tmp_path / "wrapped_replays.pt"
+    partial = train_boundary_regularized_sac(
+        split_env, split_agent, config=config, checkpoint_path=checkpoint,
+        max_steps_this_call=split_step,
+    )
+    assert partial["completed"] is False
+    saved = torch.load(checkpoint, map_location="cpu", weights_only=False)
+    replay, phase = saved["replay"], saved["phase_replay"]
+    assert replay["size"] == phase["size"] == 6
+    assert replay["next_transition_id"] == split_step
+    assert replay["position"] == split_step % 6
+    assert phase["next_transition_id"] == (11 if split_step == 11 else 9)
+    assert phase["position"] == phase["next_transition_id"] % 6
+
+    resumed_env, resumed_agent, _ = _build(124)
+    seed_everything(999, deterministic=True)
+    resumed = train_boundary_regularized_sac(
+        resumed_env, resumed_agent, config=config,
+        checkpoint_path=checkpoint, resume_from=checkpoint,
+    )
+    assert resumed["completed"] is True
+    assert resumed["steps"] == 24
+    assert resumed["consolidations"] == full_result["consolidations"]
+    assert resumed["last_update_metrics"] == full_result["last_update_metrics"]
+    _assert_nested_equal(resumed_agent.state_dict(), full_state)
+
+
+@pytest.mark.parametrize("buffer_name", ["replay", "phase_replay"])
+def test_boundary_regularized_resume_rejects_wrapped_clock_corruption(
+    tmp_path: Path,
+    buffer_name: str,
+) -> None:
+    env, agent, base = _build(125)
+    config = replace(base, replay_capacity=6)
+    checkpoint = tmp_path / "wrapped_clock_corruption.pt"
+    train_boundary_regularized_sac(
+        env, agent, config=config, checkpoint_path=checkpoint,
+        max_steps_this_call=21,
+    )
+    payload = torch.load(checkpoint, map_location="cpu", weights_only=False)
+    replay = payload[buffer_name]
+    assert replay["size"] == 6
+    assert replay["position"] != 0
+    altered = replay["insertion_steps"].clone()
+    altered[replay["position"], 0] += 2
+    replay["insertion_steps"] = altered
+    torch.save(payload, checkpoint)
+
+    target_env, target_agent, _ = _build(125)
+    before_agent = deepcopy(target_agent.state_dict())
+    before_env = deepcopy(target_env.state_dict())
+    with pytest.raises(ValueError, match="insertion-step chronology mismatch"):
+        train_boundary_regularized_sac(
+            target_env, target_agent, config=config, resume_from=checkpoint,
+        )
+    _assert_nested_equal(target_agent.state_dict(), before_agent)
+    _assert_nested_equal(target_env.state_dict(), before_env)
 
 
 def test_boundary_regularized_resume_rejects_phase_replay_progress_mismatch(
