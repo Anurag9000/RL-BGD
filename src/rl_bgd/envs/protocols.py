@@ -17,6 +17,9 @@ class TensorContinuousSpace(Protocol):
     @property
     def high(self) -> Tensor: ...
 
+    @property
+    def shape(self) -> tuple[int, ...]: ...
+
     def sample(
         self,
         *,

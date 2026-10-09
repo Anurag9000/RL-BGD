@@ -109,8 +109,20 @@ def test_posterior_checkpoint_rejects_parameter_dtype_mismatch() -> None:
         restored.load_state_dict(state)
 
 
-@pytest.mark.parametrize("bad_count", [-1, True, 1.5, "2"])
-def test_updater_checkpoint_rejects_invalid_step_count(bad_count: object) -> None:
+@pytest.mark.parametrize(
+    ("bad_count", "error_type", "message"),
+    [
+        (-1, ValueError, "non-negative"),
+        (True, TypeError, "must be an integer"),
+        (1.5, TypeError, "must be an integer"),
+        ("2", TypeError, "must be an integer"),
+    ],
+)
+def test_updater_checkpoint_rejects_invalid_step_count(
+    bad_count: object,
+    error_type: type[Exception],
+    message: str,
+) -> None:
     module = nn.Linear(2, 1)
     updater = BGDUpdater(
         DiagonalGaussianPosterior.from_module(module, prior_std=0.2),
