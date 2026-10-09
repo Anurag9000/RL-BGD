@@ -9,6 +9,7 @@ from torch import Tensor
 
 from rl_bgd.replay.evidence_accounting import (
     ReplayEvidenceConfig,
+    _validated_replay_metadata,
 )
 from rl_bgd.replay.sequence_buffer import (
     SequenceReplayBatch,
@@ -46,14 +47,12 @@ def sequence_replay_evidence_weights(
     """Construct uncertainty weights for optimized sequence positions only."""
 
     config.validate()
-    usage = batch.usage_counts.detach().float()
-    fresh = batch.fresh.detach()
-    if usage.ndim != 3 or usage.shape[-1] != 1:
-        raise ValueError("sequence usage_counts must have shape [batch, unroll, 1]")
-    if fresh.shape != usage.shape:
-        raise ValueError("sequence fresh metadata must match usage_counts")
-    if torch.any(usage < 1):
-        raise ValueError("sequence usage counts must be >= 1")
+    usage, fresh = _validated_replay_metadata(
+        batch.usage_counts,
+        batch.fresh,
+        ndim=3,
+        label="sequence",
+    )
 
     inverse_usage = usage.reciprocal()
     if config.mode == "all_replay":
@@ -90,6 +89,12 @@ def weighted_sequence_evidence_mean(
         raise ValueError("sequence evidence weights must have shape [batch, time, 1]")
     if per_transition_loss.shape[:2] != weights.shape[:2]:
         raise ValueError("sequence loss/evidence batch-time shapes differ")
+    if per_transition_loss.numel() == 0 or weights.numel() == 0:
+        raise ValueError("sequence evidence reduction requires non-empty input")
+    if not torch.isfinite(per_transition_loss).all():
+        raise FloatingPointError("non-finite sequence evidence losses")
+    if not torch.isfinite(weights).all() or torch.any(weights < 0):
+        raise FloatingPointError("invalid sequence evidence reduction weights")
     flattened = per_transition_loss.reshape(
         *per_transition_loss.shape[:2],
         -1,

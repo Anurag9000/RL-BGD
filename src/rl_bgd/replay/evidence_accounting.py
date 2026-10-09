@@ -53,6 +53,42 @@ class ReplayEvidenceSummary:
     effective_sample_size: float
 
 
+
+def _validated_replay_metadata(
+    usage_counts: Tensor,
+    fresh: Tensor,
+    *,
+    ndim: int,
+    label: str,
+) -> tuple[Tensor, Tensor]:
+    """Reject malformed evidence provenance before any weighting mode is applied."""
+
+    if not isinstance(usage_counts, Tensor) or not isinstance(fresh, Tensor):
+        raise TypeError(f"{label} evidence metadata must be tensors")
+    if (
+        usage_counts.ndim != ndim
+        or usage_counts.shape[-1] != 1
+        or usage_counts.numel() == 0
+    ):
+        raise ValueError(f"{label} usage_counts must have a non-empty trailing singleton dimension")
+    if usage_counts.dtype not in (
+        torch.uint8,
+        torch.int8,
+        torch.int16,
+        torch.int32,
+        torch.int64,
+    ):
+        raise TypeError(f"{label} usage_counts must be integer tensors")
+    if fresh.dtype != torch.bool or fresh.shape != usage_counts.shape:
+        raise ValueError(f"{label} fresh metadata must be matching boolean tensors")
+    usage = usage_counts.detach()
+    if torch.any(usage < 1):
+        raise ValueError(f"{label} usage_counts must be >= 1")
+    if not torch.equal(fresh, usage == 1):
+        raise ValueError(f"{label} freshness disagrees with usage counts")
+    return usage.float(), fresh.detach()
+
+
 def _effective_sample_size(weights: Tensor) -> float:
     flat = weights.detach().float().reshape(-1)
     numerator = flat.sum().square()
@@ -81,14 +117,12 @@ def replay_evidence_weights(
     """
 
     config.validate()
-    usage = batch.usage_counts.detach().float()
-    if usage.ndim != 2 or usage.shape[1] != 1:
-        raise ValueError("usage_counts must have shape [batch, 1]")
-    if torch.any(usage < 1):
-        raise ValueError("usage_counts must be >= 1 for sampled replay items")
-    fresh = batch.fresh.detach()
-    if fresh.shape != usage.shape:
-        raise ValueError("fresh metadata must match usage_counts shape")
+    usage, fresh = _validated_replay_metadata(
+        batch.usage_counts,
+        batch.fresh,
+        ndim=2,
+        label="replay",
+    )
 
     inverse_usage = usage.reciprocal()
     if config.mode == "all_replay":
@@ -125,6 +159,12 @@ def weighted_evidence_mean(per_item_loss: Tensor, weights: Tensor) -> Tensor:
         raise ValueError("weights must have shape [batch, 1]")
     if per_item_loss.shape[0] != weights.shape[0]:
         raise ValueError("loss and evidence weights have different batch sizes")
+    if per_item_loss.numel() == 0 or weights.numel() == 0:
+        raise ValueError("evidence reduction requires a non-empty batch")
+    if not torch.isfinite(per_item_loss).all():
+        raise FloatingPointError("non-finite per-item evidence losses")
+    if not torch.isfinite(weights).all() or torch.any(weights < 0):
+        raise FloatingPointError("invalid evidence reduction weights")
     flattened = per_item_loss.reshape(per_item_loss.shape[0], -1)
     per_transition = flattened.mean(dim=1, keepdim=True)
     return (per_transition * weights.to(per_transition)).mean()

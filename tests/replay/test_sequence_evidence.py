@@ -1,3 +1,4 @@
+import pytest
 import torch
 
 from rl_bgd.replay.evidence_accounting import (
@@ -105,3 +106,51 @@ def test_weighted_sequence_loss_does_not_renormalize() -> None:
         ).item()
         == 1.0
     )
+
+
+@pytest.mark.parametrize("mode", ["all_replay", "inverse_reuse_weight"])
+def test_sequence_evidence_rejects_invalid_metadata(mode: str) -> None:
+    batch = make_batch()
+    for usage, fresh, message in (
+        (batch.usage_counts.float(), batch.fresh, "integer tensors"),
+        (torch.zeros_like(batch.usage_counts), batch.fresh, ">= 1"),
+        (batch.usage_counts, batch.fresh.long(), "boolean tensors"),
+        (batch.usage_counts, torch.zeros_like(batch.fresh), "freshness disagrees"),
+    ):
+        invalid = SequenceReplayBatch(
+            observations=batch.observations,
+            actions=batch.actions,
+            rewards=batch.rewards,
+            next_observations=batch.next_observations,
+            terminated=batch.terminated,
+            truncated=batch.truncated,
+            episode_starts=batch.episode_starts,
+            transition_ids=batch.transition_ids,
+            insertion_steps=batch.insertion_steps,
+            usage_counts=usage,
+            fresh=fresh,
+            burn_in=batch.burn_in,
+        )
+        with pytest.raises((TypeError, ValueError), match=message):
+            sequence_replay_evidence_weights(
+                invalid,
+                ReplayEvidenceConfig(mode=mode),  # type: ignore[arg-type]
+            )
+
+
+@pytest.mark.parametrize(
+    ("losses", "weights", "message"),
+    [
+        (torch.empty(0, 1, 1), torch.empty(0, 1, 1), "non-empty"),
+        (torch.tensor([[[float("nan")]]]), torch.ones(1, 1, 1), "non-finite"),
+        (torch.ones(1, 1, 1), torch.tensor([[[float("inf")]]]), "invalid"),
+        (torch.ones(1, 1, 1), torch.tensor([[[-1.0]]]), "invalid"),
+    ],
+)
+def test_sequence_evidence_reduction_rejects_corrupt_input(
+    losses: torch.Tensor,
+    weights: torch.Tensor,
+    message: str,
+) -> None:
+    with pytest.raises((ValueError, FloatingPointError), match=message):
+        weighted_sequence_evidence_mean(losses, weights)
