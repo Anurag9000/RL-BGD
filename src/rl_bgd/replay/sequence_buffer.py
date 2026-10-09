@@ -200,6 +200,13 @@ class SequenceReplayBuffer:
             name="sequence replay episode_start",
         )
         staged_insertion_step = replay_insertion_step(insertion_step)
+        if self._size:
+            previous = (index - 1) % self.capacity
+            previous_ended = bool(
+                (self.terminated[previous, 0] | self.truncated[previous, 0]).item()
+            )
+            if staged_episode_start != previous_ended:
+                raise ValueError("sequence replay episode_start boundary mismatch")
 
         self.observations[index].copy_(staged_observation)
         self.actions[index].copy_(staged_action)
