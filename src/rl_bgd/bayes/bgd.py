@@ -343,13 +343,25 @@ class BGDUpdater:
                 uncertainty=uncertainty_loss_fn(output),
             )
 
-        result = self.step(
-            objective,
-            generator=generator,
-            retention=retention,
-            evidence_temperature=evidence_temperature,
-        )
-        self.posterior.sync_module(module)
+        before_means = {name: value.clone() for name, value in self.posterior.means.items()}
+        before_stds = {name: value.clone() for name, value in self.posterior.stds.items()}
+        before_step_count = self.step_count
+        try:
+            result = self.step(
+                objective,
+                generator=generator,
+                retention=retention,
+                evidence_temperature=evidence_temperature,
+            )
+            self.posterior.sync_module(module)
+        except Exception:
+            with torch.no_grad():
+                for name, value in before_means.items():
+                    self.posterior.means[name].copy_(value)
+                for name, value in before_stds.items():
+                    self.posterior.stds[name].copy_(value)
+            self.step_count = before_step_count
+            raise
         return result
 
     def _config_state(self) -> dict[str, object]:

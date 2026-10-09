@@ -230,3 +230,13 @@ deviations, and completed-step count, including changes from adaptive
 posterior tempering. This guarantee covers updater state, not user-objective
 side effects or consumed random-number-generator draws. It does not imply
 that training or benchmark experiments have been executed.
+
+## Posterior-to-module synchronization
+
+Copying Bayesian posterior means to a PyTorch module first checks all target
+parameter names, shapes, and dtypes, and stages every cast on its destination
+device. A cast that overflows (for example FP32 to FP16) is rejected before
+any target parameter is changed. A failed `step_module` synchronization also
+rolls back the updater's posterior state and step count. This preflight protects
+against validation failures; user-defined model forward side effects and
+unexpected device copy failures are outside the transaction guarantee.

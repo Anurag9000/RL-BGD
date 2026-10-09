@@ -235,15 +235,21 @@ class DiagonalGaussianPosterior(ParameterPosterior):
         missing = set(self.means) - set(module_parameters)
         if missing:
             raise KeyError(f"module is missing posterior parameters: {sorted(missing)}")
+        staged: dict[str, Tensor] = {}
+        for name, mean in self.means.items():
+            target = module_parameters[name]
+            if target.shape != mean.shape:
+                raise ValueError(f"module parameter shape mismatch for {name}")
+            if target.dtype != self.parameter_dtypes[name]:
+                raise ValueError(f"module parameter dtype mismatch for {name}")
+            candidate = mean.to(device=target.device, dtype=target.dtype)
+            if not torch.isfinite(candidate).all().item():
+                raise FloatingPointError(f"nonfinite module parameter after conversion for {name}")
+            staged[name] = candidate
+
         with torch.no_grad():
-            for name, mean in self.means.items():
-                target = module_parameters[name]
-                target.copy_(
-                    mean.to(
-                        device=target.device,
-                        dtype=target.dtype,
-                    )
-                )
+            for name, candidate in staged.items():
+                module_parameters[name].copy_(candidate)
 
     def to(
         self,
