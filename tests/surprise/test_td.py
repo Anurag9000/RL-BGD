@@ -144,3 +144,32 @@ def test_surprise_normalizer_rejects_coerced_observations(invalid: object) -> No
     with pytest.raises(TypeError, match="must be numeric"):
         normalizer.observe(invalid)
     assert normalizer.state_dict() == before
+
+
+@pytest.mark.parametrize(
+    ("mutations", "message"),
+    [
+        ({"smoothed": -0.1}, "smoothed surprise must be non-negative"),
+        ({"count": 0, "center": 2.0}, "unobserved checkpoint state is inconsistent"),
+        ({"count": 0, "variance": 2.0}, "unobserved checkpoint state is inconsistent"),
+        ({"count": 0, "smoothed": 1.0}, "unobserved checkpoint state is inconsistent"),
+    ],
+)
+def test_surprise_checkpoint_rejects_impossible_statistics_without_mutation(
+    mutations: dict[str, float | int],
+    message: str,
+) -> None:
+    source = EMASurpriseNormalizer()
+    source.observe(2.0)
+    invalid = EMASurpriseNormalizer().state_dict()
+    invalid.update(mutations)
+    before = source.state_dict()
+    with pytest.raises(ValueError, match=message):
+        source.load_state_dict(invalid)
+    assert source.state_dict() == before
+
+
+@pytest.mark.parametrize("invalid", [True, "1.0", float("inf"), -0.1])
+def test_retention_mapping_rejects_invalid_surprise_scalars(invalid: object) -> None:
+    with pytest.raises((TypeError, ValueError)):
+        surprise_to_retention(invalid, RetentionMappingConfig())
