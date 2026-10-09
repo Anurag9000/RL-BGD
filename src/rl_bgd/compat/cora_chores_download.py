@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import shutil
 import tempfile
 import zipfile
 from collections.abc import Callable, Iterable
@@ -261,10 +262,11 @@ def extract_chores_archive(
         raise ChoresArchiveDownloadError(f"not a ZIP archive: {source}")
 
     target = Path(destination)
-    target.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.is_symlink() or (target.exists() and not target.is_dir()):
+        raise ChoresArchiveDownloadError("archive extraction destination is not a directory")
+    if target.exists() and any(target.iterdir()):
+        raise ChoresArchiveDownloadError("archive extraction destination is not empty")
     target_root = target.resolve()
 
     with zipfile.ZipFile(source) as archive_file:
@@ -275,12 +277,24 @@ def extract_chores_archive(
                 "archive expands beyond configured extraction size limit"
             )
 
+        seen_members: set[str] = set()
         for member in members:
             member_path = Path(member.filename)
-            if member_path.is_absolute() or ".." in member_path.parts:
+            if (
+                not member.filename
+                or "\\" in member.filename
+                or member_path.is_absolute()
+                or ".." in member_path.parts
+            ):
                 raise ChoresArchiveDownloadError(
                     f"archive contains an unsafe path: {member.filename}"
                 )
+            normalized = member_path.as_posix().rstrip("/")
+            if normalized in seen_members:
+                raise ChoresArchiveDownloadError(
+                    f"archive contains duplicate member path: {member.filename}"
+                )
+            seen_members.add(normalized)
             unix_mode = member.external_attr >> 16
             if (unix_mode & 0o170000) == 0o120000:
                 raise ChoresArchiveDownloadError(
@@ -292,6 +306,25 @@ def extract_chores_archive(
                     f"archive member escapes destination: {member.filename}"
                 )
 
-        archive_file.extractall(target)
+        staging = Path(
+            tempfile.mkdtemp(
+                prefix=f".{target.name}.extract-",
+                dir=target.parent,
+            )
+        )
+        try:
+            archive_file.extractall(staging)
+            if target.is_symlink() or (target.exists() and not target.is_dir()):
+                raise ChoresArchiveDownloadError(
+                    "archive extraction destination changed during extraction"
+                )
+            if target.exists() and any(target.iterdir()):
+                raise ChoresArchiveDownloadError(
+                    "archive extraction destination changed during extraction"
+                )
+            os.replace(staging, target)
+        finally:
+            if staging.exists():
+                shutil.rmtree(staging)
 
-    return target_root
+    return target.resolve()

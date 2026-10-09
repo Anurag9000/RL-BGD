@@ -62,7 +62,10 @@ construction, reset, action sampling, step, finite reward, and close behavior.
   The recovery workflow now defaults to CORA's official historical OneDrive URL
   and uses a repository-owned downloader that rejects HTML/login responses,
   empty/non-ZIP payloads, oversized archives, unsafe ZIP paths, and optional
-  SHA-256 mismatches before extraction. Invalid archives are diagnosed using
+  SHA-256 mismatches before extraction. Extraction is staged in a unique sibling
+  directory and published only after all members succeed; an invalid archive
+  cannot leave a partial dataset in the destination. Existing nonempty datasets
+  and ambiguous duplicate ZIP member paths are rejected. Invalid archives are diagnosed using
   bounded prefix reads rather than loading an entire multi-gigabyte payload.
   Each attempt uses an independently allocated temporary file, avoiding
   staging-path collisions when recovery processes overlap. An authoritative replacement mirror can

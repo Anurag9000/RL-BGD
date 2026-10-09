@@ -308,6 +308,72 @@ def test_safe_extract_rejects_uncompressed_size_limit(
     assert not (destination / "data" / "payload.bin").exists()
 
 
+def test_extract_failure_does_not_publish_partial_dataset(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    archive = tmp_path / "corrupt.zip"
+    archive.write_bytes(_zip_payload({"a.txt": b"a", "b.txt": b"b"}))
+    destination = tmp_path / "data"
+
+    def fail_after_partial_write(
+        self: zipfile.ZipFile,
+        path: str | Path,
+        members: object = None,
+        pwd: object = None,
+    ) -> None:
+        del self, members, pwd
+        (Path(path) / "partial.txt").write_bytes(b"incomplete")
+        raise zipfile.BadZipFile("corrupted member CRC")
+
+    monkeypatch.setattr(zipfile.ZipFile, "extractall", fail_after_partial_write)
+    with pytest.raises(zipfile.BadZipFile, match="corrupted member CRC"):
+        extract_chores_archive(archive=archive, destination=destination)
+
+    assert not destination.exists()
+    assert list(tmp_path.glob(".data.extract-*")) == []
+
+
+def test_extract_rejects_nonempty_destination_without_overwriting(tmp_path: Path) -> None:
+    archive = tmp_path / "safe.zip"
+    archive.write_bytes(_zip_payload({"subdir/entry.txt": b"new"}))
+    destination = tmp_path / "data"
+    destination.mkdir()
+    original = destination / "existing.txt"
+    original.write_bytes(b"untouched")
+
+    with pytest.raises(ChoresArchiveDownloadError, match="not empty"):
+        extract_chores_archive(archive=archive, destination=destination)
+
+    assert original.read_bytes() == b"untouched"
+    assert not (destination / "subdir").exists()
+
+
+def test_extract_rejects_duplicate_member_paths(tmp_path: Path) -> None:
+    archive = tmp_path / "duplicate.zip"
+    with zipfile.ZipFile(archive, "w") as output:
+        output.writestr("data/entry.txt", b"first")
+        with pytest.warns(UserWarning, match="Duplicate name"):
+            output.writestr("data/entry.txt", b"second")
+    destination = tmp_path / "data"
+
+    with pytest.raises(ChoresArchiveDownloadError, match="duplicate member path"):
+        extract_chores_archive(archive=archive, destination=destination)
+
+    assert not destination.exists()
+
+
+def test_extract_accepts_empty_existing_destination(tmp_path: Path) -> None:
+    archive = tmp_path / "safe.zip"
+    archive.write_bytes(_zip_payload({"data/file.txt": b"good"}))
+    destination = tmp_path / "data"
+    destination.mkdir()
+
+    restored = extract_chores_archive(archive=archive, destination=destination)
+    assert restored == destination.resolve()
+    assert (destination / "data" / "file.txt").read_bytes() == b"good"
+
+
 def test_safe_extract_accepts_regular_archive(
     tmp_path: Path,
 ) -> None:
