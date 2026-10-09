@@ -16,6 +16,12 @@ def _vector(values: Sequence[float]) -> np.ndarray:
     return array
 
 
+def _finite_metric(value: float, *, metric: str) -> float:
+    if not np.isfinite(value):
+        raise ValueError(f"{metric} produced a non-finite result")
+    return float(value)
+
+
 def _performance_matrix(values: Sequence[Sequence[float]]) -> np.ndarray:
     matrix = np.asarray(values, dtype=np.float64)
     if matrix.ndim != 2 or min(matrix.shape) < 1:
@@ -28,7 +34,7 @@ def _performance_matrix(values: Sequence[Sequence[float]]) -> np.ndarray:
 def final_average_performance(final_scores: Sequence[float]) -> float:
     """Return arithmetic mean of final per-task performance."""
 
-    return float(_vector(final_scores).mean())
+    return _finite_metric(float(_vector(final_scores).mean()), metric="final average performance")
 
 
 def forgetting(
@@ -51,7 +57,9 @@ def forgetting(
         [matrix[index, index] - matrix[-1, index] for index in range(tasks - 1)],
         dtype=np.float64,
     )
-    return values, float(values.mean())
+    if not np.isfinite(values).all():
+        raise ValueError("forgetting differences are non-finite")
+    return values, _finite_metric(float(values.mean()), metric="mean forgetting")
 
 
 def backward_transfer(
@@ -62,7 +70,7 @@ def backward_transfer(
     values, _ = forgetting(performance_matrix)
     if values.size == 0:
         return 0.0
-    return float((-values).mean())
+    return _finite_metric(float((-values).mean()), metric="backward transfer")
 
 
 def forward_transfer(
@@ -79,7 +87,10 @@ def forward_transfer(
     reference = _vector(reference_scores)
     if observed.shape != reference.shape:
         raise ValueError("forward-transfer inputs must have matching shapes")
-    return float((observed - reference).mean())
+    differences = observed - reference
+    if not np.isfinite(differences).all():
+        raise ValueError("forward transfer differences are non-finite")
+    return _finite_metric(float(differences.mean()), metric="forward transfer")
 
 
 def lifetime_auc(
@@ -98,10 +109,11 @@ def lifetime_auc(
         return float(y[0])
     if np.any(np.diff(x) <= 0):
         raise ValueError("steps must be strictly increasing")
-    area = float(np.trapezoid(y, x))
+    area = _finite_metric(float(np.trapezoid(y, x)), metric="lifetime AUC")
     if normalize_by_duration:
-        area /= float(x[-1] - x[0])
-    return area
+        duration = _finite_metric(float(x[-1] - x[0]), metric="lifetime duration")
+        area /= duration
+    return _finite_metric(area, metric="lifetime AUC")
 
 
 def plasticity_retention(
@@ -114,4 +126,4 @@ def plasticity_retention(
         raise ValueError("AUC inputs must be finite")
     if single_task_auc == 0:
         raise ZeroDivisionError("single_task_auc must be non-zero")
-    return float(continual_auc / single_task_auc)
+    return _finite_metric(float(continual_auc / single_task_auc), metric="plasticity retention")
