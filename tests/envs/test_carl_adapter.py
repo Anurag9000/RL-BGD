@@ -36,6 +36,7 @@ class FakeCARL:
             "m": 1.0,
         }
         self.applied: list[dict[str, float]] = []
+        self.reset_contexts: list[dict[str, float]] = []
 
     def get_context_space(self) -> FakeContextSpace:
         return FakeContextSpace()
@@ -49,6 +50,7 @@ class FakeCARL:
         seed: int | None = None,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         del seed
+        self.reset_contexts.append(dict(self.context))
         return (
             {
                 "obs": np.asarray(
@@ -90,7 +92,7 @@ def test_strict_carl_stream_hides_context_and_switch_metadata() -> None:
     schedule = ContextSchedule(
         ContextScheduleConfig(
             mode="abrupt",
-            anchors=({"g": 10.0}, {"g": 5.0}),
+            anchors=({"g": 7.0}, {"g": 5.0}),
             phase_steps=1,
         )
     )
@@ -98,6 +100,8 @@ def test_strict_carl_stream_hides_context_and_switch_metadata() -> None:
     env = CARLContextStream(base, schedule)
     observation, info = env.reset(seed=0)
     assert observation.shape == (2,)
+    assert base.reset_contexts[-1]["g"] == 7.0
+    assert base.applied[-1]["g"] == 7.0
     assert "context_id" not in info
     assert "context" not in info
     _, _, _, _, step_info = env.step(torch.tensor([0.0]))

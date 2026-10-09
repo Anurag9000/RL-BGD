@@ -112,8 +112,12 @@ class CARLContextStream:
         *,
         seed: int | None = None,
     ) -> tuple[Tensor, dict[str, Any]]:
-        observation, info = self.env.reset(seed=seed)
+        # CARL samples/reset-initializes the simulator under its current context.
+        # Apply the scheduled context first so the first observation and latent
+        # simulator state of every episode belong to the same context used by
+        # subsequent environment steps.
         self._apply_context()
+        observation, info = self.env.reset(seed=seed)
         return self._observation(observation), self._info(info)
 
     def step(
