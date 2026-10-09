@@ -200,6 +200,7 @@ def test_derived_checkpoint_versions_are_not_coerced(
     with pytest.raises(TypeError, match="must be an integer"):
         agent.load_state_dict(payload)
 
+
 @pytest.mark.parametrize(
     "flag_name",
     [
@@ -258,7 +259,6 @@ def test_regularized_sac_version_is_not_coerced(invalid_version: object) -> None
 
     with pytest.raises(TypeError, match="must be an integer"):
         agent.load_state_dict(payload)
-
 
 
 def test_ucl_checkpoint_rejects_nonfinite_snapshot_without_mutation() -> None:

@@ -315,6 +315,7 @@ def test_sequence_replay_rejected_checkpoint_does_not_mutate_live_buffer() -> No
     for field in ("size", "position", "next_transition_id"):
         assert after[field] == before[field]
 
+
 @pytest.mark.parametrize(
     ("field", "invalid", "error", "message"),
     [
@@ -352,6 +353,7 @@ def test_sequence_replay_add_rejects_invalid_transition_without_mutation(
     assert state["position"] == 0
     assert state["next_transition_id"] == 0
 
+
 def test_sequence_replay_checkpoint_rejects_negative_insertion_step() -> None:
     source = SequenceReplayBuffer(4, 1, 1)
     add_transition(source, 0, episode_start=True)
@@ -362,4 +364,3 @@ def test_sequence_replay_checkpoint_rejects_negative_insertion_step() -> None:
 
     with pytest.raises(ValueError, match="negative insertion steps"):
         SequenceReplayBuffer(4, 1, 1).load_state_dict(state)
-

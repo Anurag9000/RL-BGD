@@ -138,6 +138,7 @@ def test_previous_transition_context_checkpoint_version_is_not_coerced(
     with pytest.raises(TypeError, match="must be an integer"):
         env.load_state_dict(state)
 
+
 def test_previous_transition_context_rolls_back_partial_nested_restore() -> None:
     base = PartiallyFailingCheckpointEnv()
     base.value = 17
@@ -167,4 +168,3 @@ def test_previous_transition_context_reward_bound_is_strict(
 
     with pytest.raises((TypeError, ValueError)):
         env.load_state_dict(state)
-

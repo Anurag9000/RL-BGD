@@ -237,5 +237,3 @@ def test_si_checkpoint_rejects_tensor_dtype_coercion_without_mutation() -> None:
         owner.load_state_dict(corrupt)
 
     _assert_nested_equal(owner.state_dict(), before)
-
-

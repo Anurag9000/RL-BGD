@@ -218,6 +218,7 @@ def test_sac_resume_rolls_back_on_late_environment_failure(
         env_before["state"],
     )
 
+
 def test_sac_training_checkpoint_rejects_observation_shape_mismatch(
     tmp_path: Path,
 ) -> None:
@@ -250,4 +251,3 @@ def test_sac_training_checkpoint_rejects_observation_shape_mismatch(
             config=config,
             resume_from=corrupt,
         )
-

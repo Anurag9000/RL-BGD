@@ -24,10 +24,14 @@ def replay_vector(
         raise ValueError(f"{name} must use a floating-point dtype")
     if not torch.isfinite(value).all().item():
         raise ValueError(f"{name} contains non-finite values")
-    return value.detach().to(
-        device=reference.device,
-        dtype=reference.dtype,
-    ).clone()
+    return (
+        value.detach()
+        .to(
+            device=reference.device,
+            dtype=reference.dtype,
+        )
+        .clone()
+    )
 
 
 def replay_reward(
@@ -44,10 +48,14 @@ def replay_reward(
             raise ValueError("replay reward must contain exactly one value")
         if value.dtype == torch.bool or value.is_complex():
             raise TypeError("replay reward must be a real scalar")
-        candidate = value.detach().to(
-            device=reference.device,
-            dtype=reference.dtype,
-        ).reshape(())
+        candidate = (
+            value.detach()
+            .to(
+                device=reference.device,
+                dtype=reference.dtype,
+            )
+            .reshape(())
+        )
     elif isinstance(value, Real):
         candidate = torch.tensor(
             float(value),

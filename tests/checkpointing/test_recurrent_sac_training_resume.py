@@ -190,6 +190,7 @@ def test_recurrent_sac_resume_rolls_back_on_late_environment_failure(
         env_before["state"],
     )
 
+
 def test_recurrent_sac_checkpoint_rejects_episode_history_shape_mismatch(
     tmp_path: Path,
 ) -> None:
@@ -227,4 +228,3 @@ def test_recurrent_sac_checkpoint_rejects_episode_history_shape_mismatch(
             config=config,
             resume_from=corrupt,
         )
-
