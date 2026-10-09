@@ -256,8 +256,7 @@ class ReplayBuffer:
                 raise ValueError("replay checkpoint chronological transition IDs are inconsistent")
 
         prepared_tensors = {
-            key: source.to(device=self.device).clone()
-            for key, source in checked_tensors.items()
+            key: source.to(device=self.device).clone() for key, source in checked_tensors.items()
         }
 
         for key, target in tensor_fields.items():

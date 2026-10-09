@@ -24,7 +24,9 @@ from rl_bgd.envs.synthetic.nonstationary_lqr import ScheduledLQREnv
 from rl_bgd.utils.randomness import seed_everything
 
 
-def _build(seed: int) -> tuple[
+def _build(
+    seed: int,
+) -> tuple[
     ScheduledLQREnv,
     RegularizedSACAgent,
     BoundaryRegularizedSACTrainConfig,

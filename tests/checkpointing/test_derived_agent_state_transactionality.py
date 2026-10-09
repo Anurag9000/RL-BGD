@@ -190,14 +190,15 @@ def test_derived_checkpoint_versions_are_not_coerced(
     payload = deepcopy(agent.state_dict())
     expected = payload[version_key]
     if expected == 1:
-        invalid_version = True if invalid_version is True else (
-            1.0 if isinstance(invalid_version, float) else "1"
+        invalid_version = (
+            True
+            if invalid_version is True
+            else (1.0 if isinstance(invalid_version, float) else "1")
         )
     payload[version_key] = invalid_version
 
     with pytest.raises(TypeError, match="must be an integer"):
         agent.load_state_dict(payload)
-
 
 @pytest.mark.parametrize(
     "flag_name",

@@ -387,7 +387,6 @@ def test_repeated_task_names_preserve_occurrence_metrics() -> None:
     assert "forgetting" not in summary.task_metrics["b#occurrence_2"]
 
 
-
 def _valid_manifest_payload() -> dict[str, object]:
     return {
         "run_id": "run",

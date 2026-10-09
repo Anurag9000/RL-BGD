@@ -58,9 +58,7 @@ def test_failed_save_leaves_last_complete_checkpoint(tmp_path: Path, monkeypatch
     assert list(tmp_path.glob(".model.pt.*.tmp")) == []
 
 
-def test_concurrent_writers_never_share_a_staging_file(
-    tmp_path: Path, monkeypatch: Any
-) -> None:
+def test_concurrent_writers_never_share_a_staging_file(tmp_path: Path, monkeypatch: Any) -> None:
     target = tmp_path / "model.pt"
     original_save = torch.save
     barrier = Barrier(2)

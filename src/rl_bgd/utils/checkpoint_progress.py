@@ -50,9 +50,7 @@ def checkpoint_tensor_like(
         raise ValueError(f"{name} shape mismatch")
     if value.dtype != reference.dtype:
         raise ValueError(f"{name} dtype mismatch")
-    if (value.is_floating_point() or value.is_complex()) and not torch.isfinite(
-        value
-    ).all().item():
+    if (value.is_floating_point() or value.is_complex()) and not torch.isfinite(value).all().item():
         raise ValueError(f"{name} contains non-finite values")
     return value.detach().to(device=reference.device).clone()
 

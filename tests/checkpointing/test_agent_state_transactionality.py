@@ -92,6 +92,7 @@ def _task_aware_sac() -> TaskAwareSACAgent:
     )
 
 
+
 @pytest.mark.parametrize(
     ("factory", "late_optimizer_key"),
     [
@@ -135,7 +136,6 @@ def test_agent_checkpoint_rejects_coerced_version(
 
     with pytest.raises(TypeError, match="must be an integer"):
         agent.load_state_dict(payload)
-
 
 @pytest.mark.parametrize(
     ("factory", "counter_name"),

@@ -25,8 +25,7 @@ def checkpoint_float_list(value: object, *, name: str) -> list[float]:
     if not isinstance(value, list):
         raise TypeError(f"{name} must be a list")
     return [
-        checkpoint_finite_float(item, name=f"{name}[{index}]")
-        for index, item in enumerate(value)
+        checkpoint_finite_float(item, name=f"{name}[{index}]") for index, item in enumerate(value)
     ]
 
 

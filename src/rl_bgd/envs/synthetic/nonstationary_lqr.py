@@ -138,8 +138,7 @@ class ScheduledLQREnv:
         if context_step < 0:
             raise ValueError("scheduled-LQR checkpoint environment progress is inconsistent")
         expected_context = {
-            key: float(value)
-            for key, value in self.schedule.context_at(context_step).items()
+            key: float(value) for key, value in self.schedule.context_at(context_step).items()
         }
         if normalized != expected_context:
             raise ValueError("scheduled-LQR checkpoint context does not match the schedule")
