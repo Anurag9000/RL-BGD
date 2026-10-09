@@ -109,3 +109,47 @@ def test_regularized_sac_checkpoint_round_trip() -> None:
         restored.act(observation, deterministic=True),
         agent.act(observation, deterministic=True),
     )
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"method": "unsupported"},
+        {"target": "unsupported"},
+        {"target": None},
+        {"strength": float("nan")},
+        {"strength": float("inf")},
+        {"strength": True},
+        {"strength": "0.1"},
+        {"strength": -0.1},
+        {"consolidation_interval_updates": 1.5},
+        {"consolidation_interval_updates": True},
+        {"consolidation_interval_updates": 0},
+        {"importance_samples": "4"},
+        {"importance_samples": 0},
+        {"online_ewc_decay": float("nan")},
+        {"online_ewc_decay": -0.1},
+        {"online_ewc_decay": 1.1},
+        {"si_damping": float("inf")},
+        {"si_damping": float("nan")},
+        {"si_damping": False},
+        {"si_damping": 0},
+    ],
+)
+def test_regularized_sac_config_rejects_invalid_scientific_controls(
+    overrides: dict[str, object],
+) -> None:
+    with pytest.raises((TypeError, ValueError)):
+        RegularizedSACConfig(**overrides).validate()
+
+
+@pytest.mark.parametrize(
+    "method",
+    ["ewc", "online_ewc", "si", "mas"],
+)
+@pytest.mark.parametrize("target", ["actor_only", "critic_only", "actor_and_critic"])
+def test_regularized_sac_config_accepts_supported_method_target_pairs(
+    method: str,
+    target: str,
+) -> None:
+    RegularizedSACConfig(method=method, target=target).validate()
