@@ -11,6 +11,7 @@ from torch import Tensor, nn
 
 from rl_bgd.bayes.posterior import ParameterPosterior
 from rl_bgd.utils.checkpoint_progress import checkpoint_integer
+from rl_bgd.utils.config_validation import config_finite_float
 
 
 @dataclass(frozen=True)
@@ -21,10 +22,16 @@ class PosteriorBounds:
     sigma_max: float = 10.0
 
     def validate(self) -> None:
-        if self.sigma_min <= 0:
+        minimum = config_finite_float(self.sigma_min, name="sigma_min")
+        maximum = config_finite_float(self.sigma_max, name="sigma_max")
+        if minimum <= 0:
             raise ValueError("sigma_min must be strictly positive")
-        if self.sigma_max < self.sigma_min:
+        if maximum < minimum:
             raise ValueError("sigma_max must be >= sigma_min")
+        if torch.tensor(minimum, dtype=torch.float32).item() <= 0:
+            raise ValueError("sigma_min underflows FP32 posterior storage")
+        if not torch.isfinite(torch.tensor(maximum, dtype=torch.float32)).item():
+            raise ValueError("sigma_max overflows FP32 posterior storage")
 
 
 class DiagonalGaussianPosterior(ParameterPosterior):
@@ -79,8 +86,11 @@ class DiagonalGaussianPosterior(ParameterPosterior):
         prior_mean: float | None = None,
         bounds: PosteriorBounds | None = None,
     ) -> DiagonalGaussianPosterior:
-        if prior_std <= 0:
+        std = config_finite_float(prior_std, name="prior_std")
+        if std <= 0:
             raise ValueError("prior_std must be strictly positive")
+        if prior_mean is not None:
+            config_finite_float(prior_mean, name="prior_mean")
         named = {name: param for name, param in module.named_parameters() if param.requires_grad}
         if not named:
             raise ValueError("module has no trainable parameters")

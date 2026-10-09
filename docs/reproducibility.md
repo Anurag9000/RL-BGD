@@ -240,3 +240,10 @@ any target parameter is changed. A failed `step_module` synchronization also
 rolls back the updater's posterior state and step count. This preflight protects
 against validation failures; user-defined model forward side effects and
 unexpected device copy failures are outside the transaction guarantee.
+
+## Posterior initialization controls
+
+Posterior standard-deviation bounds and Gaussian prior scalars must be finite
+real values, not coerced booleans. Bounds incompatible with the FP32 storage
+range are rejected before clamping; this prevents NaN bounds or conversion
+underflow from silently producing invalid posterior states.
