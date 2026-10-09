@@ -98,9 +98,13 @@ corruption/round-trip tests alongside split-vs-uninterrupted runs.
 
 The audit also validates schedule mode/step inputs and finite context
 parameters, and guards posterior bounds/precision and surprise normalization
-settings against silent checkpoint drift. Version-2 surprise checkpoints
-intentionally reject incompatible earlier payloads rather than silently
-guessing their unrecorded configuration.
+settings against silent checkpoint drift. Scheduled-LQR restore cross-checks
+saved context against both the base simulator parameters and the context implied
+by saved stream progress. The strict CARL adapter also synchronizes each hidden
+scheduled context through CARL's reset-time selector before the wrapped
+environment resets, preventing stale-context episode initialization. Version-2
+surprise checkpoints intentionally reject incompatible earlier payloads rather
+than silently guessing their unrecorded configuration.
 
 The opening commit-specific CI statement above is a historical evidence
 snapshot, not a claim that every later commit has already passed all gates.

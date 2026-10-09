@@ -12,6 +12,11 @@ task-agnostic mode. The context schedule is generated inside the environment
 wrapper from global environment steps; no task switch callback reaches the
 agent.
 
+CARL 1.1.1 re-selects its active context through `context_selector` during
+`reset()`. The adapter therefore synchronizes the scheduled context into the
+selector's active slot and applies it before reset, so both reset-time simulator
+state and subsequent steps use the same hidden context.
+
 Supported schedule primitives are abrupt, smooth interpolation, periodic,
 random-walk, and recurring trajectories. Multidimensional contexts are
 supported because schedules operate on context dictionaries.
