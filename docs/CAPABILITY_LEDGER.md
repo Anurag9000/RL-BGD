@@ -55,7 +55,7 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Replay evidence fresh_only_uncertainty | COMPLETE | separate gradient channel + zero-evidence sigma test |
 | Replay evidence inverse_reuse_weight | COMPLETE | usage-weight tests + synthetic precision comparison |
 | Replay evidence normalized_batch_evidence | COMPLETE | uniform batch-scale test + BGD-SAC wiring |
-| Replay evidence diagnostics / ESS | COMPLETE | per-update metrics |
+| Replay evidence diagnostics / ESS | COMPLETE | per-update metrics, strict integer use-count/freshness provenance validation for all four modes, and non-finite/empty/negative evidence-reducer guards with stationary/recurrent failure tests |
 | Fixed controlled forgetting | COMPLETE | exact Gaussian tempering + BGD fixed retention + matched recurring-LQR fixed-vs-adaptive control job |
 | TD surprise estimator | COMPLETE | online normalized TD surprise + tests |
 | TD adaptive retention in BGD-SAC | COMPLETE | no-boundary SAC wiring + checkpoint state + metrics |

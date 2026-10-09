@@ -153,6 +153,16 @@ parameterization, extra random-walk anchors that would be ignored, bounds on
 modes that do not consume them, and random-walk starting states outside their
 declared bounds before any training begins.
 
+## Bayesian replay evidence validation
+
+Replay uncertainty weighting in both ordinary and recurrent SAC rejects malformed
+usage-count tensors, inconsistent freshness flags, and empty replay evidence
+before applying **any** weighting mode (including `all_replay`). Weighted
+uncertainty-loss reductions reject empty, non-finite, or negative weight inputs
+and non-finite losses, preventing silent NaN gradients or invalid evidence
+mass from corrupting posterior updates. The weighting formulas and normal
+valid-batch behavior remain unchanged; failure paths have focused unit tests.
+
 ## Paper statistics
 
 Paper aggregation uses matched seed groups. Scalar metrics receive percentile
