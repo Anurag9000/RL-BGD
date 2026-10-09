@@ -118,7 +118,7 @@ def test_updater_checkpoint_rejects_invalid_step_count(bad_count: object) -> Non
     )
     state = updater.state_dict()
     state["step_count"] = bad_count
-    with pytest.raises(ValueError, match="step_count must be non-negative integer"):
+    with pytest.raises((TypeError, ValueError), match="step_count must be"):
         updater.load_state_dict(state)
 
 

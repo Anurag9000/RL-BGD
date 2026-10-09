@@ -185,7 +185,9 @@ def test_recurrent_agent_checkpoint_rejects_nonfinite_hidden_state(
 def test_sac_checkpoint_rejects_log_alpha_shape_mismatch(factory: Any) -> None:
     agent = factory()
     payload = deepcopy(agent.state_dict())
-    payload["log_alpha"] = torch.zeros(2)
+    log_alpha = payload["log_alpha"]
+    assert isinstance(log_alpha, torch.Tensor)
+    payload["log_alpha"] = torch.zeros(log_alpha.numel() + 1)
     before = deepcopy(agent.state_dict())
 
     with pytest.raises(ValueError, match="shape mismatch"):

@@ -157,6 +157,7 @@ def test_sequence_replay_checkpoint_round_trip() -> None:
             buffer,
             index,
             episode_start=(index in {0, 3}),
+            truncated=(index == 2),
         )
     buffer.sample_sequences(
         1,
@@ -226,7 +227,12 @@ def test_sequence_replay_checkpoint_rejects_nonchronological_ring_ids() -> None:
 def test_sequence_replay_checkpoint_preserves_wrapped_ring_and_future_samples() -> None:
     source = SequenceReplayBuffer(4, 1, 1)
     for index in range(7):
-        add_transition(source, index, episode_start=(index in {0, 4}))
+        add_transition(
+            source,
+            index,
+            episode_start=(index in {0, 4}),
+            truncated=(index == 3),
+        )
     source.sample_sequences(
         1,
         burn_in=1,

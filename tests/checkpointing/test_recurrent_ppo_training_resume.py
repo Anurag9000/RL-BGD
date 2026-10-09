@@ -112,7 +112,7 @@ def test_recurrent_ppo_rejects_invalid_progress_and_episode_flag(
         [
             ("version", 1.0, "must be an integer"),
             ("steps", 4.0, "must be an integer"),
-            ("rollout_index", 2, "progress is inconsistent"),
+            ("rollout_index", 2, "rollout_index is invalid"),
             ("steps", 3, "progress is inconsistent"),
             ("episode_start", "False", "must be a boolean"),
         ]
@@ -147,7 +147,7 @@ def test_recurrent_ppo_resume_rolls_back_agent_and_environment_on_late_failure(
     )
     saved = torch.load(checkpoint, weights_only=False)
     environment = dict(saved["environment"])
-    environment["step"] = True
+    environment["step"] = -1
     saved["environment"] = environment
     corrupt = tmp_path / "recurrent_ppo_bad_environment.pt"
     torch.save(saved, corrupt)

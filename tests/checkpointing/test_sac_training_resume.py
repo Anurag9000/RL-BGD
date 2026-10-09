@@ -190,7 +190,7 @@ def test_sac_resume_rolls_back_on_late_environment_failure(
     )
     saved = torch.load(checkpoint, weights_only=False)
     environment = dict(saved["environment"])
-    environment["step"] = True
+    environment["step"] = -1
     saved["environment"] = environment
     corrupt = tmp_path / "sac_bad_environment.pt"
     torch.save(saved, corrupt)
