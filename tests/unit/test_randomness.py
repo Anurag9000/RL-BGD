@@ -106,3 +106,20 @@ def test_random_state_checkpoint_rejects_coerced_version_without_mutating_rng(
     assert actual[0] == expected[0]
     assert actual[1] == expected[1]
     torch.testing.assert_close(actual[2], expected[2])
+
+@pytest.mark.parametrize("seed", [True, 1.0, "1"])
+def test_seed_everything_rejects_non_integer_seed(seed: object) -> None:
+    with pytest.raises(TypeError, match="seed must be an integer"):
+        seed_everything(seed)  # type: ignore[arg-type]
+
+
+def test_cpu_rng_checkpoint_is_rejected_when_cuda_runtime_is_available(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state = random_state_dict()
+    state["torch_cuda"] = None
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+
+    with pytest.raises(ValueError, match="lacks CUDA RNG state"):
+        load_random_state_dict(state)
+

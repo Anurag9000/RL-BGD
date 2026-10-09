@@ -14,6 +14,8 @@ from rl_bgd.utils.checkpoint_progress import checkpoint_integer
 
 
 def seed_everything(seed: int, *, deterministic: bool = False) -> None:
+    if isinstance(seed, bool) or not isinstance(seed, int):
+        raise TypeError("seed must be an integer")
     if seed < 0:
         raise ValueError("seed must be non-negative")
     random.seed(seed)
@@ -111,6 +113,8 @@ def load_random_state_dict(state: dict[str, Any]) -> None:
 
     cuda_state = state.get("torch_cuda")
     checked_cuda: list[torch.Tensor] | None = None
+    if cuda_state is None and torch.cuda.is_available():
+        raise ValueError("checkpoint lacks CUDA RNG state for the available CUDA runtime")
     if cuda_state is not None:
         if not isinstance(cuda_state, list) or not all(
             isinstance(item, torch.Tensor) for item in cuda_state
