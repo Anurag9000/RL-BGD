@@ -62,7 +62,10 @@ construction, reset, action sampling, step, finite reward, and close behavior.
   The recovery workflow now defaults to CORA's official historical OneDrive URL
   and uses a repository-owned downloader that rejects HTML/login responses,
   empty/non-ZIP payloads, oversized archives, unsafe ZIP paths, and optional
-  SHA-256 mismatches before extraction. An authoritative replacement mirror can
+  SHA-256 mismatches before extraction. Invalid archives are diagnosed using
+  bounded prefix reads rather than loading an entire multi-gigabyte payload.
+  Each attempt uses an independently allocated temporary file, avoiding
+  staging-path collisions when recovery processes overlap. An authoritative replacement mirror can
   be supplied without code changes and its exact source URL, byte count, and
   SHA-256 are emitted as provenance. Only after that download gate and the
   complete 27-trajectory archive validator pass does the workflow run the exact

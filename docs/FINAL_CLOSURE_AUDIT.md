@@ -117,7 +117,8 @@ the unexecuted scientific suites below are unchanged.
 CORA CHORES is the only capability still marked BLOCKED.
 
 The implementation side is complete: a pinned isolated Xvfb/crl_alfred runtime,
-secure official-source/mirror downloader, atomic archive publication, optional
+secure official-source/mirror downloader, bounded invalid-archive diagnostics,
+collision-free temporary download staging, atomic archive publication, optional
 SHA-256 verification, safe ZIP extraction, metadata closure checks, complete
 27-trajectory/raw-image validation, and the exact published trajectory smoke
 path are present. The recovery workflow defaults to CORA's historical OneDrive
