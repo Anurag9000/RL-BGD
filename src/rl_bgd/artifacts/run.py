@@ -127,16 +127,23 @@ class RunManifest:
             raise ValueError("information_access must map string keys to booleans")
         if any(not isinstance(key, str) or not key for key in self.metadata):
             raise ValueError("run manifest metadata keys must be non-empty strings")
-        for filename in (
+        filenames = (
             self.config_file,
             self.metrics_file,
             self.summary_file,
-        ):
+        )
+        for filename in filenames:
             if not isinstance(filename, str) or not filename.strip():
                 raise ValueError("run artifact filenames must be non-empty strings")
             relative = Path(filename)
             if relative.is_absolute() or ".." in relative.parts:
                 raise ValueError("run artifact filenames must stay inside the run directory")
+        unique_paths = {Path("manifest.json")}
+        unique_paths.update(Path(name) for name in filenames)
+        if len(unique_paths) != 4:
+            raise ValueError(
+                "run artifact filenames must be distinct from each other and manifest.json"
+            )
 
     def to_dict(self) -> dict[str, object]:
         self.validate()
@@ -388,6 +395,13 @@ def _load_json_mapping(
     return payload
 
 
+def _require_run_local_path(root: Path, artifact: Path) -> None:
+    """Reject artifact paths redirected outside their canonical run directory."""
+
+    if not artifact.resolve().is_relative_to(root.resolve()):
+        raise ValueError(f"run artifact resolves outside the run directory: {artifact}")
+
+
 def load_run_directory(
     path: str | Path,
     *,
@@ -397,6 +411,7 @@ def load_run_directory(
 
     root = Path(path)
     manifest_path = root / "manifest.json"
+    _require_run_local_path(root, manifest_path)
     if not manifest_path.is_file():
         raise FileNotFoundError(f"missing run manifest: {manifest_path}")
     manifest = RunManifest.from_dict(_load_json_mapping(manifest_path))
@@ -414,6 +429,7 @@ def load_run_directory(
         metrics_path,
         summary_path,
     ):
+        _require_run_local_path(root, artifact)
         if not artifact.is_file():
             raise FileNotFoundError(f"missing run artifact: {artifact}")
 
@@ -948,6 +964,13 @@ def write_run_artifacts(
     config_path = root / manifest.config_file
     summary_path = root / manifest.summary_file
     metrics_path = root / manifest.metrics_file
+    for artifact in (
+        manifest_path,
+        config_path,
+        summary_path,
+        metrics_path,
+    ):
+        _require_run_local_path(root, artifact)
     for artifact in (
         config_path,
         summary_path,

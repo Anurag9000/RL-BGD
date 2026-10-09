@@ -460,3 +460,89 @@ def test_direct_summary_validation_rejects_boolean_metric() -> None:
     )
     with pytest.raises(TypeError, match="must be numeric"):
         summary.validate()
+
+
+@pytest.mark.parametrize(
+    ("config_file", "metrics_file", "summary_file"),
+    [
+        ("manifest.json", "metrics.csv", "summary.json"),
+        ("result.txt", "result.txt", "summary.json"),
+        ("config.yaml", "metrics.csv", "config.yaml"),
+        ("folder//data.yaml", "folder/data.yaml", "summary.json"),
+    ],
+)
+def test_run_manifest_rejects_colliding_artifact_paths(
+    config_file: str,
+    metrics_file: str,
+    summary_file: str,
+) -> None:
+    manifest = RunManifest(
+        run_id="collision",
+        method="SAC",
+        setting="stationary",
+        benchmark="LQR",
+        seed=0,
+        git_commit="abc",
+        config_file=config_file,
+        metrics_file=metrics_file,
+        summary_file=summary_file,
+    )
+    with pytest.raises(ValueError, match="filenames must be distinct"):
+        manifest.validate()
+
+
+def test_run_loader_rejects_symlink_escape(tmp_path: Path) -> None:
+    root = tmp_path / "inside"
+    manifest = RunManifest(
+        run_id="run",
+        method="SAC",
+        setting="stationary",
+        benchmark="LQR",
+        seed=0,
+        git_commit="abc",
+    )
+    write_run_artifacts(
+        root,
+        manifest=manifest,
+        summary=RunSummary(run_id="run", metrics={"score": 1.0}),
+        resolved_config={"seed": 0},
+        metrics_rows=[{"score": 1.0}],
+    )
+    outside = tmp_path / "outside.yaml"
+    outside.write_text("seed: 999\n", encoding="utf-8")
+    (root / "config.yaml").unlink()
+    (root / "config.yaml").symlink_to(outside)
+
+    with pytest.raises(ValueError, match="resolves outside"):
+        load_run_directory(root)
+
+
+def test_run_writer_rejects_symlink_escape_without_writing_outside(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "inside"
+    root.mkdir()
+    outside = tmp_path / "outside.yaml"
+    original = "unrelated: true\n"
+    outside.write_text(original, encoding="utf-8")
+    (root / "config.yaml").symlink_to(outside)
+
+    with pytest.raises(ValueError, match="resolves outside"):
+        write_run_artifacts(
+            root,
+            manifest=RunManifest(
+                run_id="run",
+                method="SAC",
+                setting="stationary",
+                benchmark="LQR",
+                seed=0,
+                git_commit="abc",
+            ),
+            summary=RunSummary(run_id="run", metrics={"score": 1.0}),
+            resolved_config={"seed": 0},
+            metrics_rows=[{"score": 1.0}],
+        )
+
+    assert outside.read_text(encoding="utf-8") == original
+    assert not (root / "manifest.json").exists()
+
