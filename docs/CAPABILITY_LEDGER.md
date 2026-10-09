@@ -79,7 +79,7 @@ Status vocabulary: COMPLETE, PARTIAL, BLOCKED, NOT STARTED. COMPLETE requires im
 | Recurrent BGD-PPO | COMPLETE | matched GRU architecture + posterior/update/checkpoint tests + matched Adam/BGD stationary learning acceptance |
 | Recurrent sequence rollout semantics | COMPLETE | behavior hidden snapshots + episode masks + truncated-BPTT chunks |
 | Recurrent hidden-state task-leakage guard | COMPLETE | recurring LQR runner verifies resets only on episode end |
-| Recurrent SAC / sequence replay | COMPLETE | recurrent Adam SAC + burn-in/unroll sequence replay + hidden-state lifecycle + recurring LQR integration test |
+| Recurrent SAC / sequence replay | COMPLETE | recurrent Adam SAC + burn-in/unroll sequence replay + hidden-state lifecycle + recurring LQR integration test; episode boundary coherence validated during insertion and checkpoint restore, including wrapped rings |
 | Recurrent BGD-SAC | COMPLETE | actor/critic/all posterior modes + evidence accounting + checkpoint + recurring LQR integration + stationary learning acceptance |
 | Continual World canonical task-aware protocol | COMPLETE | modern Meta-World stream + task-ID multihead SAC + published replay/optimizer lifecycle + configs + executable CW10 integration test building complete performance matrices; long benchmark execution remains pending in the experiment registry |
 | Continual World strict task-agnostic CW10/CW20 | COMPLETE | hidden-ID stream + protocol bundles + SAC matrix runner/configs + executable CW10 integration test + matched five-seed CW20 Adam/BGD final controls without task identity; long CW10/CW20 execution remains pending in the experiment registry |
