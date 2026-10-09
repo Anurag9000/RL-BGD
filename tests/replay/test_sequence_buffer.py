@@ -352,3 +352,14 @@ def test_sequence_replay_add_rejects_invalid_transition_without_mutation(
     assert state["position"] == 0
     assert state["next_transition_id"] == 0
 
+def test_sequence_replay_checkpoint_rejects_negative_insertion_step() -> None:
+    source = SequenceReplayBuffer(4, 1, 1)
+    add_transition(source, 0, episode_start=True)
+    state = source.state_dict()
+    insertion_steps = state["insertion_steps"]
+    assert isinstance(insertion_steps, torch.Tensor)
+    insertion_steps[0, 0] = -1
+
+    with pytest.raises(ValueError, match="negative insertion steps"):
+        SequenceReplayBuffer(4, 1, 1).load_state_dict(state)
+

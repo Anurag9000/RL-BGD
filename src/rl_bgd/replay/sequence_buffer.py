@@ -446,6 +446,10 @@ class SequenceReplayBuffer:
         if next_transition_id < 0:
             raise ValueError("sequence replay next transition id must be non-negative")
 
+        insertion_steps = checked_tensors["insertion_steps"]
+        if torch.any(insertion_steps < 0):
+            raise ValueError("replay checkpoint contains negative insertion steps")
+
         usage = checked_tensors["usage_counts"]
         fresh = checked_tensors["fresh"]
         if torch.any(usage < 0):
