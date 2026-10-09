@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from rl_bgd.artifacts import (
@@ -594,3 +595,67 @@ def test_run_writer_rejects_invalid_metric_column_names(
             metrics_rows=[{invalid_name: 1.0}],  # type: ignore[dict-item]
         )
     assert not root.exists()
+
+def test_run_artifacts_are_not_published_on_csv_serialization_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "run"
+    manifest = RunManifest(
+        run_id="failed_write",
+        method="SAC",
+        setting="stationary",
+        benchmark="LQR",
+        seed=0,
+        git_commit="abc123",
+    )
+
+    def fail_csv(*args: object, **kwargs: object) -> None:
+        raise OSError("simulated CSV write failure")
+
+    monkeypatch.setattr(pd.DataFrame, "to_csv", fail_csv)
+    with pytest.raises(OSError, match="simulated CSV write failure"):
+        write_run_artifacts(
+            root,
+            manifest=manifest,
+            summary=RunSummary(run_id="failed_write", metrics={"score": 1.0}),
+            resolved_config={"seed": 0},
+            metrics_rows=[{"score": 1.0}],
+        )
+
+    assert root.is_dir()
+    assert list(root.iterdir()) == []
+
+
+def test_run_artifacts_refuse_to_overwrite_a_published_run(tmp_path: Path) -> None:
+    root = tmp_path / "run"
+    manifest = RunManifest(
+        run_id="immutable",
+        method="SAC",
+        setting="stationary",
+        benchmark="LQR",
+        seed=0,
+        git_commit="abc123",
+    )
+    summary = RunSummary(run_id="immutable", metrics={"score": 1.0})
+    write_run_artifacts(
+        root,
+        manifest=manifest,
+        summary=summary,
+        resolved_config={"seed": 0},
+        metrics_rows=[{"score": 1.0}],
+    )
+    before = {path.name: path.read_bytes() for path in root.iterdir()}
+
+    with pytest.raises(FileExistsError, match="archive the published run"):
+        write_run_artifacts(
+            root,
+            manifest=manifest,
+            summary=summary,
+            resolved_config={"seed": 0},
+            metrics_rows=[{"score": 1.0}],
+        )
+
+    assert {path.name: path.read_bytes() for path in root.iterdir()} == before
+    assert load_run_directory(root).manifest == manifest
+

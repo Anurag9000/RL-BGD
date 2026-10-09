@@ -6,6 +6,8 @@ import csv
 import hashlib
 import json
 import math
+import os
+import tempfile
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -969,58 +971,66 @@ def write_run_artifacts(
         raise ValueError("metrics_rows column names must be unique")
 
     root = Path(run_dir)
-    root.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
+    root.mkdir(parents=True, exist_ok=True)
     manifest_path = root / "manifest.json"
     config_path = root / manifest.config_file
     summary_path = root / manifest.summary_file
     metrics_path = root / manifest.metrics_file
-    for artifact in (
-        manifest_path,
-        config_path,
-        summary_path,
-        metrics_path,
-    ):
+    for artifact in (manifest_path, config_path, summary_path, metrics_path):
         _require_run_local_path(root, artifact)
-    for artifact in (
-        config_path,
-        summary_path,
-        metrics_path,
-    ):
-        artifact.parent.mkdir(
-            parents=True,
-            exist_ok=True,
+    if manifest_path.exists() or manifest_path.is_symlink():
+        raise FileExistsError(
+            "run manifest already exists; archive the published run before rewriting"
         )
 
-    manifest_path.write_text(
-        json.dumps(
-            manifest.to_dict(),
-            indent=2,
-            sort_keys=True,
+    # Serialization failures cannot publish a completed run. The canonical
+    # manifest is only renamed into place after every payload is published.
+    with tempfile.TemporaryDirectory(prefix=".run-staging-", dir=root) as staging:
+        staged = Path(staging)
+        staged_config = staged / "config.stage"
+        staged_summary = staged / "summary.stage"
+        staged_metrics = staged / "metrics.stage"
+        staged_manifest = staged / "manifest.stage"
+        staged_config.write_text(
+            yaml.safe_dump(dict(resolved_config), sort_keys=True),
+            encoding="utf-8",
         )
-        + "\n",
-        encoding="utf-8",
-    )
-    config_path.write_text(
-        yaml.safe_dump(
-            dict(resolved_config),
-            sort_keys=True,
-        ),
-        encoding="utf-8",
-    )
-    summary_path.write_text(
-        json.dumps(
-            summary.to_dict(),
-            indent=2,
-            sort_keys=True,
+        staged_summary.write_text(
+            json.dumps(summary.to_dict(), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
         )
-        + "\n",
-        encoding="utf-8",
-    )
-    metrics.to_csv(
-        metrics_path,
-        index=False,
-    )
+        metrics.to_csv(staged_metrics, index=False)
+        staged_manifest.write_text(
+            json.dumps(manifest.to_dict(), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        for artifact in (staged_config, staged_summary, staged_metrics, staged_manifest):
+            with artifact.open("rb") as handle:
+                os.fsync(handle.fileno())
+
+        for staged_file, target in (
+            (staged_config, config_path),
+            (staged_summary, summary_path),
+            (staged_metrics, metrics_path),
+        ):
+            target.parent.mkdir(parents=True, exist_ok=True)
+            _require_run_local_path(root, target)
+            os.replace(staged_file, target)
+        if os.name == "posix":
+            for parent in {config_path.parent, summary_path.parent, metrics_path.parent}:
+                descriptor = os.open(parent, os.O_RDONLY)
+                try:
+                    os.fsync(descriptor)
+                finally:
+                    os.close(descriptor)
+
+        _require_run_local_path(root, manifest_path)
+        if manifest_path.exists() or manifest_path.is_symlink():
+            raise FileExistsError("run manifest appeared during artifact publication")
+        os.replace(staged_manifest, manifest_path)
+        if os.name == "posix":
+            descriptor = os.open(root, os.O_RDONLY)
+            try:
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
