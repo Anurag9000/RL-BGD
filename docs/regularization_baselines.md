@@ -108,7 +108,7 @@ benchmark has been executed.
 actor/critic target scopes. Strength, Online-EWC decay, and SI damping must
 be finite numeric scalars; update intervals and importance sample counts must
 be strictly positive **integers**, never bools or coercible strings. Invalid
-controls fail before the training agent is constructed. Surprise-normalizer
+controls fail during agent initialization, before training begins. Surprise-normalizer
 checkpoints reject negative smoothed surprise and inconsistent unobserved
 statistics; surprise retention also rejects non-numeric or non-finite inputs.
 
