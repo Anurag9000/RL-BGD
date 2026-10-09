@@ -24,7 +24,7 @@ def replay_vector(
         raise ValueError(f"{name} must use a floating-point dtype")
     if not torch.isfinite(value).all().item():
         raise ValueError(f"{name} contains non-finite values")
-    return (
+    candidate = (
         value.detach()
         .to(
             device=reference.device,
@@ -32,6 +32,9 @@ def replay_vector(
         )
         .clone()
     )
+    if not torch.isfinite(candidate).all().item():
+        raise ValueError(f"{name} overflows replay storage dtype")
+    return candidate
 
 
 def replay_reward(

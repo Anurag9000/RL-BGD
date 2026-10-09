@@ -62,10 +62,13 @@ def checkpoint_observation(
         raise ValueError(f"{name} shape mismatch")
     if not torch.isfinite(value).all().item():
         raise ValueError(f"{name} contains non-finite values")
-    return value.to(
+    candidate = value.to(
         device=device,
         dtype=torch.float32,
     ).clone()
+    if not torch.isfinite(candidate).all().item():
+        raise ValueError(f"{name} contains non-finite values after conversion")
+    return candidate
 
 
 def checkpoint_generator_state(
