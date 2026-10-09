@@ -24,6 +24,10 @@ from rl_bgd.utils.checkpoint_progress import (
     checkpoint_nonnegative_integer,
 )
 from rl_bgd.utils.checkpoint_transaction import transactional_state_load
+from rl_bgd.utils.config_validation import (
+    config_finite_float,
+    config_positive_integer,
+)
 from rl_bgd.utils.randomness import preserved_random_state
 
 RegularizationMethod = Literal["ewc", "online_ewc", "si", "mas"]
@@ -49,15 +53,22 @@ class RegularizedSACConfig:
     si_damping: float = 0.1
 
     def validate(self) -> None:
-        if self.strength < 0:
+        if self.method not in {"ewc", "online_ewc", "si", "mas"}:
+            raise ValueError("unsupported regularization method")
+        if self.target not in {"actor_only", "critic_only", "actor_and_critic"}:
+            raise ValueError("unsupported regularization target")
+        strength = config_finite_float(self.strength, name="regularization strength")
+        config_positive_integer(
+            self.consolidation_interval_updates, name="consolidation_interval_updates"
+        )
+        config_positive_integer(self.importance_samples, name="importance_samples")
+        decay = config_finite_float(self.online_ewc_decay, name="Online-EWC decay")
+        damping = config_finite_float(self.si_damping, name="SI damping")
+        if strength < 0:
             raise ValueError("regularization strength must be non-negative")
-        if self.consolidation_interval_updates < 1:
-            raise ValueError("consolidation interval must be positive")
-        if self.importance_samples < 1:
-            raise ValueError("importance_samples must be positive")
-        if not 0.0 <= self.online_ewc_decay <= 1.0:
+        if not 0.0 <= decay <= 1.0:
             raise ValueError("Online-EWC decay must lie in [0, 1]")
-        if self.si_damping <= 0:
+        if damping <= 0:
             raise ValueError("SI damping must be positive")
 
 
