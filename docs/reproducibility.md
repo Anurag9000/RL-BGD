@@ -88,6 +88,14 @@ Examples:
         --checkpoint-path artifacts/checkpoints/recurrent_bgd_sac.pt \
         --checkpoint-interval 100
 
+Stationary and recurrent SAC/PPO training checkpoint writers, including the
+oracle-boundary regularized SAC variant, use independent same-directory staging
+files followed by an atomic replacement. Checkpoint bytes are flushed and
+fsynced before publication, and failed serialization preserves the preceding
+complete checkpoint. Multiple writers targeting the exact same final path
+remain last-completed-writer-wins; use distinct run IDs and checkpoint paths
+for independent scientific workers.
+
 Training checkpoints bind the saved learner state to the complete training and
 agent configurations. SAC checkpoints also preserve replay contents,
 provenance/evidence-use metadata, replay-sampling RNG, environment state, and

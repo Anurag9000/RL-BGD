@@ -13,6 +13,7 @@ from torch import Tensor
 from rl_bgd.agents.sac.recurrent_agent import RecurrentSACAgent
 from rl_bgd.envs.protocols import ContinuousTensorEnv
 from rl_bgd.replay.sequence_buffer import SequenceReplayBuffer
+from rl_bgd.utils.checkpoint_io import save_training_checkpoint as _save_training_checkpoint
 from rl_bgd.utils.checkpoint_payload import (
     checkpoint_finite_float,
     checkpoint_float_list,
@@ -84,27 +85,6 @@ def _load_environment_state(
     if not isinstance(state, dict):
         raise TypeError("environment checkpoint state must be a dictionary")
     load_fn(state)
-
-
-def _save_training_checkpoint(
-    path: str | Path,
-    state: dict[str, Any],
-) -> None:
-    destination = Path(path)
-    destination.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-    temporary = destination.with_name(f".{destination.name}.tmp")
-    try:
-        torch.save(
-            state,
-            temporary,
-        )
-        temporary.replace(destination)
-    finally:
-        if temporary.exists():
-            temporary.unlink()
 
 
 def _load_training_checkpoint(
