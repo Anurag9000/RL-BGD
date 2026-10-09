@@ -38,6 +38,7 @@ def test_sequence_replay_survives_ring_wrap_in_chronological_order() -> None:
             buffer,
             index,
             episode_start=(index in {0, 4}),
+            truncated=(index == 3),
         )
     assert buffer.logical_transition_ids().reshape(-1).tolist() == [
         3,
@@ -118,7 +119,7 @@ def test_sequence_bootstrap_mask_preserves_truncation() -> None:
         add_transition(
             buffer,
             index,
-            episode_start=(index == 0),
+            episode_start=(index in {0, 4, 5}),
             terminated=(index == 4),
             truncated=(index == 3),
         )
@@ -364,3 +365,54 @@ def test_sequence_replay_checkpoint_rejects_negative_insertion_step() -> None:
 
     with pytest.raises(ValueError, match="negative insertion steps"):
         SequenceReplayBuffer(4, 1, 1).load_state_dict(state)
+
+
+@pytest.mark.parametrize(
+    ("terminated", "truncated", "next_episode_start"),
+    [
+        (False, False, True),
+        (True, False, False),
+        (False, True, False),
+    ],
+)
+def test_sequence_replay_add_rejects_inconsistent_episode_boundary_without_mutation(
+    terminated: bool,
+    truncated: bool,
+    next_episode_start: bool,
+) -> None:
+    buffer = SequenceReplayBuffer(3, 1, 1)
+    add_transition(buffer, 0, episode_start=True, terminated=terminated, truncated=truncated)
+    before = buffer.state_dict()
+    with pytest.raises(ValueError, match="episode_start boundary mismatch"):
+        add_transition(buffer, 1, episode_start=next_episode_start)
+    after = buffer.state_dict()
+    for key, expected in before.items():
+        if isinstance(expected, torch.Tensor):
+            torch.testing.assert_close(after[key], expected)
+        else:
+            assert after[key] == expected, key
+
+
+def test_sequence_replay_add_checks_episode_boundary_after_ring_wrap() -> None:
+    buffer = SequenceReplayBuffer(2, 1, 1)
+    for index in range(3):
+        add_transition(buffer, index, episode_start=index == 0)
+    before = buffer.state_dict()
+    with pytest.raises(ValueError, match="episode_start boundary mismatch"):
+        add_transition(buffer, 3, episode_start=True)
+    after = buffer.state_dict()
+    for key, expected in before.items():
+        if isinstance(expected, torch.Tensor):
+            torch.testing.assert_close(after[key], expected)
+        else:
+            assert after[key] == expected, key
+
+
+def test_sequence_replay_add_accepts_episode_reset_after_terminal_and_truncation() -> None:
+    buffer = SequenceReplayBuffer(2, 1, 1)
+    add_transition(buffer, 0, episode_start=True, terminated=True)
+    add_transition(buffer, 1, episode_start=True, truncated=True)
+    add_transition(buffer, 2, episode_start=True)
+    restored = SequenceReplayBuffer(2, 1, 1)
+    restored.load_state_dict(buffer.state_dict())
+    torch.testing.assert_close(restored.logical_transition_ids(), buffer.logical_transition_ids())
