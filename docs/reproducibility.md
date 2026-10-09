@@ -60,8 +60,10 @@ usage/freshness before copying any tensors into the live buffer. Live replay
 insertion uses the same fail-closed contract: observations/actions must have
 exact vector shapes and finite floating values, rewards must be finite real
 scalars, boundary flags must be booleans, and insertion steps must be
-non-negative integers. Each complete transition is staged before any replay
-slot is mutated. Validated checkpoint payload tensors are likewise staged
+non-negative integers. Sequence replay additionally checks that each new
+episode-start flag agrees with the preceding terminal or truncation flag,
+including after ring wrap; the first resident insertion may start mid-episode.
+Each complete transition is staged before any replay slot is mutated. Validated checkpoint payload tensors are likewise staged
 completely on the destination device before live storage is touched, so
 transfer/conversion failures are transactional. Rejected payloads therefore
 leave existing replay state intact; wrapped-ring round-trip regression tests
