@@ -187,6 +187,11 @@ class SynapticIntelligence:
                 candidate,
                 name=f"SI checkpoint {field_name}",
             )
+        validate_checkpoint_parameter_layout(
+            self.anchor,
+            anchor,
+            name="SI checkpoint live model",
+        )
         self.strength = strength
         self.damping = damping
         self.anchor = anchor

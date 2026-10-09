@@ -45,16 +45,27 @@ class MASRegularizer:
             importance,
         )
         incoming = {name: value.detach().float().clone() for name, value in importance.items()}
+        anchor = snapshot_parameters(module)
         if self.importance is None:
-            self.importance = incoming
+            merged = incoming
         else:
-            if set(self.importance) != set(incoming):
-                raise ValueError("MAS parameter set changed")
-            self.importance = {
+            validate_checkpoint_parameter_layout(
+                self.importance,
+                incoming,
+                name="MAS consolidation",
+            )
+            if self.anchor is not None:
+                validate_checkpoint_parameter_layout(
+                    self.anchor,
+                    anchor,
+                    name="MAS consolidation anchor",
+                )
+            merged = {
                 name: (self.importance[name].to(incoming[name].device) + incoming[name])
                 for name in incoming
             }
-        self.anchor = snapshot_parameters(module)
+        self.importance = merged
+        self.anchor = anchor
 
     def penalty(
         self,

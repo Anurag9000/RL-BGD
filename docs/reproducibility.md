@@ -175,3 +175,13 @@ canonical raw directories exist.
 Development/tuning and final evaluation must remain separate. Failed seeds,
 changed task orders, or altered final protocols may not be silently removed
 after results are observed.
+
+
+## Regularizer architecture consistency
+
+EWC consolidations require identical parameter names and shapes across saved
+task anchors. Online-EWC and MAS reject changed parameter layouts before
+accumulating importance, including changes that would otherwise be silently
+broadcast by PyTorch. SI checkpoint restore checks incoming parameter layout
+against the live model as well as the other saved SI fields. These checks
+reject invalid state before mutating the active regularizer.

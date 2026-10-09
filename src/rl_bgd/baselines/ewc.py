@@ -63,9 +63,16 @@ class EWCRegularizer:
             module,
             importance,
         )
+        anchor = snapshot_parameters(module)
+        if self.states:
+            validate_checkpoint_parameter_layout(
+                self.states[0].anchor,
+                anchor,
+                name="EWC consolidation",
+            )
         self.states.append(
             EWCConsolidation(
-                anchor=snapshot_parameters(module),
+                anchor=anchor,
                 importance=_clone_state(importance),
             )
         )
@@ -151,6 +158,12 @@ class EWCRegularizer:
                 importance,
                 name="EWC checkpoint importance",
             )
+            if staged_states:
+                validate_checkpoint_parameter_layout(
+                    staged_states[0].anchor,
+                    anchor,
+                    name="EWC checkpoint consolidation",
+                )
             staged_states.append(EWCConsolidation(anchor=anchor, importance=importance))
         self.strength = strength
         self.states = staged_states
@@ -187,16 +200,26 @@ class OnlineEWCRegularizer:
             importance,
         )
         incoming = _clone_state(importance)
+        anchor = snapshot_parameters(module)
         if self.importance is None:
             merged = incoming
         else:
-            if set(self.importance) != set(incoming):
-                raise ValueError("Online-EWC importance keys changed")
+            validate_checkpoint_parameter_layout(
+                self.importance,
+                incoming,
+                name="Online-EWC consolidation",
+            )
+            if self.anchor is not None:
+                validate_checkpoint_parameter_layout(
+                    self.anchor,
+                    anchor,
+                    name="Online-EWC consolidation anchor",
+                )
             merged = {
                 name: (self.decay * self.importance[name] + incoming[name]) for name in incoming
             }
         self.importance = merged
-        self.anchor = snapshot_parameters(module)
+        self.anchor = anchor
 
     def penalty(
         self,
