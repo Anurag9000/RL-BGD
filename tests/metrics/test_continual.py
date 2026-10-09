@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 from rl_bgd.metrics.continual import (
@@ -42,3 +43,15 @@ def test_forgetting_accepts_extra_later_evaluation_rows() -> None:
     assert values.tolist() == pytest.approx([1.5])
     assert mean_value == pytest.approx(1.5)
     assert backward_transfer(matrix) == pytest.approx(-1.5)
+
+
+def test_continual_metrics_reject_nonfinite_derived_results() -> None:
+    with np.errstate(over="ignore", invalid="ignore"):
+        with pytest.raises(ValueError, match="non-finite"):
+            forgetting([[1e308, 0.0], [-1e308, 0.0]])
+        with pytest.raises(ValueError, match="non-finite"):
+            forward_transfer([1e308], [-1e308])
+        with pytest.raises(ValueError, match="non-finite"):
+            lifetime_auc([0.0, 1e308], [1e308, 1e308], normalize_by_duration=False)
+        with pytest.raises(ValueError, match="non-finite"):
+            plasticity_retention(1e308, 1e-308)
