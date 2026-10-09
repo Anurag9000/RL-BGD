@@ -183,6 +183,7 @@ def train_recurrent_sac(
             checkpoint.get("observation"),
             name="recurrent SAC checkpoint observation",
             device=agent.device,
+            expected_shape=env.observation_space.shape,
         )
         raw_history = checkpoint.get("episode_history")
         if not isinstance(raw_history, list):
@@ -192,6 +193,7 @@ def train_recurrent_sac(
                 item,
                 name=f"recurrent SAC episode_history[{index}]",
                 device=agent.device,
+                expected_shape=env.observation_space.shape,
             )
             for index, item in enumerate(raw_history)
         ]

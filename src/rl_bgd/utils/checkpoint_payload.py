@@ -50,6 +50,7 @@ def checkpoint_observation(
     *,
     name: str,
     device: torch.device,
+    expected_shape: tuple[int, ...] | None = None,
 ) -> Tensor:
     """Validate and stage a finite floating observation before live restore."""
 
@@ -57,6 +58,8 @@ def checkpoint_observation(
         raise TypeError(f"{name} must be a tensor")
     if not value.is_floating_point():
         raise ValueError(f"{name} must use a floating-point dtype")
+    if expected_shape is not None and tuple(value.shape) != expected_shape:
+        raise ValueError(f"{name} shape mismatch")
     if not torch.isfinite(value).all().item():
         raise ValueError(f"{name} contains non-finite values")
     return value.to(

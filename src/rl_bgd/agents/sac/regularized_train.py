@@ -246,6 +246,7 @@ def train_boundary_regularized_sac(
             checkpoint.get("observation"),
             name="boundary-regularized SAC checkpoint observation",
             device=agent.device,
+            expected_shape=env.observation_space.shape,
         )
         episode_return = checkpoint_finite_float(
             checkpoint.get("episode_return"),

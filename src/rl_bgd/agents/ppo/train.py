@@ -168,6 +168,7 @@ def train_ppo(
             checkpoint.get("observation"),
             name="PPO training checkpoint observation",
             device=agent.device,
+            expected_shape=env.observation_space.shape,
         )
         episode_return = checkpoint_finite_float(
             checkpoint.get("episode_return"),

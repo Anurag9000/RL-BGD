@@ -217,3 +217,37 @@ def test_sac_resume_rolls_back_on_late_environment_failure(
         target_env.state_dict()["state"],
         env_before["state"],
     )
+
+def test_sac_training_checkpoint_rejects_observation_shape_mismatch(
+    tmp_path: Path,
+) -> None:
+    config = SACTrainConfig(
+        total_steps=8,
+        random_steps=8,
+        batch_size=2,
+        replay_capacity=8,
+        seed=401,
+    )
+    checkpoint = tmp_path / "sac_observation_shape.pt"
+    env, agent = _make()
+    train_sac(
+        env,
+        agent,
+        config=config,
+        checkpoint_path=checkpoint,
+        max_steps_this_call=6,
+    )
+    saved = torch.load(checkpoint, weights_only=False)
+    saved["observation"] = torch.zeros(2)
+    corrupt = tmp_path / "sac_bad_observation_shape.pt"
+    torch.save(saved, corrupt)
+
+    restored_env, restored_agent = _make()
+    with pytest.raises(ValueError, match="observation shape mismatch"):
+        train_sac(
+            restored_env,
+            restored_agent,
+            config=config,
+            resume_from=corrupt,
+        )
+
