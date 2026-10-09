@@ -27,3 +27,18 @@ def test_forward_transfer_and_lifetime_auc() -> None:
     assert forward_transfer([2.0, 4.0], [1.0, 1.0]) == pytest.approx(2.0)
     assert lifetime_auc([0.0, 10.0], [0.0, 2.0]) == pytest.approx(1.0)
     assert plasticity_retention(4.0, 5.0) == pytest.approx(0.8)
+
+
+def test_forgetting_rejects_incomplete_stage_task_matrix() -> None:
+    with pytest.raises(ValueError, match="learning-stage row for every task"):
+        forgetting([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    with pytest.raises(ValueError, match="learning-stage row for every task"):
+        backward_transfer([[1.0, 2.0]])
+
+
+def test_forgetting_accepts_extra_later_evaluation_rows() -> None:
+    matrix = [[3.0, 0.0], [2.0, 4.0], [1.5, 3.5]]
+    values, mean_value = forgetting(matrix)
+    assert values.tolist() == pytest.approx([1.5])
+    assert mean_value == pytest.approx(1.5)
+    assert backward_transfer(matrix) == pytest.approx(-1.5)
