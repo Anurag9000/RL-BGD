@@ -38,6 +38,7 @@ def config_boolean(value: object, *, name: str) -> bool:
         raise TypeError(f"{name} must be a boolean")
     return value
 
+
 def config_finite_float(value: object, *, name: str) -> float:
     """Require a finite numeric configuration scalar, without implicit coercion."""
 
