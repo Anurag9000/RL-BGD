@@ -1,0 +1,25 @@
+name: Foundry native contracts
+on:
+  push:
+    branches: [main]
+    paths:
+      - "run_all_training.py"
+      - "foundry_integration/**"
+      - "docs/foundry_integration/**"
+      - "requirements-foundry.txt"
+      - ".github/workflows/foundry-native-contracts.yml"
+  workflow_dispatch:
+jobs:
+  native-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Source integrity
+        run: python docs/foundry_integration/verify_source.py
+      - name: Compile native controller and adapters
+        run: python -m compileall -q run_all_training.py foundry_integration
+      - name: Native subprocess bridge contracts
+        run: python foundry_integration/test_bridge.py
