@@ -1,0 +1,6 @@
+# Same core dependency floors as the pinned Project Foundry pyproject.toml.
+# Install this alongside each repository's own native dependencies.
+numpy>=1.26
+pandas>=2.2
+psutil>=5.9
+torch>=2.5
