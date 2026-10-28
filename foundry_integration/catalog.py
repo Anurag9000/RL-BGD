@@ -15,7 +15,9 @@ def discover(root: Path, args):
     py = "{PYTHON}"
     name = root.name.lower()
     seeds = args.seed or [0]
-    if any("=" not in item or not all(item.split("=", 1)) for item in args.data):\n        raise ValueError("--data entries must use DATASET=PATH")\n    data = dict(item.split("=", 1) for item in args.data)
+    if any("=" not in item or not all(item.split("=", 1)) for item in args.data):
+        raise ValueError("--data entries must use DATASET=PATH")
+    data = dict(item.split("=", 1) for item in args.data)
     data = {key: str((root / value).resolve()) if not Path(value).is_absolute() else value
             for key, value in data.items()}
     results = []
