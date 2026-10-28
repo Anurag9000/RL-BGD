@@ -103,10 +103,15 @@ def main(argv=None):
     selected = [j for j in jobs
                 if (not args.job or j["id"] in args.job)
                 and (not args.seed or j.get("seed", 0) in args.seed)]
+    blocked = [j for j in selected if j.get("blocker")]
+    if args.action != "inventory" and args.execute and not args.job:
+        # Preserve every blocked route in inventory, schedule only executable ones.
+        selected = [j for j in selected if not j.get("blocker")]
     if args.limit:
         selected = selected[:args.limit]
     print(json.dumps({
         "catalog_total": len(jobs), "selected": len(selected),
+        "blocked_in_full_selection": len(blocked),
         "source": "vendored Project Foundry SuiteCoordinator",
         "jobs": [{"id": j["id"], "seed": j.get("seed", 0),
                   "method": j.get("method"), "dataset": j.get("dataset"),
