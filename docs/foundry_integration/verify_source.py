@@ -27,7 +27,7 @@ def verify() -> list[str]:
         mode = "120000" if dest.is_symlink() else "100755" if (dest.stat().st_mode & 0o111) else "100644"
         if mode != entry["mode"]:
             errors.append(f"MODE MISMATCH: {rel}: {mode} != {entry['mode']}")
-    actual = {str(p.relative_to(vendor)) for p in vendor.rglob("*") if p.is_file()}
+    actual = {str(p.relative_to(vendor)) for p in vendor.rglob("*") if p.is_file() and not ({ "__pycache__", ".pytest_cache", ".mypy_cache" } & set(p.relative_to(vendor).parts)) and p.suffix not in {".pyc", ".pyo"}}
     for path in sorted(actual - expected):
         errors.append(f"UNEXPECTED FILE: {path}")
     if len(expected) != manifest["expected_file_count"]:
