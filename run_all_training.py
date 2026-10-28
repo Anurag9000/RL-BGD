@@ -81,6 +81,7 @@ def main(argv=None):
     p.add_argument("--accept-restart-risk", action="store_true",
                    help="Permit routes without verified exact checkpoint recovery")
     p.add_argument("--out", default="artifacts/foundry_training")
+    p.add_argument("--write-inventory", action="store_true", help="Persist the source-derived catalog as JSON without executing jobs")
     p.add_argument("--job", action="append", default=[])
     p.add_argument("--seed", action="append", type=int, default=[])
     p.add_argument("--config", action="append", default=[],
@@ -118,6 +119,18 @@ def main(argv=None):
                   "resume_mode": j.get("resume_mode", "NOT_RESUMABLE"),
                   "blocker": j.get("blocker")} for j in selected],
     }, indent=2, sort_keys=True))
+    if args.write_inventory:
+        from collections import Counter
+        write_json(out / "scientific_job_inventory.json", {
+            "format": "foundry-native-training-catalog/v1",
+            "repository": ROOT.name,
+            "distinct_scientific_jobs": len({j["id"] for j in jobs}),
+            "expanded_training_runs": len(jobs),
+            "by_method": dict(sorted(Counter(j.get("method") for j in jobs).items())),
+            "by_dataset": dict(sorted(Counter(j.get("dataset") for j in jobs).items())),
+            "blocked_runs": sum(bool(j.get("blocker")) for j in jobs),
+            "jobs": jobs,
+        })
     if args.action == "inventory":
         return 0
     if not args.execute:
