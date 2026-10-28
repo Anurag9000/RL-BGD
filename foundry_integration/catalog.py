@@ -46,9 +46,9 @@ def discover(root: Path, args):
             for job in suite.jobs:
                 for seed in job.seeds:
                     results.append(row(f"{suite_name}__{job.job_id}",
-                        [py, "scripts/run_paper_suite.py", suite_name,
-                         "--execute", "--job-id", job.job_id, "--seed",
-                         str(seed), "--output-root", "{RESULT_DIR}"],
+                        [py, "-m", "foundry_integration.rl_bgd_single",
+                         "--suite", suite_name, "--job-id", job.job_id,
+                         "--seed", str(seed), "--output-root", "{RESULT_DIR}"],
                         method=job.algorithm, dataset=job.environment, seed=seed,
                         source="src/rl_bgd/experiments/suites.py:SUITES",
                         resume_mode="RESTART_FROM_BEGINNING"))
