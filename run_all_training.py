@@ -137,7 +137,7 @@ def main(argv=None):
     from simple_adp.runner.route import ModelRoute
     from simple_adp.runner.plan import RunIdentity, RunSpec, SuitePlan, manifest_compatibility_digest
     from simple_adp.runner.scheduler import SuiteCoordinator
-    settings = RunnerSettings(cpu_only=args.cpu_only)
+    settings = RunnerSettings(cpu_only=args.cpu_only, run_hardness_screen=False)
     signature = hashlib.sha256(canonical({"native_jobs": selected, "version": 1}).encode()).hexdigest()
     specs = []
     for j in selected:
