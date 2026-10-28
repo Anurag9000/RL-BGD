@@ -1,0 +1,477 @@
+{
+  "source_repository": "Anurag9000/Project-Foundry",
+  "source_commit": "c83980f8fd788929eac5d6d579800f469882d1d4",
+  "source_tree": "dae14cc8989c5354573ff4c71de15172f437a886",
+  "vendor_root": "vendor/project_foundry",
+  "expected_file_count": 78,
+  "files": [
+    {
+      "path": ".gitignore",
+      "sha": "40b7c0381a93a4e8b826de135e5e5d4e6f464501",
+      "mode": "100644",
+      "size": 88
+    },
+    {
+      "path": "README.md",
+      "sha": "6169117f6189b8d169e354e99eeeac906e201331",
+      "mode": "100644",
+      "size": 2118
+    },
+    {
+      "path": "docs/COORDINATED_PRESSURE_AWARE_IMPLEMENTATION_SPEC.md",
+      "sha": "de06c627ef165af504875e20a98b798025a711ef",
+      "mode": "100644",
+      "size": 249857
+    },
+    {
+      "path": "docs/COORDINATED_PRESSURE_AWARE_RUNNER_LEDGER.md",
+      "sha": "ce16113411efe25900b568d27e52cf2a6fd67345",
+      "mode": "100644",
+      "size": 123907
+    },
+    {
+      "path": "docs/COORDINATED_PRESSURE_AWARE_SOURCE_FUNCTION_MAP.md",
+      "sha": "acec394e32d9b55945cf994e81e2c236cc56cd15",
+      "mode": "100644",
+      "size": 40355
+    },
+    {
+      "path": "docs/COORDINATED_PRESSURE_AWARE_SUITE_GUIDE.md",
+      "sha": "85adcba20e14e93b47fe3c8e5ef3576def0d51e6",
+      "mode": "100644",
+      "size": 10547
+    },
+    {
+      "path": "docs/COORDINATED_PRESSURE_AWARE_SUITE_IMPLEMENTATION_PLAN.md",
+      "sha": "5a79b68b1a6ae9a7cc5c2e1e18aa1f2537e2510b",
+      "mode": "100644",
+      "size": 10940
+    },
+    {
+      "path": "pyproject.toml",
+      "sha": "72dceb0d055754ec99e9f76082f79531e89fc63f",
+      "mode": "100644",
+      "size": 736
+    },
+    {
+      "path": "scripts/generate_runner_function_map.py",
+      "sha": "9adddf76653710826260541820e22cedde4d9f3e",
+      "mode": "100644",
+      "size": 3079
+    },
+    {
+      "path": "scripts/kill_simple_adp_runners.py",
+      "sha": "52f4b60daf12ad73c1e18bee63cfe2f367a4773a",
+      "mode": "100755",
+      "size": 294
+    },
+    {
+      "path": "scripts/simple-adp-suite.ps1",
+      "sha": "eabad7c8f2e0c5e0675875dbd5ea2df7a4b4abb0",
+      "mode": "100644",
+      "size": 4893
+    },
+    {
+      "path": "scripts/simple-adp-suite.sh",
+      "sha": "71fbb5716f189723b169ad38eceeaf4931e9e77f",
+      "mode": "100755",
+      "size": 1416
+    },
+    {
+      "path": "scripts/simple-adp-thermal-guard.ps1",
+      "sha": "709af3b488f4e19db93854ee78b3963565273cca",
+      "mode": "100644",
+      "size": 4953
+    },
+    {
+      "path": "scripts/simple-adp-watchdog.ps1",
+      "sha": "71b5cd9bb1af5e0834cfa1f983037493ac081817",
+      "mode": "100644",
+      "size": 3442
+    },
+    {
+      "path": "src/simple_adp/__init__.py",
+      "sha": "d57db34f11b28500f962feabac5089e744964c2e",
+      "mode": "100644",
+      "size": 2215
+    },
+    {
+      "path": "src/simple_adp/baselines.py",
+      "sha": "814a61acf3d19aafd30aa43bb66c5c0e814f2309",
+      "mode": "100644",
+      "size": 523
+    },
+    {
+      "path": "src/simple_adp/benchmark.py",
+      "sha": "b5293ae15596660dc965c6f3da8cc0be6416a16a",
+      "mode": "100644",
+      "size": 34302
+    },
+    {
+      "path": "src/simple_adp/checkpoint.py",
+      "sha": "aa228aa103b649d340dbb4ea8fbe7d95fb2970c5",
+      "mode": "100644",
+      "size": 3464
+    },
+    {
+      "path": "src/simple_adp/config.py",
+      "sha": "c75a0014ff88084df93f0b3c939ff7dfabe807a8",
+      "mode": "100644",
+      "size": 5623
+    },
+    {
+      "path": "src/simple_adp/dedicated.py",
+      "sha": "659b7202a2648240060d5787e386ecad2501b1a8",
+      "mode": "100644",
+      "size": 29933
+    },
+    {
+      "path": "src/simple_adp/estimator.py",
+      "sha": "a34851394dbc823a07b68a2432ce6f8a3b0f7242",
+      "mode": "100644",
+      "size": 17636
+    },
+    {
+      "path": "src/simple_adp/generic_artifacts.py",
+      "sha": "b58fc9bfca22273d9fe029ad434dcba56aabfd03",
+      "mode": "100644",
+      "size": 13708
+    },
+    {
+      "path": "src/simple_adp/generic_search.py",
+      "sha": "e8a3184cfb7569da4d12f3329822ecdf1f2dc65b",
+      "mode": "100644",
+      "size": 22151
+    },
+    {
+      "path": "src/simple_adp/growth.py",
+      "sha": "da48df66385036abeb07b13a5a8b190aff28c304",
+      "mode": "100644",
+      "size": 5508
+    },
+    {
+      "path": "src/simple_adp/models.py",
+      "sha": "fef60608da84b40575555fd1839b4236fe6742e2",
+      "mode": "100644",
+      "size": 4334
+    },
+    {
+      "path": "src/simple_adp/preprocessing.py",
+      "sha": "c89883edbd07e455a8d721d4fb0f16a880a157d6",
+      "mode": "100644",
+      "size": 7592
+    },
+    {
+      "path": "src/simple_adp/registry.py",
+      "sha": "f502a6c29e337830c089825e90e034c1488ada69",
+      "mode": "100644",
+      "size": 2787
+    },
+    {
+      "path": "src/simple_adp/results.py",
+      "sha": "1c76f33702d979b7b871483efd7dfe4114b26a52",
+      "mode": "100644",
+      "size": 338
+    },
+    {
+      "path": "src/simple_adp/runner/__init__.py",
+      "sha": "db19e90e6a228b60dcf2cdb648278b29659596e8",
+      "mode": "100644",
+      "size": 1408
+    },
+    {
+      "path": "src/simple_adp/runner/admission.py",
+      "sha": "f1e3a0949eedd57ac512098dfb79a24ac77f9d37",
+      "mode": "100644",
+      "size": 8925
+    },
+    {
+      "path": "src/simple_adp/runner/artifacts.py",
+      "sha": "1192054991dea77fccdcf92afe22a1dc0f2ef3db",
+      "mode": "100644",
+      "size": 660
+    },
+    {
+      "path": "src/simple_adp/runner/backend.py",
+      "sha": "e82975f2ebe4cb32910145785d64229aa423e193",
+      "mode": "100644",
+      "size": 12072
+    },
+    {
+      "path": "src/simple_adp/runner/bundles.py",
+      "sha": "fb20e3082f8e2d21d2dbfca4390827fd2a243f15",
+      "mode": "100644",
+      "size": 8293
+    },
+    {
+      "path": "src/simple_adp/runner/compat.py",
+      "sha": "a14144b4a7c231216c9b5e505d196de3dab38738",
+      "mode": "100644",
+      "size": 3233
+    },
+    {
+      "path": "src/simple_adp/runner/config.py",
+      "sha": "1b747e86d519008d680ffd628478a46dc879929e",
+      "mode": "100644",
+      "size": 14462
+    },
+    {
+      "path": "src/simple_adp/runner/controller.py",
+      "sha": "820fb1261f2e8bf0e88dfb97a5b2958da0c2b7a7",
+      "mode": "100644",
+      "size": 1468
+    },
+    {
+      "path": "src/simple_adp/runner/datasets.py",
+      "sha": "a26e1ddb50d535137caff75937c9e6ccf8e04776",
+      "mode": "100644",
+      "size": 5184
+    },
+    {
+      "path": "src/simple_adp/runner/launcher.py",
+      "sha": "67e97dee666cae1b5af29db07e6fcfbad1dd9eb7",
+      "mode": "100644",
+      "size": 20192
+    },
+    {
+      "path": "src/simple_adp/runner/logging_context.py",
+      "sha": "4ac2cf0e38535e0fc21964749068ca83367012b5",
+      "mode": "100644",
+      "size": 3474
+    },
+    {
+      "path": "src/simple_adp/runner/models.py",
+      "sha": "08297c303711b6d1d0fbb2d8ffe8501f98bc8719",
+      "mode": "100644",
+      "size": 12009
+    },
+    {
+      "path": "src/simple_adp/runner/plan.py",
+      "sha": "43c6d99e0fb133e1b968ffa6d341f4402ebc0f9b",
+      "mode": "100644",
+      "size": 25296
+    },
+    {
+      "path": "src/simple_adp/runner/plugins.py",
+      "sha": "8382f013ec193e6edcd52ce24ae56b3efa89135a",
+      "mode": "100644",
+      "size": 955
+    },
+    {
+      "path": "src/simple_adp/runner/pressure_wrapper.py",
+      "sha": "9cdd4bf9373785f9ddfa0c91633b92d74ff46417",
+      "mode": "100644",
+      "size": 15211
+    },
+    {
+      "path": "src/simple_adp/runner/process_cleanup.py",
+      "sha": "bd598f0359554e9b3a6dc15841b715f8a9efa9af",
+      "mode": "100644",
+      "size": 4626
+    },
+    {
+      "path": "src/simple_adp/runner/processes.py",
+      "sha": "e2e75a0f777821e8ab81d87e3861a27f52abc242",
+      "mode": "100644",
+      "size": 19126
+    },
+    {
+      "path": "src/simple_adp/runner/resources.py",
+      "sha": "68e67b1f94f55b04eb713dde6fc418b47ff8d5dd",
+      "mode": "100644",
+      "size": 9609
+    },
+    {
+      "path": "src/simple_adp/runner/route.py",
+      "sha": "27b7f5775e719e45c564733e01574d77f9f03fd0",
+      "mode": "100644",
+      "size": 1409
+    },
+    {
+      "path": "src/simple_adp/runner/runtime_tuning.py",
+      "sha": "6d1d8e3303fcc12ed35fabcb3dbd37aeec1086e4",
+      "mode": "100644",
+      "size": 15387
+    },
+    {
+      "path": "src/simple_adp/runner/scheduler.py",
+      "sha": "65ff0aeba3b35cc4b18eb87b6956ea35c963fbf3",
+      "mode": "100644",
+      "size": 68310
+    },
+    {
+      "path": "src/simple_adp/runner/screening.py",
+      "sha": "e3da6625e79c376de25e5f55190a380788f0d323",
+      "mode": "100644",
+      "size": 8289
+    },
+    {
+      "path": "src/simple_adp/runner/state.py",
+      "sha": "30101acbfcff4eca2c1790a8724be91ea276a406",
+      "mode": "100644",
+      "size": 24886
+    },
+    {
+      "path": "src/simple_adp/runner/telemetry.py",
+      "sha": "c1dbf25acb01e538ac8570ab917287779c712d12",
+      "mode": "100644",
+      "size": 36900
+    },
+    {
+      "path": "src/simple_adp/runner/watchdog.py",
+      "sha": "56f49ba0e1e7e9616100d37fa538eb8067714572",
+      "mode": "100644",
+      "size": 3125
+    },
+    {
+      "path": "src/simple_adp/runner/worker.py",
+      "sha": "b552cdb9547005392254a755995b9b7008d5abce",
+      "mode": "100644",
+      "size": 8531
+    },
+    {
+      "path": "src/simple_adp/search.py",
+      "sha": "ee366a39707be2e42cf44d04d52a9791ef2014c4",
+      "mode": "100644",
+      "size": 11553
+    },
+    {
+      "path": "src/simple_adp/tasks.py",
+      "sha": "222abcc9a5fb774eea1b35107c79b3cc99b3ddd5",
+      "mode": "100644",
+      "size": 15144
+    },
+    {
+      "path": "src/simple_adp/training.py",
+      "sha": "3d5f8f76d9b3cf465c18a6e26a74fd44ed46b674",
+      "mode": "100644",
+      "size": 10797
+    },
+    {
+      "path": "tests/test_runner_backend.py",
+      "sha": "912a481964305e483589e1d8d775c4dcabe48c04",
+      "mode": "100644",
+      "size": 10652
+    },
+    {
+      "path": "tests/test_runner_bundles.py",
+      "sha": "d9acde53a90ed2cc69c796af2aa748bd183c7006",
+      "mode": "100644",
+      "size": 16168
+    },
+    {
+      "path": "tests/test_runner_child_telemetry.py",
+      "sha": "ed3696d3603e8ec92951675c3121c531a927e76b",
+      "mode": "100644",
+      "size": 30762
+    },
+    {
+      "path": "tests/test_runner_compat.py",
+      "sha": "876b17c39a1fec2dc6d17ea78af5095e1b74cb32",
+      "mode": "100644",
+      "size": 3692
+    },
+    {
+      "path": "tests/test_runner_contracts.py",
+      "sha": "f02dba1309c7c732d73c5352a3c6343f0a1b17ef",
+      "mode": "100644",
+      "size": 311473
+    },
+    {
+      "path": "tests/test_runner_end_to_end.py",
+      "sha": "a7b9ad5fb51746036b29f43e1f71b092592d03b7",
+      "mode": "100644",
+      "size": 12723
+    },
+    {
+      "path": "tests/test_runner_function_map.py",
+      "sha": "7834c696f5087b02096f5aee1bfcde6cfaaec441",
+      "mode": "100644",
+      "size": 360
+    },
+    {
+      "path": "tests/test_runner_launcher.py",
+      "sha": "9865728d7d4a19518a83057f79f3eea72e841681",
+      "mode": "100644",
+      "size": 37751
+    },
+    {
+      "path": "tests/test_runner_logging_context.py",
+      "sha": "2aabdb744bf9937e519529075e6743a07ce2d5ca",
+      "mode": "100644",
+      "size": 2067
+    },
+    {
+      "path": "tests/test_runner_models.py",
+      "sha": "f2c229d9b9689d7b0735ca8b5a928e56e5a07020",
+      "mode": "100644",
+      "size": 8888
+    },
+    {
+      "path": "tests/test_runner_openml_provider_plan.py",
+      "sha": "85a886e535a4dd19974665bd7819614a9300faac",
+      "mode": "100644",
+      "size": 8435
+    },
+    {
+      "path": "tests/test_runner_plugins.py",
+      "sha": "f58a776346c3aee771240ff35ee7c19058480be2",
+      "mode": "100644",
+      "size": 4858
+    },
+    {
+      "path": "tests/test_runner_pressure.py",
+      "sha": "353e9a165711cc98a50d50105af052c343351f90",
+      "mode": "100644",
+      "size": 26039
+    },
+    {
+      "path": "tests/test_runner_processes.py",
+      "sha": "3e344e6f59a98272177db9b718927ff1c55fd235",
+      "mode": "100644",
+      "size": 28392
+    },
+    {
+      "path": "tests/test_runner_resources.py",
+      "sha": "89275c61680df57527e2889fb44f9daf6b76aae4",
+      "mode": "100644",
+      "size": 29071
+    },
+    {
+      "path": "tests/test_runner_shell_launcher.py",
+      "sha": "4ebd71e906ac9b68750a7b7a519d60e27421e524",
+      "mode": "100644",
+      "size": 3298
+    },
+    {
+      "path": "tests/test_runner_state_views.py",
+      "sha": "541628f607439624858a851d47343e48ecabe4b4",
+      "mode": "100644",
+      "size": 43972
+    },
+    {
+      "path": "tests/test_runner_tuning.py",
+      "sha": "acb4786b5a9f39a29ede43a7ad30101c9100d5a3",
+      "mode": "100644",
+      "size": 21195
+    },
+    {
+      "path": "tests/test_runner_watchdog.py",
+      "sha": "39ab02157268db42cc75e6b449d9723c654c5fcf",
+      "mode": "100644",
+      "size": 4105
+    },
+    {
+      "path": "tests/test_runner_worker.py",
+      "sha": "cbebdb16f452d3bb9a090cb2e619c9f4b064a6df",
+      "mode": "100644",
+      "size": 9933
+    },
+    {
+      "path": "tests/test_smoke_suite.py",
+      "sha": "c2cb89d574a7afcedfec7d56a2991b394445c611",
+      "mode": "100644",
+      "size": 3839
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "project-foundry-pressure-runner"
+version = "0.1.0"
+description = "Reusable coordinated pressure-aware experiment runner"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=1.26",
+  "pandas>=2.2",
+  "psutil>=5.9",
+  "torch>=2.5",
+]
+
+[project.scripts]
+simple-adp-suite = "simple_adp.runner.launcher:cli_main"
+simple-adp-pressure-wrapper = "simple_adp.runner.pressure_wrapper:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+benchmark = ["openml>=0.15", "scikit-learn>=1.5"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/simple_adp"]
