@@ -20,6 +20,48 @@ def write_json(path, payload):
     tmp.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
     os.replace(tmp, path)
 
+def _verify_scientific_child(command, job):
+    """Validate the native artifact contract when this is an RL-BGD one-job child."""
+    if len(command) < 4 or command[1:3] != [
+        "-m", "foundry_integration.rl_bgd_single"
+    ]:
+        return None
+    from foundry_integration.rl_bgd_single import verify_native_job
+
+    def required(flag):
+        if command.count(flag) != 1:
+            raise ValueError(f"native command must contain exactly one {flag}")
+        index = command.index(flag)
+        if index + 1 >= len(command):
+            raise ValueError(f"missing native command value for {flag}")
+        return command[index + 1]
+
+    suite = required("--suite")
+    native_job_id = required("--job-id")
+    seed = int(required("--seed"))
+    output_root = required("--output-root")
+    if job.get("id") != f"{suite}__{native_job_id}" or job.get("seed") != seed:
+        raise ValueError("Foundry selection does not match native scientific job identity")
+    return verify_native_job(suite, native_job_id, seed, output_root)
+
+
+def _archive_old_worker_status(result_dir):
+    """Move previous attempt indicators out of the authoritative current paths."""
+    previous = [result_dir / "result.json", result_dir / "native_process.json"]
+    if not any(path.exists() for path in previous):
+        return None
+    archive = result_dir / "attempt_history"
+    archive.mkdir(parents=True, exist_ok=True)
+    index = 1
+    while any((archive / f"attempt_{index:06d}_{path.name}").exists()
+              for path in previous):
+        index += 1
+    for path in previous:
+        if path.exists():
+            os.replace(path, archive / f"attempt_{index:06d}_{path.name}")
+    return index
+
+
 def worker(spec_path):
     spec = json.loads(Path(spec_path).read_text())
     run_id = spec["run_id"]
@@ -45,12 +87,18 @@ def worker(spec_path):
     if not command or not all(isinstance(s, str) and s for s in command):
         raise ValueError("native command must be an argv array")
     result_dir.mkdir(parents=True, exist_ok=True)
+    previous_attempt = _archive_old_worker_status(result_dir)
     record = {"job_id": run_id, "scientific_job": spec["scientific_job"],
-              "command": command, "status": "running"}
+              "command": command, "status": "running",
+              "archived_previous_attempt": previous_attempt}
     write_json(result_dir / "native_process.json", record)
     try:
         result = subprocess.run(command, cwd=ROOT, env=env, check=False)
         code = result.returncode
+        if code == 0:
+            verified = _verify_scientific_child(command, native)
+            if verified is not None:
+                record["verified_native_run"] = verified
     except Exception as exc:
         code = 1
         record["exception"] = f"{type(exc).__name__}: {exc}"

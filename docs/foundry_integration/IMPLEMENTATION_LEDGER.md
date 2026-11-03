@@ -10,7 +10,7 @@
 | Actual Foundry coordinator invoked | STATICALLY WIRED, RUNTIME UNVERIFIED | `SuiteCoordinator(...).run()` in `run_all_training.py` |
 | Native scientific inventory adapter | IMPLEMENTED, EXHAUSTIVENESS UNVERIFIED | `foundry_integration/catalog.py` |
 | Real native scientific subprocess bridge | IMPLEMENTED, END-TO-END UNVERIFIED | `run_all_training.py:worker` |
-| Native success/failure propagation | IMPLEMENTED, limited worker-test source present | `foundry_integration/test_bridge.py` |
+| Native success/failure propagation | IMPLEMENTED, bounded regression tests added; live integration pending | `foundry_integration/test_bridge.py` |
 | Native algorithms and original CL/RL model math | UNMODIFIED | Original source files not replaced by Foundry scientific models |
 | Resource admission/concurrency/pressure controls | VENDORED AND WIRED; DYNAMIC TEST UNVERIFIED | Original `simple_adp.runner.scheduler`, `admission`, `resources`, `processes` |
 | Hardness-screening | NOT APPLICABLE TO GENERIC NATIVE JOBS | Native adapter explicitly disables ADP-only hardness screening, without changing source defaults |
@@ -20,7 +20,7 @@
 
 ## Repository-specific integration
 
-Native `SUITES` exposes implemented paper jobs. A single-job wrapper calls `execute_suite` with exactly one selected job/seed, preserving strict native artifact validation. Ablation/analysis suites are excluded from the primary training inventory.
+Native `SUITES` exposes implemented paper jobs. A single-job wrapper calls `execute_suite` with exactly one selected job/seed. It now additionally checks that the selected native run ID, Git revision, fully resolved configuration, run metadata, and strict canonical artifacts match the requested job using the native artifact loader. The outer Foundry worker independently verifies the child's canonical run identity before publishing `result.json`. Exit code zero alone is insufficient. When a job is retried, old `result.json` and `native_process.json` indicators are moved into `attempt_history/` before launch, so a failed attempt cannot inherit a stale success marker. This preserves older process-status evidence without treating an old attempt as the new run. Ablation/analysis suites are excluded from the primary training inventory.
 
 ## Commands and safety
 
@@ -29,7 +29,7 @@ Install native dependencies for this repository and the original Foundry runtime
 ```bash
 python -m pip install -r requirements-foundry.txt
 python docs/foundry_integration/verify_source.py
-python -m py_compile run_all_training.py foundry_integration/catalog.py
+python -m py_compile run_all_training.py foundry_integration/catalog.py foundry_integration/rl_bgd_single.py
 python foundry_integration/test_bridge.py
 python run_all_training.py
 ```
