@@ -352,11 +352,15 @@ class SequenceReplayBuffer:
             raise ValueError("not enough chronological windows for requested sequence batch")
 
         logical = self._logical_physical_indices()
+        # An explicitly supplied sampler may live on a different device.
+        # Draw indices on its device and transfer only the small index vector;
+        # default same-device sampling remains unchanged.
+        index_device = self.device if generator is None else torch.device(generator.device)
         chosen = torch.randperm(
             available_windows,
-            device=self.device,
+            device=index_device,
             generator=generator,
-        )[:batch_size]
+        )[:batch_size].to(self.device)
         offsets = torch.arange(
             window,
             device=self.device,

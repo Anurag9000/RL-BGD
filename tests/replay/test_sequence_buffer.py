@@ -445,3 +445,29 @@ def test_sequence_batch_transfer_preserves_all_fields_and_dtypes() -> None:
         torch.testing.assert_close(converted.cpu(), original.cpu())
     assert moved.burn_in == sample.burn_in
     assert moved.unroll_slice == sample.unroll_slice
+
+
+@pytest.mark.gpu
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA unavailable")
+def test_sequence_replay_cpu_index_sampling_is_storage_device_independent() -> None:
+    cpu = SequenceReplayBuffer(8, 2, 1, storage_device="cpu")
+    gpu = SequenceReplayBuffer(8, 2, 1, storage_device="cuda")
+    for index in range(8):
+        vector = torch.tensor([float(index), float(index + 1)])
+        for replay in (cpu, gpu):
+            replay.add(
+                vector, torch.tensor([0.5]), float(index),
+                vector + 0.2, terminated=False, truncated=False,
+                episode_start=index == 0, insertion_step=index,
+            )
+    kwargs = {"batch_size": 2, "burn_in": 2, "unroll": 2}
+    sample_cpu = cpu.sample_sequences(
+        **kwargs, generator=torch.Generator(device="cpu").manual_seed(172)
+    )
+    sample_gpu = gpu.sample_sequences(
+        **kwargs, generator=torch.Generator(device="cpu").manual_seed(172)
+    ).to("cpu")
+    for name in (
+        "transition_ids", "usage_counts", "fresh", "insertion_steps", "observations"
+    ):
+        torch.testing.assert_close(getattr(sample_cpu, name), getattr(sample_gpu, name))

@@ -66,3 +66,11 @@ is rejected rather than incorrectly certified as exact recovery.
 These are new bounded software contracts, not a claim that a 10-million-entry
 buffer has been physically allocated or that GPU-memory admission has been
 validated under a full benchmark load.
+
+
+For explicit CPU/GPU replay storage parity tests, `SequenceReplayBuffer`
+accepts an index generator on either device and moves only the sampled
+index vector to replay storage. Supplying two identically seeded CPU index
+generators to CPU-resident and CUDA-resident replay yields identical logical
+sample IDs and evidence-use counts; default model-device sampling is
+otherwise unchanged. CUDA parity tests are conditional on real GPU access.
