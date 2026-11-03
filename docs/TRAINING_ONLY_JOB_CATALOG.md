@@ -112,3 +112,21 @@ File naming alone cannot distinguish a legitimate comparison from a hyperparamet
 ### Reproducible next verification
 
 From a clean checkout at the pinned SHA, inspect the native CLI and run the **planning-only** command above. Archive the plan JSON/CSV, resolved configurations, rejected/skipped cells with reasons, input dataset identities, seed list, and source revision. Compare method/dataset/protocol membership with this inventory; only then calculate **exact distinct jobs** versus **execution records**. Execution is a separate operator action. Do not automatically download datasets or treat optional provider availability as success.
+
+## Live source-derived Foundry inventory (subsequent implementation)
+
+The earlier static census above intentionally did **not** establish an executable
+scientific configuration count. The newer `foundry_integration/scientific_inventory.py`
+enumerates **every declared** `SUITES` job (including ablation, uncertainty,
+mechanistic and compute suites), resolves runner signature defaults when
+dependencies permit, and separates seed-independent scientific fingerprints
+from seed-expanded execution identities.
+
+Run `python run_all_training.py inventory --write-inventory --out artifacts/foundry_training`
+to export `scientific_job_inventory.json`, `scientific_job_inventory.csv`,
+and `scientific_job_coverage.json`. These are real source-derived registry
+counts, not executed training results. Every seed and optional dependency
+requirement remains visible, and duplicate cross-suite aliases are listed.
+The export does not yet prove exhaustive discovery of independent training
+runners not present in `SUITES`; those remain an explicit audit obligation.
+No numbers should be copied from another source revision.

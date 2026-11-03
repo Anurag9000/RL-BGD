@@ -14,7 +14,9 @@ from rl_bgd.bayes.diagonal_gaussian import DiagonalGaussianPosterior
 from rl_bgd.bayes.generalized_bayes import GeneralizedBayesConfig
 
 
-@pytest.mark.parametrize("invalid", [float("nan"), float("inf"), -float("inf"), 0.0, -1.0, True, "1"])
+@pytest.mark.parametrize(
+    "invalid", [float("nan"), float("inf"), -float("inf"), 0.0, -1.0, True, "1"]
+)
 def test_generalized_bayes_temperature_rejects_invalid_values(invalid: object) -> None:
     with pytest.raises((TypeError, ValueError)):
         GeneralizedBayesConfig(evidence_temperature=invalid)  # type: ignore[arg-type]

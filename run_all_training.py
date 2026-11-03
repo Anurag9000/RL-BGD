@@ -169,16 +169,45 @@ def main(argv=None):
     }, indent=2, sort_keys=True))
     if args.write_inventory:
         from collections import Counter
-        write_json(out / "scientific_job_inventory.json", {
-            "format": "foundry-native-training-catalog/v1",
+        fingerprint_ids = {
+            j.get("scientific_fingerprint", j["id"]) for j in jobs
+        }
+        catalog = {
+            "format": "foundry-native-training-catalog/v2",
             "repository": ROOT.name,
-            "distinct_scientific_jobs": len({j["id"] for j in jobs}),
+            "distinct_scientific_jobs": len(fingerprint_ids),
+            "seed_expanded_training_runs": len(jobs),
             "expanded_training_runs": len(jobs),
             "by_method": dict(sorted(Counter(j.get("method") for j in jobs).items())),
             "by_dataset": dict(sorted(Counter(j.get("dataset") for j in jobs).items())),
             "blocked_runs": sum(bool(j.get("blocker")) for j in jobs),
             "jobs": jobs,
-        })
+        }
+        if ROOT.name.lower() == "rl-bgd":
+            from foundry_integration.scientific_inventory import (
+                coverage_summary, inventory_records,
+            )
+            science = inventory_records()
+            coverage = coverage_summary(science)
+            catalog["scientific_coverage"] = coverage
+            write_json(out / "scientific_job_coverage.json", coverage)
+            import csv
+            csv_path = out / "scientific_job_inventory.csv"
+            csv_path.parent.mkdir(parents=True, exist_ok=True)
+            temp = csv_path.with_name("." + csv_path.name + ".tmp")
+            fields = [
+                "suite", "job_id", "native_run_id", "seed",
+                "scientific_fingerprint", "execution_fingerprint",
+                "classification", "method", "dataset",
+                "optional_extra", "blocker",
+            ]
+            with temp.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(handle, fieldnames=fields)
+                writer.writeheader()
+                writer.writerows({key: record.get(key) for key in fields}
+                                 for record in science)
+            os.replace(temp, csv_path)
+        write_json(out / "scientific_job_inventory.json", catalog)
     if args.action == "inventory":
         return 0
     if not args.execute:

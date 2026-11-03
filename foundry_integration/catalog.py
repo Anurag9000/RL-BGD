@@ -42,20 +42,26 @@ def discover(root: Path, args):
         return results
 
     if name == "rl-bgd":
-        from rl_bgd.experiments.suites import SUITES
-        for suite_name, suite in sorted(SUITES.items()):
-            if any(label in suite_name.lower() for label in
-                   ("ablation", "uncertainty_analysis", "mechanism_analysis", "compute_analysis")):
-                continue
-            for job in suite.jobs:
-                for seed in job.seeds:
-                    results.append(row(f"{suite_name}__{job.job_id}",
-                        [py, "-m", "foundry_integration.rl_bgd_single",
-                         "--suite", suite_name, "--job-id", job.job_id,
-                         "--seed", str(seed), "--output-root", "{RESULT_DIR}"],
-                        method=job.algorithm, dataset=job.environment, seed=seed,
-                        source="src/rl_bgd/experiments/suites.py:SUITES",
-                        resume_mode="RESTART_FROM_BEGINNING"))
+        from foundry_integration.scientific_inventory import inventory_records
+        for record in inventory_records():
+            suite_name = record["suite"]
+            job_id = record["job_id"]
+            seed = record["seed"]
+            results.append(row(
+                record["foundry_job_id"],
+                [py, "-m", "foundry_integration.rl_bgd_single",
+                 "--suite", suite_name, "--job-id", job_id,
+                 "--seed", str(seed), "--output-root", "{RESULT_DIR}"],
+                method=record["method"], dataset=record["dataset"], seed=seed,
+                source="src/rl_bgd/experiments/suites.py:SUITES",
+                resume_mode="RESTART_FROM_BEGINNING",
+                blocker=record["blocker"],
+                classification=record["classification"],
+                scientific_fingerprint=record["scientific_fingerprint"],
+                execution_fingerprint=record["execution_fingerprint"],
+                scientific_contract=record["scientific_contract"],
+                optional_extra=record["optional_extra"],
+            ))
         return results
 
     if name == "cl-benchmarks":
