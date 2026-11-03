@@ -21,3 +21,32 @@ RL-BGD currently exposes three mutually exclusive adaptive surprise sources in B
 For predictive surprise, the world model scores each replay batch **before** it is trained on that batch, so the surprise signal is not artificially reduced by fitting the observation first. The model is then updated by maximum likelihood. Its parameters, optimizer state, and surprise normalizer are included in the BGD-SAC checkpoint. Only one adaptive source may control retention in a run, which keeps causal comparisons identifiable.
 
 Evaluation may compare detected surprise events to known environment changes. Training code must not receive those change labels.
+
+## Recurrent BGD-SAC adaptive-surprise contract
+
+The sequence-replay BGD-SAC agent supports the same four mutually exclusive
+retention modes: fixed, TD surprise, twin-critic ensemble disagreement, and
+predictive Gaussian transition/reward negative log likelihood. Each surprise
+measurement precedes the corresponding Bayesian actor/critic update.
+
+TD and ensemble statistics use critic predictions only from the optimized
+unroll positions. Burn-in observations may reconstruct the recurrent hidden
+state but are not independently counted as surprise/evidence observations.
+Predictive NLL scores a flattened batch of the optimized unroll transitions
+with the same agent-visible observation vector as the recurrent models,
+including previous-transition context when configured. The predictive model
+is fitted **after** scoring surprise and performing the SAC updates, using
+those unroll positions only.
+
+All adaptive modes use the existing EMA normalizer and monotone retention
+mapping. Diagnostic keys include `surprise_raw`, `surprise_center`,
+`surprise_scale`, `surprise_normalized`, `surprise_smoothed`, and
+`retention_lambda`; predictive mode additionally emits
+`predictive_model_loss`. The recurrence-aware BGD checkpoint schema is
+version 3 and includes selected estimator state plus, for predictive mode,
+the world-model and optimizer states. Version 2 checkpoints remain readable
+for TD-only and fixed-retention configurations. Missing required estimator
+state and conflicting configurations are errors, not silent resets.
+
+These are implementation semantics, not evidence of completed CW10/CW20
+training or confirmation of any scientific performance hypothesis.
