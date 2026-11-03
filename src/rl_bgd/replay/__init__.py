@@ -7,6 +7,10 @@ from rl_bgd.replay.evidence_accounting import (
     replay_evidence_weights,
     weighted_evidence_mean,
 )
+from rl_bgd.replay.memory import (
+    SequenceReplayMemoryEstimate,
+    estimate_sequence_replay_memory,
+)
 from rl_bgd.replay.sequence_buffer import (
     SequenceReplayBatch,
     SequenceReplayBuffer,
@@ -23,8 +27,10 @@ __all__ = [
     "ReplayEvidenceConfig",
     "ReplayEvidenceSummary",
     "SequenceReplayBatch",
+    "SequenceReplayMemoryEstimate",
     "SequenceReplayBuffer",
     "SequenceReplayEvidenceSummary",
+    "estimate_sequence_replay_memory",
     "replay_evidence_weights",
     "sequence_replay_evidence_weights",
     "weighted_evidence_mean",
