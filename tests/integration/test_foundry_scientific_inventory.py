@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import csv
 import json
+from importlib.metadata import PackageNotFoundError
 from pathlib import Path
+from unittest.mock import patch
 from types import SimpleNamespace
 
 from foundry_integration.catalog import discover
 from foundry_integration.scientific_inventory import (
     coverage_summary,
     inventory_records,
+    optional_dependency_blocker,
 )
 from run_all_training import main
 
@@ -71,3 +74,12 @@ def test_inventory_export_distinguishes_methods_and_seed_expansions(
     ]
     assert len(rows) == coverage["seed_expanded_records"]
     assert len(full["jobs"]) == len(rows)
+
+
+def test_optional_benchmark_blockers_are_reported_without_loading_simulators() -> None:
+    with patch("importlib.metadata.version", side_effect=PackageNotFoundError()):
+        assert "CARL 1.1.1 not installed" in optional_dependency_blocker("carl")
+    with patch("importlib.util.find_spec", return_value=None):
+        assert "metaworld" in optional_dependency_blocker("continual-world")
+        assert "mujoco" in optional_dependency_blocker("continual-world")
+    assert optional_dependency_blocker(None) is None

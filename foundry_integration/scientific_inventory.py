@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata
+import importlib.util
 import json
 from collections import Counter, defaultdict
 from typing import Any
@@ -29,6 +31,25 @@ def canonical(value: object) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
 
+def optional_dependency_blocker(extra: str | None) -> str | None:
+    """Report missing benchmark prerequisites without importing heavy simulators."""
+    if extra == "carl":
+        try:
+            version = importlib.metadata.version("carl-bench")
+        except importlib.metadata.PackageNotFoundError:
+            return "CARL 1.1.1 not installed (isolated benchmark environment required)"
+        if version != "1.1.1":
+            return f"CARL pinned version mismatch: expected 1.1.1, found {version}"
+    elif extra == "continual-world":
+        missing = [
+            name for name in ("metaworld", "mujoco")
+            if importlib.util.find_spec(name) is None
+        ]
+        if missing:
+            return "missing Continual World simulator dependencies: " + ", ".join(missing)
+    return None
+
+
 def inventory_records() -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     for suite_name, suite in sorted(SUITES.items()):
@@ -38,12 +59,13 @@ def inventory_records() -> list[dict[str, Any]]:
                 kwargs[job.seed_kwarg] = job.seeds[0]
             if job.output_kwarg:
                 kwargs[job.output_kwarg] = "__OUTPUT__"
-            blocker = None
+            blocker = optional_dependency_blocker(job.optional_extra)
             try:
                 resolved = _resolved_call_kwargs(job.target, kwargs)
             except (ImportError, ModuleNotFoundError) as error:
                 resolved = kwargs
-                blocker = f"{type(error).__name__}: {error}"
+                missing = f"{type(error).__name__}: {error}"
+                blocker = f"{blocker}; {missing}" if blocker else missing
             if job.seed_kwarg:
                 resolved.pop(job.seed_kwarg, None)
             if job.output_kwarg:
