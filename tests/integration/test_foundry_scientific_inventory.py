@@ -6,8 +6,8 @@ import csv
 import json
 from importlib.metadata import PackageNotFoundError
 from pathlib import Path
-from unittest.mock import patch
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from foundry_integration.catalog import discover
 from foundry_integration.scientific_inventory import (
