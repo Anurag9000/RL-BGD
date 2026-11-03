@@ -4,6 +4,7 @@ The census reads every tracked byte, parses Python without importing it, and
 distinguishes source declarations from executed and scientifically tested code.
 No benchmark, simulator or training job is constructed by this module.
 """
+
 from __future__ import annotations
 
 import ast
