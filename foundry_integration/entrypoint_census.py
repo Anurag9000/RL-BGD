@@ -78,8 +78,17 @@ def entrypoint_census(root: Path) -> dict[str, Any]:
         for item in record["runner_imports"]
         if item["suite_coverage"] != "EXACT_SUITE_TARGET"
     ]
+    exact_imports = {
+        f'{item["module"]}:{item["symbol"]}'
+        for record in records
+        for item in record["runner_imports"]
+        if item["suite_coverage"] == "EXACT_SUITE_TARGET"
+    }
+    suite_only_targets = sorted(declared - exact_imports)
     return {
         "schema_version": 1,
+        "suite_only_target_count": len(suite_only_targets),
+        "suite_only_targets": suite_only_targets,
         "first_party_scripts": len(records),
         "registered_suite_targets": len(declared),
         "by_role": dict(sorted(Counter(x["role"] for x in records).items())),
