@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 import torch
@@ -33,6 +33,26 @@ class SequenceReplayBatch:
     usage_counts: Tensor
     fresh: Tensor
     burn_in: int
+
+    def to(self, device: torch.device | str) -> SequenceReplayBatch:
+        """Transfer every field without changing logical samples or metadata dtypes."""
+        destination = torch.device(device)
+        if self.observations.device == destination:
+            return self
+        return replace(
+            self,
+            observations=self.observations.to(destination),
+            actions=self.actions.to(destination),
+            rewards=self.rewards.to(destination),
+            next_observations=self.next_observations.to(destination),
+            terminated=self.terminated.to(destination),
+            truncated=self.truncated.to(destination),
+            episode_starts=self.episode_starts.to(destination),
+            transition_ids=self.transition_ids.to(destination),
+            insertion_steps=self.insertion_steps.to(destination),
+            usage_counts=self.usage_counts.to(destination),
+            fresh=self.fresh.to(destination),
+        )
 
     @property
     def unroll_slice(self) -> slice:

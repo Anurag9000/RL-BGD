@@ -5,13 +5,14 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import torch
 from torch import Tensor
 
 from rl_bgd.agents.sac.recurrent_agent import RecurrentSACAgent
 from rl_bgd.envs.protocols import ContinuousTensorEnv
+from rl_bgd.replay.memory import estimate_sequence_replay_memory
 from rl_bgd.replay.sequence_buffer import SequenceReplayBuffer
 from rl_bgd.utils.checkpoint_io import save_training_checkpoint as _save_training_checkpoint
 from rl_bgd.utils.checkpoint_payload import (
@@ -39,7 +40,7 @@ from rl_bgd.utils.randomness import (
 
 PostStepObserver = Callable[[int, RecurrentSACAgent], None]
 
-_RECURRENT_SAC_TRAINING_CHECKPOINT_VERSION = 1
+_RECURRENT_SAC_TRAINING_CHECKPOINT_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,7 @@ class RecurrentSACTrainConfig:
     replay_capacity: int = 100_000
     updates_per_step: int = 1
     seed: int = 0
+    replay_storage: Literal["model", "cpu", "auto"] = "model"
 
     def validate(self) -> None:
         config_positive_integer(self.total_steps, name="total_steps")
@@ -62,8 +64,41 @@ class RecurrentSACTrainConfig:
         config_positive_integer(self.replay_capacity, name="replay_capacity")
         config_positive_integer(self.updates_per_step, name="updates_per_step")
         config_nonnegative_integer(self.seed, name="seed")
+        if self.replay_storage not in ("model", "cpu", "auto"):
+            raise ValueError("replay_storage must be model, cpu or auto")
         if self.replay_capacity < self.burn_in + self.unroll:
             raise ValueError("replay capacity is shorter than one sequence window")
+
+
+def _replay_storage_device(
+    agent_device: torch.device,
+    config: RecurrentSACTrainConfig,
+    *,
+    observation_dim: int,
+    action_dim: int,
+) -> torch.device:
+    """Select storage only; never alter model device, sampling or replay capacity."""
+    if config.replay_storage == "model":
+        return agent_device
+    if config.replay_storage == "cpu" or agent_device.type != "cuda":
+        return torch.device("cpu")
+    estimate = estimate_sequence_replay_memory(
+        config.replay_capacity,
+        observation_dim,
+        action_dim,
+        batch_size=config.sequence_batch_size,
+        burn_in=config.burn_in,
+        unroll=config.unroll,
+    )
+    free_bytes, _ = torch.cuda.mem_get_info(device=agent_device)
+    required_bytes = (
+        estimate.total_storage_bytes
+        + estimate.sampled_batch_bytes
+        + estimate.sampling_index_bytes_upper_bound
+    )
+    # Reserve at least half the currently available device RAM for the
+    # agent, gradients, optimizer, simulator and transient update buffers.
+    return agent_device if required_bytes <= 0.5 * free_bytes else torch.device("cpu")
 
 
 def _environment_state_dict(env: ContinuousTensorEnv) -> dict[str, Any]:
@@ -124,13 +159,26 @@ def train_recurrent_sac(
 
     observation_dim = int(env.observation_space.low.numel())
     action_dim = int(env.action_space.low.numel())
+    storage_device = _replay_storage_device(
+        agent.device,
+        config,
+        observation_dim=observation_dim,
+        action_dim=action_dim,
+    )
     replay = SequenceReplayBuffer(
         config.replay_capacity,
         observation_dim,
         action_dim,
-        storage_device=agent.device,
+        storage_device=storage_device,
     )
     generator = torch.Generator(device=agent.device).manual_seed(config.seed + 27)
+    # The original model-resident sampler remains bit-for-bit unchanged.
+    # A separate sampler is required only if replay lives on another device.
+    sampling_generator = (
+        generator
+        if storage_device == agent.device
+        else torch.Generator(device=storage_device).manual_seed(config.seed + 271)
+    )
     start_step = 0
     episode_start = True
     episode_history: list[Tensor] = []
@@ -144,18 +192,25 @@ def train_recurrent_sac(
     else:
         checkpoint = _load_training_checkpoint(
             resume_from,
-            device=agent.device,
+            device=storage_device if storage_device.type == "cpu" else agent.device,
         )
-        if (
-            checkpoint_integer(
-                checkpoint.get("version"),
-                name="recurrent SAC training checkpoint version",
-            )
-            != _RECURRENT_SAC_TRAINING_CHECKPOINT_VERSION
-        ):
+        checkpoint_version = checkpoint_integer(
+            checkpoint.get("version"),
+            name="recurrent SAC training checkpoint version",
+        )
+        if checkpoint_version not in (1, _RECURRENT_SAC_TRAINING_CHECKPOINT_VERSION):
             raise ValueError("unsupported recurrent SAC training checkpoint version")
-        if checkpoint.get("train_config") != asdict(config):
+        expected_config = asdict(config)
+        if checkpoint_version == 1:
+            if config.replay_storage != "model":
+                raise ValueError("legacy recurrent SAC checkpoints require model replay storage")
+            expected_config.pop("replay_storage")
+        if checkpoint.get("train_config") != expected_config:
             raise ValueError("recurrent SAC training checkpoint configuration mismatch")
+        if checkpoint_version == 2 and checkpoint.get("replay_storage_device") != str(
+            storage_device
+        ):
+            raise ValueError("recurrent SAC replay storage device mismatch")
         start_step = checkpoint_step(
             checkpoint.get("next_step"),
             name="recurrent SAC checkpoint next_step",
@@ -215,6 +270,17 @@ def train_recurrent_sac(
             name="recurrent SAC replay generator checkpoint",
             device=agent.device,
         )
+        sampler_generator_state: Tensor | None = None
+        if sampling_generator is not generator:
+            if checkpoint_version != 2:
+                raise ValueError("separate replay sampler requires a version 2 checkpoint")
+            sampler_generator_state = checkpoint_generator_state(
+                checkpoint.get("sampler_generator_state"),
+                name="recurrent SAC storage sampler checkpoint",
+                device=storage_device,
+            )
+        elif checkpoint_version == 2 and checkpoint.get("sampler_generator_state") is not None:
+            raise ValueError("unexpected separate replay sampler in checkpoint")
         process_rng = checkpoint.get("process_rng")
         if not isinstance(process_rng, dict):
             raise TypeError("recurrent SAC process RNG state must be a dictionary")
@@ -226,6 +292,7 @@ def train_recurrent_sac(
             "replay": replay_state,
             "environment": environment_state,
             "replay_generator_state": generator_state,
+            "sampler_generator_state": sampler_generator_state,
             "process_rng": process_rng,
         }
 
@@ -235,6 +302,10 @@ def train_recurrent_sac(
                 "replay": replay.state_dict(),
                 "environment": _environment_state_dict(env),
                 "replay_generator_state": generator.get_state().clone(),
+                "sampler_generator_state": (
+                    sampling_generator.get_state().clone()
+                    if sampling_generator is not generator else None
+                ),
                 "process_rng": random_state_dict(),
             }
 
@@ -243,6 +314,8 @@ def train_recurrent_sac(
             replay.load_state_dict(payload["replay"])
             _load_environment_state(env, payload["environment"])
             generator.set_state(payload["replay_generator_state"].cpu())
+            if sampling_generator is not generator:
+                sampling_generator.set_state(payload["sampler_generator_state"].cpu())
             load_random_state_dict(payload["process_rng"])
 
         transactional_state_load(
@@ -279,6 +352,11 @@ def train_recurrent_sac(
                 "completed_returns": list(completed_returns),
                 "last_metrics": dict(last_metrics),
                 "replay_generator_state": generator.get_state().clone(),
+                "sampler_generator_state": (
+                    sampling_generator.get_state().clone()
+                    if sampling_generator is not generator else None
+                ),
+                "replay_storage_device": str(storage_device),
                 "process_rng": random_state_dict(),
             },
         )
@@ -335,9 +413,9 @@ def train_recurrent_sac(
                     config.sequence_batch_size,
                     burn_in=config.burn_in,
                     unroll=config.unroll,
-                    generator=generator,
+                    generator=sampling_generator,
                 )
-                last_metrics = agent.update(batch)
+                last_metrics = agent.update(batch.to(agent.device))
                 updated = True
 
         if updated and not episode_done:
@@ -374,6 +452,7 @@ def train_recurrent_sac(
         ),
         "last_update_metrics": last_metrics,
         "replay_size": len(replay),
+        "replay_storage_device": str(storage_device),
         "recurrent_reset_count": agent.recurrent_reset_count,
     }
 

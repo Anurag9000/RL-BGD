@@ -132,6 +132,7 @@ def run_recurrent_ta_continual_world_sac(
     sequence_batch_size: int = 128,
     history_length: int = 15,
     unroll: int = 1,
+    replay_storage: Literal["model", "cpu", "auto"] = "model",
 ) -> dict[str, object]:
     """Run a 3RL-style strict task-agnostic CW10/CW20 experiment.
 
@@ -281,6 +282,7 @@ def run_recurrent_ta_continual_world_sac(
                 ),
                 updates_per_step=1,
                 seed=seed,
+                replay_storage=replay_storage,
             ),
             post_step_observer=stage_evaluator,
         )

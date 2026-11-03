@@ -416,3 +416,32 @@ def test_sequence_replay_add_accepts_episode_reset_after_terminal_and_truncation
     restored = SequenceReplayBuffer(2, 1, 1)
     restored.load_state_dict(buffer.state_dict())
     torch.testing.assert_close(restored.logical_transition_ids(), buffer.logical_transition_ids())
+
+
+def test_sequence_batch_transfer_preserves_all_fields_and_dtypes() -> None:
+    source = SequenceReplayBuffer(6, 2, 1, storage_device="cpu")
+    for index in range(6):
+        observation = torch.tensor([float(index), float(index + 1)])
+        source.add(
+            observation, torch.tensor([0.5]), float(index),
+            observation + 0.1, terminated=False, truncated=False,
+            episode_start=index == 0, insertion_step=index,
+        )
+    sample = source.sample_sequences(
+        1, burn_in=2, unroll=2, generator=torch.Generator().manual_seed(11)
+    )
+    assert sample.to("cpu") is sample
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    moved = sample.to(device)
+    for field in (
+        "observations", "actions", "rewards", "next_observations",
+        "terminated", "truncated", "episode_starts",
+        "transition_ids", "insertion_steps", "usage_counts", "fresh",
+    ):
+        original = getattr(sample, field)
+        converted = getattr(moved, field)
+        assert converted.device == device
+        assert converted.dtype == original.dtype
+        torch.testing.assert_close(converted.cpu(), original.cpu())
+    assert moved.burn_in == sample.burn_in
+    assert moved.unroll_slice == sample.unroll_slice

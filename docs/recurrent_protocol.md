@@ -42,7 +42,27 @@ figure is an upper bound on replay tensor payload for a full buffer, not an
 on-disk compressed-file-size promise; peak restore RAM can substantially
 exceed resident storage.
 
-This diagnostic does not silently shrink capacity, alter sampling behavior
-or change the existing default replay placement. Explicit CPU-hosted replay
-with CUDA model training and automatic GPU/CPU admission still require a
-separate validated storage-policy implementation.
+This diagnostic never silently shrinks capacity. The optional
+`RecurrentSACTrainConfig.replay_storage` control provides `model` (default,
+unchanged device/sampling behavior), `cpu` (CPU-resident replay even when
+the actor and critic use CUDA), and `auto`. For a CUDA model, `auto` retains
+replay on GPU only if estimated persistent replay storage, sampled batches
+and sampling indices consume at most half of currently free VRAM; otherwise
+the full configured capacity is kept on CPU. The model always trains on its
+selected CUDA device, and **all** sampled tensor fields are moved to that
+device with their original integer/boolean dtypes preserved.
+
+A CPU replay with a CUDA model uses a separate CPU sampling generator;
+the original action generator and original model-resident sampling route are
+unchanged. Since CPU and CUDA random permutation implementations can differ,
+the storage policy is part of the experiment configuration and may change
+sample sequence under otherwise matched seeds. Checkpoint version 2 preserves
+both RNG streams and the resolved storage-device identity, refuses mismatches,
+and loads CPU-resident replay payloads without staging the complete buffer
+through VRAM. Version 1 checkpoints remain loadable for default
+`model`-resident replay. A changing `auto` device decision across a restart
+is rejected rather than incorrectly certified as exact recovery.
+
+These are new bounded software contracts, not a claim that a 10-million-entry
+buffer has been physically allocated or that GPU-memory admission has been
+validated under a full benchmark load.

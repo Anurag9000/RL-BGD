@@ -58,3 +58,8 @@ Run examples:
     python scripts/run_recurrent_continual_world.py --benchmark CW10 --optimizer adam
     python scripts/run_recurrent_continual_world.py --benchmark CW10 --optimizer bgd
     python scripts/run_recurrent_continual_world.py --benchmark CW20 --optimizer adaptive_bgd
+
+
+## Replay device policy
+
+The recurrent Continual World runner accepts `replay_storage` as `model` (default), `cpu`, or `auto`. CPU storage keeps the full replay capacity while the models and gradients continue using the selected CUDA device. Auto mode uses a conservative half-of-free-VRAM admission criterion, falling back to host memory without reducing capacity. A versioned training checkpoint records the resolved storage device and separate sampler RNG state where required. Changes in resolved storage across restart are rejected rather than reported as exact recovery. This does not imply exact Meta-World simulator recovery or completed large-scale scientific evaluation.
