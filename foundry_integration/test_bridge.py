@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from types import ModuleType
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -77,13 +78,20 @@ class FoundryNativeWorkerTest(unittest.TestCase):
                     "--seed", "0", "--output-root", str(result_dir / "native"),
                 ],
             }), encoding="utf-8")
-            with patch("run_all_training.subprocess.run") as invoked:
-                invoked.return_value.returncode = 0
-                self.assertNotEqual(worker(spec), 0)
+            native_stub = ModuleType("foundry_integration.rl_bgd_single")
+
+            def reject_native(*_args: object) -> None:
+                raise ValueError("invalid canonical native artifacts")
+
+            native_stub.verify_native_job = reject_native  # type: ignore[attr-defined]
+            with patch.dict(sys.modules, {"foundry_integration.rl_bgd_single": native_stub}):
+                with patch("run_all_training.subprocess.run") as invoked:
+                    invoked.return_value.returncode = 0
+                    self.assertNotEqual(worker(spec), 0)
             self.assertFalse((result_dir / "result.json").exists())
             state = json.loads((result_dir / "native_process.json").read_text())
             self.assertEqual(state["status"], "failed")
-            self.assertIn("unknown native suite", state["exception"])
+            self.assertIn("invalid canonical native artifacts", state["exception"])
 
 
 if __name__ == "__main__":
