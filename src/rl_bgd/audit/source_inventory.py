@@ -18,7 +18,6 @@ from typing import Any
 
 import yaml
 
-
 _MARKDOWN_LINK = re.compile(r"\]\(([^)]+)\)")
 _TEXT_SUFFIXES = {".py", ".md", ".yml", ".yaml", ".toml", ".json", ".txt", ".sh", ".ps1"}
 

@@ -26,11 +26,14 @@ ROOT = Path(__file__).resolve().parents[2]
 def test_inventory_covers_every_declared_suite_and_training_category() -> None:
     records = inventory_records()
     assert {item["suite"] for item in records} == set(SUITES)
-    assert len(records) == sum(
-        len(job.seeds) for suite in SUITES.values() for job in suite.jobs
-    )
-    for name in ("ablation_core", "uncertainty_analysis", "compute_analysis",
-                 "mechanism_analysis", "task_agnostic_final"):
+    assert len(records) == sum(len(job.seeds) for suite in SUITES.values() for job in suite.jobs)
+    for name in (
+        "ablation_core",
+        "uncertainty_analysis",
+        "compute_analysis",
+        "mechanism_analysis",
+        "task_agnostic_final",
+    ):
         assert any(record["suite"] == name for record in records)
     summary = coverage_summary(records)
     assert summary["unique_scientific_configurations"] > 0
@@ -41,15 +44,14 @@ def test_scientific_identity_is_seed_independent_and_execution_identity_is_not()
     records = inventory_records()
     a = records[0]
     siblings = [
-        item for item in records if item["suite"] == a["suite"]
-        and item["job_id"] == a["job_id"]
+        item for item in records if item["suite"] == a["suite"] and item["job_id"] == a["job_id"]
     ]
     assert len({item["scientific_fingerprint"] for item in siblings}) == 1
     assert len({item["execution_fingerprint"] for item in siblings}) == len(siblings)
     second = inventory_records()
-    assert [(x["native_run_id"], x["scientific_fingerprint"])
-            for x in records] == [(x["native_run_id"], x["scientific_fingerprint"])
-                                 for x in second]
+    assert [(x["native_run_id"], x["scientific_fingerprint"]) for x in records] == [
+        (x["native_run_id"], x["scientific_fingerprint"]) for x in second
+    ]
 
 
 def test_catalog_does_not_drop_analysis_named_training_jobs() -> None:
@@ -70,9 +72,7 @@ def test_inventory_export_distinguishes_methods_and_seed_expansions(
     coverage = json.loads((tmp_path / "scientific_job_coverage.json").read_text())
     with (tmp_path / "scientific_job_inventory.csv").open(newline="") as handle:
         rows = list(csv.DictReader(handle))
-    assert full["distinct_scientific_jobs"] == coverage[
-        "unique_scientific_configurations"
-    ]
+    assert full["distinct_scientific_jobs"] == coverage["unique_scientific_configurations"]
     assert len(rows) == coverage["seed_expanded_records"]
     assert len(full["jobs"]) == len(rows)
 
@@ -90,15 +90,21 @@ def test_scientific_fingerprint_excludes_reporting_and_execution_coordinates() -
     base = {
         "target": "rl_bgd.runners.synthetic:run",
         "kwargs": {"steps": 40, "device": "cpu", "posterior_std": 0.2},
-        "algorithm": "BGD", "environment": "lqr", "protocol": "strict_task_agnostic",
-        "primary_metric": "final_return", "secondary_metrics": ["sigma_mean"],
+        "algorithm": "BGD",
+        "environment": "lqr",
+        "protocol": "strict_task_agnostic",
+        "primary_metric": "final_return",
+        "secondary_metrics": ["sigma_mean"],
     }
     another = {
-        **base, "kwargs": {**base["kwargs"], "device": "cuda"},
-        "primary_metric": "return_auc", "secondary_metrics": ["wall_seconds"],
+        **base,
+        "kwargs": {**base["kwargs"], "device": "cuda"},
+        "primary_metric": "return_auc",
+        "secondary_metrics": ["wall_seconds"],
     }
     assert training_fingerprint(base) == training_fingerprint(another)
     changed_method = {
-        **base, "kwargs": {**base["kwargs"], "posterior_std": 0.4},
+        **base,
+        "kwargs": {**base["kwargs"], "posterior_std": 0.4},
     }
     assert training_fingerprint(base) != training_fingerprint(changed_method)

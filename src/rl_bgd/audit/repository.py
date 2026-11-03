@@ -192,9 +192,7 @@ def _python_files(root: Path) -> tuple[Path, ...]:
     for relative in ("src", "scripts", "foundry_integration", "tests"):
         base = root / relative
         if base.is_dir():
-            files.extend(
-                path for path in base.rglob("*.py") if "__pycache__" not in path.parts
-            )
+            files.extend(path for path in base.rglob("*.py") if "__pycache__" not in path.parts)
     controller = root / "run_all_training.py"
     if controller.is_file():
         files.append(controller)
@@ -575,7 +573,10 @@ def audit_repository(
     try:
         process = subprocess.run(
             ["git", "rev-parse", "HEAD"],
-            cwd=root, capture_output=True, text=True, check=False,
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         if process.returncode == 0 and process.stdout.strip():
             revision = process.stdout.strip()
@@ -587,15 +588,20 @@ def audit_repository(
         checks_run=checks_run,
         findings=tuple(findings),
         git_sha=revision,
-        files_inspected=tuple(sorted(set(inspected_python) | {
-            "README.md",
-            "docs/CAPABILITY_LEDGER.md",
-            "docs/EXPERIMENT_REGISTRY.md",
-            ".github/workflows/cora-chores.yml",
-            "src/rl_bgd/analysis/artifacts.py",
-            "src/rl_bgd/analysis/paper_artifacts.py",
-            "tests/math/test_bgd_quadratic.py",
-        })),
+        files_inspected=tuple(
+            sorted(
+                set(inspected_python)
+                | {
+                    "README.md",
+                    "docs/CAPABILITY_LEDGER.md",
+                    "docs/EXPERIMENT_REGISTRY.md",
+                    ".github/workflows/cora-chores.yml",
+                    "src/rl_bgd/analysis/artifacts.py",
+                    "src/rl_bgd/analysis/paper_artifacts.py",
+                    "tests/math/test_bgd_quadratic.py",
+                }
+            )
+        ),
         source_modules_covered=sum(not name.startswith("tests/") for name in inspected_python),
         tests_discovered=sum(name.startswith("tests/") for name in inspected_python),
     )

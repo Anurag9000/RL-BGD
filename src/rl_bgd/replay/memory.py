@@ -3,6 +3,7 @@
 All byte counts describe payload tensors, excluding PyTorch allocator overhead,
 model parameters, GRU activations, optimizer state and simulator memory.
 """
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
@@ -78,13 +79,11 @@ def estimate_sequence_replay_memory(
 
     window = burn_in + unroll
     # Sampled full-window fields contain two integer labels and three masks.
-    copied_window_bytes = batch_size * window * (
-        float_per_transition + 2 * integer_bytes + 3 * boolean_bytes
+    copied_window_bytes = (
+        batch_size * window * (float_per_transition + 2 * integer_bytes + 3 * boolean_bytes)
     )
     # Evidence-count and fresh flags are sampled for unroll positions only.
-    sampled_batch = copied_window_bytes + batch_size * unroll * (
-        integer_bytes + boolean_bytes
-    )
+    sampled_batch = copied_window_bytes + batch_size * unroll * (integer_bytes + boolean_bytes)
     # Chronological logical indices, chosen starts, physical windows and
     # unroll indices; overstates simultaneous storage if views are reused.
     sampled_indices = integer_bytes * (

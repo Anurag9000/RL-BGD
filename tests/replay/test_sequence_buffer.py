@@ -423,9 +423,14 @@ def test_sequence_batch_transfer_preserves_all_fields_and_dtypes() -> None:
     for index in range(6):
         observation = torch.tensor([float(index), float(index + 1)])
         source.add(
-            observation, torch.tensor([0.5]), float(index),
-            observation + 0.1, terminated=False, truncated=False,
-            episode_start=index == 0, insertion_step=index,
+            observation,
+            torch.tensor([0.5]),
+            float(index),
+            observation + 0.1,
+            terminated=False,
+            truncated=False,
+            episode_start=index == 0,
+            insertion_step=index,
         )
     sample = source.sample_sequences(
         1, burn_in=2, unroll=2, generator=torch.Generator().manual_seed(11)
@@ -434,9 +439,17 @@ def test_sequence_batch_transfer_preserves_all_fields_and_dtypes() -> None:
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     moved = sample.to(device)
     for field in (
-        "observations", "actions", "rewards", "next_observations",
-        "terminated", "truncated", "episode_starts",
-        "transition_ids", "insertion_steps", "usage_counts", "fresh",
+        "observations",
+        "actions",
+        "rewards",
+        "next_observations",
+        "terminated",
+        "truncated",
+        "episode_starts",
+        "transition_ids",
+        "insertion_steps",
+        "usage_counts",
+        "fresh",
     ):
         original = getattr(sample, field)
         converted = getattr(moved, field)
@@ -456,9 +469,14 @@ def test_sequence_replay_cpu_index_sampling_is_storage_device_independent() -> N
         vector = torch.tensor([float(index), float(index + 1)])
         for replay in (cpu, gpu):
             replay.add(
-                vector, torch.tensor([0.5]), float(index),
-                vector + 0.2, terminated=False, truncated=False,
-                episode_start=index == 0, insertion_step=index,
+                vector,
+                torch.tensor([0.5]),
+                float(index),
+                vector + 0.2,
+                terminated=False,
+                truncated=False,
+                episode_start=index == 0,
+                insertion_step=index,
             )
     kwargs = {"batch_size": 2, "burn_in": 2, "unroll": 2}
     sample_cpu = cpu.sample_sequences(
@@ -467,7 +485,5 @@ def test_sequence_replay_cpu_index_sampling_is_storage_device_independent() -> N
     sample_gpu = gpu.sample_sequences(
         **kwargs, generator=torch.Generator(device="cpu").manual_seed(172)
     ).to("cpu")
-    for name in (
-        "transition_ids", "usage_counts", "fresh", "insertion_steps", "observations"
-    ):
+    for name in ("transition_ids", "usage_counts", "fresh", "insertion_steps", "observations"):
         torch.testing.assert_close(getattr(sample_cpu, name), getattr(sample_gpu, name))

@@ -228,9 +228,7 @@ class BGDRecurrentSACAgent(RecurrentSACAgent):
         config = self.bgd_config.adaptive_predictive_retention
         if config is None or self.predictive_model is None or self.predictive_optimizer is None:
             return None
-        nll = self.predictive_model.negative_log_likelihood(
-            *self._predictive_transitions(batch)
-        )
+        nll = self.predictive_model.negative_log_likelihood(*self._predictive_transitions(batch))
         loss = nll.mean()
         self.predictive_optimizer.zero_grad(set_to_none=True)
         loss.backward()

@@ -304,7 +304,8 @@ def train_recurrent_sac(
                 "replay_generator_state": generator.get_state().clone(),
                 "sampler_generator_state": (
                     sampling_generator.get_state().clone()
-                    if sampling_generator is not generator else None
+                    if sampling_generator is not generator
+                    else None
                 ),
                 "process_rng": random_state_dict(),
             }
@@ -354,7 +355,8 @@ def train_recurrent_sac(
                 "replay_generator_state": generator.get_state().clone(),
                 "sampler_generator_state": (
                     sampling_generator.get_state().clone()
-                    if sampling_generator is not generator else None
+                    if sampling_generator is not generator
+                    else None
                 ),
                 "replay_storage_device": str(storage_device),
                 "process_rng": random_state_dict(),
