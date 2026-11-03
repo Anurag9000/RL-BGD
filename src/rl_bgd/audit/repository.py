@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import subprocess
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -44,6 +45,12 @@ _REQUIRED_PATHS = (
     "scripts/cora_legacy_minihack_smoke.py",
     "scripts/cora_legacy_chores_smoke.py",
     "scripts/validate_cora_chores_archive.py",
+    "run_all_training.py",
+    "foundry_integration/catalog.py",
+    "foundry_integration/rl_bgd_single.py",
+    "foundry_integration/scientific_inventory.py",
+    "foundry_integration/test_bridge.py",
+    "docs/foundry_integration/verify_source.py",
     ".github/workflows/typecheck.yml",
     ".github/workflows/lint.yml",
     ".github/workflows/tests.yml",
@@ -138,6 +145,10 @@ class RepositoryAuditReport:
     root: str
     checks_run: int
     findings: tuple[AuditFinding, ...]
+    git_sha: str | None = None
+    files_inspected: tuple[str, ...] = ()
+    source_modules_covered: int = 0
+    tests_discovered: int = 0
 
     @property
     def passed(self) -> bool:
@@ -146,6 +157,10 @@ class RepositoryAuditReport:
     def to_dict(self) -> dict[str, object]:
         return {
             "root": self.root,
+            "git_sha": self.git_sha,
+            "files_inspected": list(self.files_inspected),
+            "source_modules_covered": self.source_modules_covered,
+            "tests_discovered": self.tests_discovered,
             "checks_run": self.checks_run,
             "passed": self.passed,
             "findings": [
@@ -168,10 +183,21 @@ def _repo_root(start: str | Path | None) -> Path:
 
 
 def _python_files(root: Path) -> tuple[Path, ...]:
+    """All first-party Python sources, including controllers, tests and bridges.
+
+    The original Project Foundry vendor tree is intentionally audited by its
+    independent pinned-source verifier rather than native implementation rules.
+    """
     files: list[Path] = []
-    for relative in ("src", "scripts"):
+    for relative in ("src", "scripts", "foundry_integration", "tests"):
         base = root / relative
-        files.extend(path for path in base.rglob("*.py") if "__pycache__" not in path.parts)
+        if base.is_dir():
+            files.extend(
+                path for path in base.rglob("*.py") if "__pycache__" not in path.parts
+            )
+    controller = root / "run_all_training.py"
+    if controller.is_file():
+        files.append(controller)
     return tuple(sorted(files))
 
 
@@ -239,10 +265,12 @@ def audit_repository(
                         )
                     )
 
-    for path in _python_files(root):
+    python_paths = _python_files(root)
+    inspected_python = tuple(str(path.relative_to(root)) for path in python_paths)
+    for path in python_paths:
         relative = str(path.relative_to(root))
         text = path.read_text(encoding="utf-8")
-        if relative != "src/rl_bgd/audit/repository.py":
+        if relative != "src/rl_bgd/audit/repository.py" and not relative.startswith("tests/"):
             for marker in _FORBIDDEN_SOURCE_MARKERS:
                 checks_run += 1
                 if marker in text:
@@ -292,6 +320,8 @@ def audit_repository(
             )
 
         checks_run += 1
+        if relative.startswith("tests/"):
+            continue
         for node in ast.walk(module):
             if not isinstance(node, ast.Raise) or node.exc is None:
                 continue
@@ -541,8 +571,31 @@ def audit_repository(
                 )
             )
 
+    revision: str | None = None
+    try:
+        process = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=root, capture_output=True, text=True, check=False,
+        )
+        if process.returncode == 0 and process.stdout.strip():
+            revision = process.stdout.strip()
+    except OSError:
+        pass
+
     return RepositoryAuditReport(
         root=str(root),
         checks_run=checks_run,
         findings=tuple(findings),
+        git_sha=revision,
+        files_inspected=tuple(sorted(set(inspected_python) | {
+            "README.md",
+            "docs/CAPABILITY_LEDGER.md",
+            "docs/EXPERIMENT_REGISTRY.md",
+            ".github/workflows/cora-chores.yml",
+            "src/rl_bgd/analysis/artifacts.py",
+            "src/rl_bgd/analysis/paper_artifacts.py",
+            "tests/math/test_bgd_quadratic.py",
+        })),
+        source_modules_covered=sum(not name.startswith("tests/") for name in inspected_python),
+        tests_discovered=sum(name.startswith("tests/") for name in inspected_python),
     )

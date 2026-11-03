@@ -199,3 +199,31 @@ Scientific execution: **pending** for the expensive multi-seed suites listed in
 
 Scientific claims: **not yet established** until those canonical run artifacts
 are generated and aggregated.
+
+
+## November 2026 incremental audit and implementation boundary
+
+The historical software-closure claim above applies to the original
+native-research surfaces at the revision stated there. It does not
+certify the subsequently integrated Project Foundry controller, the
+completeness of every independent native runner, hardware-specific GPU
+pressure behavior, exact Meta-World simulator recovery, or completed
+scientific benchmarks.
+
+Subsequent source-grounded repairs introduced recurrent ensemble and predictive
+adaptive-surprise parity with versioned checkpoints, strict Foundry one-job
+native-artifact verification and retry-status isolation, Bayesian configuration
+validation and stateful Monte Carlo buffer isolation, deterministic scientific
+fingerprints for declared `SUITES` jobs, and explicit recurrent replay-memory
+estimation and optional CPU/automatic storage placement. CPU-resident replay
+with CUDA training is an explicit opt-in, not a silent change to the
+default scientific method or replay size.
+
+The first-party static audit now traverses the controller,
+`foundry_integration/`, source, scripts and tests while excluding pinned
+vendor source from native source-modification checks. Its machine-readable
+report distinguishes source files actually parsed/read from mere
+required-path existence checks. It does **not** claim to prove live hardware
+behavior, full source-level call reachability, or third-party simulator
+recovery. All new CI outcomes must be evaluated on their respective
+revision; historical passing gates cannot certify later changes.
