@@ -12,8 +12,9 @@ from foundry_integration.scientific_inventory import (
     coverage_summary,
     inventory_records,
 )
-from rl_bgd.experiments.suites import SUITES
 from run_all_training import main
+
+from rl_bgd.experiments.suites import SUITES
 
 
 ROOT = Path(__file__).resolve().parents[2]

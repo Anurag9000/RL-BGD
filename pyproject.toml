@@ -55,6 +55,7 @@ packages = ["src/rl_bgd"]
 [tool.pytest.ini_options]
 addopts = "-ra --strict-markers"
 testpaths = ["tests"]
+pythonpath = ["."]
 markers = [
   "slow: expensive tests excluded from routine runs",
   "gpu: requires CUDA",
