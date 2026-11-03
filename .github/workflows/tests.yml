@@ -20,3 +20,4 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: pytest -m "not slow and not gpu and not benchmark"
       - run: python scripts/smoke_test.py
+      - run: python scripts/audit_source_inventory.py --output artifacts/audit/source_inventory.json
