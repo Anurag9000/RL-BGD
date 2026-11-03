@@ -184,6 +184,13 @@ def main(argv=None):
             "jobs": jobs,
         }
         if ROOT.name.lower() == "rl-bgd":
+            from foundry_integration.entrypoint_census import entrypoint_census
+            entrypoints = entrypoint_census(ROOT)
+            catalog["entrypoint_coverage"] = {
+                key: value for key, value in entrypoints.items()
+                if key not in {"scripts", "unmatched_import_candidates"}
+            }
+            write_json(out / "native_entrypoint_coverage.json", entrypoints)
             from foundry_integration.scientific_inventory import (
                 coverage_summary, inventory_records,
             )

@@ -36,7 +36,7 @@ jobs:
       - name: Install native scientific inventory dependencies
         run: python -m pip install -e ".[dev]"
       - name: Verify registry completeness, fingerprints and native exports
-        run: pytest -q tests/integration/test_foundry_scientific_inventory.py
+        run: pytest -q tests/integration/test_foundry_scientific_inventory.py tests/integration/test_foundry_entrypoint_census.py
       - name: Materialize source-derived inventory (no training)
         run: python run_all_training.py inventory --write-inventory --out artifacts/foundry_inventory
       - name: Summarize source-derived scientific identities

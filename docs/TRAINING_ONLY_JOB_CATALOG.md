@@ -145,3 +145,23 @@ Bayesianization, replay/evidence mode or posterior hyperparameters remain
 distinct scientific configurations. This registry-level deduplication does
 not prove that all independently reachable runnable native scripts have
 been classified.
+
+
+### Independent script-entrypoint audit
+
+`foundry_integration/entrypoint_census.py` now scans every **present**
+first-party Python script under `scripts/` and statically records its
+`__main__` guard and exact imported `rl_bgd.runners` module/symbol pairs.
+The scanner compares those pairs to declared suite targets and retains
+`EXACT_SUITE_TARGET`, `SAME_RUNNER_MODULE_ONLY`, and
+`NO_SUITE_RUNNER_MODULE` distinctions. Imports that do not exactly match
+a suite target are **review candidates**, not automatically extra training
+jobs: wrappers may import a generic `main`, and some standalone scripts are
+development, orchestration or diagnostics rather than scientific methods.
+
+`run_all_training.py inventory --write-inventory` produces
+`native_entrypoint_coverage.json` alongside the training-job JSON/CSV
+exports. This closes the *static enumeration of present script wrappers*
+without claiming complete reachability through dynamic entrypoints or
+full execution compatibility. Neither script names nor imported symbols
+are independently counted as trainable scientific configurations.
