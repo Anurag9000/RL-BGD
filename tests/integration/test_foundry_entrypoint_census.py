@@ -45,8 +45,7 @@ def test_unregistered_runner_import_is_candidate_not_automatically_scheduled(
     scripts = tmp_path / "scripts"
     scripts.mkdir()
     (scripts / "run_new.py").write_text(
-        "from rl_bgd.runners.unregistered import train\n"
-        "if __name__ == '__main__':\n    train()\n",
+        "from rl_bgd.runners.unregistered import train\nif __name__ == '__main__':\n    train()\n",
         encoding="utf-8",
     )
     report = entrypoint_census(tmp_path)

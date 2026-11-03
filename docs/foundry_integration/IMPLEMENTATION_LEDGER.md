@@ -45,3 +45,27 @@ The restart-risk flag is **not** evidence of safe checkpoint recovery. Foundry m
 ## Remaining acceptance gates
 
 Run actual bounded native training for every exposed major family; validate no duplicate physical schedulers; compare original versus Foundry-controlled scientific outcomes; test device placement, CPU fallback, concurrency, OOM, pressure termination, retry, resume, idempotency, data provenance, GPU/host telemetry, reporting and checkpoint integrity. Do not report these unexecuted checks as passing.
+
+
+## Source-revision binding for Foundry execution
+
+The outer `SuiteCoordinator` plan signature now includes the complete native
+scientific catalog **and the current committed Git HEAD**. Distinct revisions
+receive distinct physical Foundry run identities even when their job arguments
+are otherwise unchanged. Execution checks that native source/configuration,
+the Foundry bridge, and pinned vendor runtime have no uncommitted tracked
+changes or unexpected untracked source files. Inventory/report commands remain
+read-only and do not require a clean Git worktree.
+
+New worker specs record the revision; at launch, the worker verifies that the
+current committed source revision still matches the planned one, before starting
+the scientific subprocess. Failed revision validation archives any stale
+success indicator and writes an explicit failure result. This closes a
+provenance gap in which outer scheduler completion state could otherwise be
+reused across different scientific code revisions.
+
+The Git revision binds **committed source code** but does not independently
+hash external datasets, system binaries, CUDA drivers, dynamic simulator
+packages or all runtime-dependent data. These remain separate provenance
+obligations and should not be described as scientifically validated merely
+because the scheduler signature matches.

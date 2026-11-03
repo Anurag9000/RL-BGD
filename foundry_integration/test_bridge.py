@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from run_all_training import worker
+from run_all_training import _scientific_run_signature, _source_revision, worker
 
 
 class FoundryNativeWorkerTest(unittest.TestCase):
@@ -70,6 +70,7 @@ class FoundryNativeWorkerTest(unittest.TestCase):
             spec = root / "spec.json"
             spec.write_text(json.dumps({
                 "run_id": "false-native-success",
+                "source_revision": "a" * 40,
                 "scientific_job": {"id": "missing_suite__missing_job", "seed": 0},
                 "result_dir": str(result_dir),
                 "command": [
@@ -85,13 +86,60 @@ class FoundryNativeWorkerTest(unittest.TestCase):
 
             native_stub.verify_native_job = reject_native  # type: ignore[attr-defined]
             with patch.dict(sys.modules, {"foundry_integration.rl_bgd_single": native_stub}):
-                with patch("run_all_training.subprocess.run") as invoked:
-                    invoked.return_value.returncode = 0
-                    self.assertNotEqual(worker(spec), 0)
+                with patch("run_all_training._source_revision", return_value="a" * 40):
+                    with patch("run_all_training.subprocess.run") as invoked:
+                        invoked.return_value.returncode = 0
+                        self.assertNotEqual(worker(spec), 0)
             self.assertFalse((result_dir / "result.json").exists())
             state = json.loads((result_dir / "native_process.json").read_text())
             self.assertEqual(state["status"], "failed")
             self.assertIn("invalid canonical native artifacts", state["exception"])
+
+
+    def test_source_revision_changes_outer_scientific_signature(self):
+        jobs = [{"id": "same-scientific-job", "seed": 0}]
+        first = _scientific_run_signature(jobs, "a" * 40)
+        second = _scientific_run_signature(jobs, "b" * 40)
+        self.assertEqual(len(first), 64)
+        self.assertNotEqual(first, second)
+        self.assertEqual(first, _scientific_run_signature(jobs, "a" * 40))
+        with self.assertRaises(ValueError):
+            _scientific_run_signature(jobs, "not-a-git-commit")
+
+    def test_worker_rejects_changed_revision_before_child_launch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            results = root / "results"
+            results.mkdir()
+            (results / "result.json").write_text('{"status": "completed"}')
+            spec = root / "spec.json"
+            spec.write_text(json.dumps({
+                "run_id": "source-changed",
+                "source_revision": "a" * 40,
+                "scientific_job": {"id": "example"},
+                "result_dir": str(results),
+                "command": [sys.executable, "-m", "json.tool"],
+            }), encoding="utf-8")
+            with patch("run_all_training._source_revision", return_value="b" * 40):
+                with patch("run_all_training.subprocess.run") as invoked:
+                    self.assertNotEqual(worker(spec), 0)
+                    invoked.assert_not_called()
+            self.assertFalse((results / "result.json").exists())
+            result = json.loads((results / "native_process.json").read_text())
+            self.assertIn("source revision changed", result["exception"])
+            self.assertEqual(len(list((results / "attempt_history").glob("*result.json"))), 1)
+
+    def test_git_dirty_tracked_science_is_rejected(self):
+        from types import SimpleNamespace
+
+        responses = [
+            SimpleNamespace(returncode=0, stdout="c" * 40),
+            SimpleNamespace(returncode=1, stdout=""),
+        ]
+        with patch("run_all_training.subprocess.run", side_effect=responses):
+            with self.assertRaisesRegex(RuntimeError, "uncommitted scientific"):
+                _source_revision()
+
 
 
 if __name__ == "__main__":

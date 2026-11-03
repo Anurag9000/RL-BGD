@@ -13,6 +13,50 @@ ROOT = Path(__file__).resolve().parent
 def canonical(obj):
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
+_SCIENTIFIC_SOURCE_PATHS = (
+    "src", "scripts", "foundry_integration", "run_all_training.py",
+    "configs", "vendor/project_foundry", "pyproject.toml",
+    "requirements-foundry.txt",
+)
+
+
+def _source_revision():
+    """Require an auditable committed source tree for scientific execution."""
+    revision = subprocess.run(
+        ["git", "rev-parse", "--verify", "HEAD"],
+        cwd=ROOT, capture_output=True, text=True, check=False,
+    )
+    if revision.returncode != 0 or len(revision.stdout.strip()) != 40:
+        raise RuntimeError("Foundry scientific execution requires a Git HEAD revision")
+    dirty = subprocess.run(
+        ["git", "diff", "--quiet", "HEAD", "--", *_SCIENTIFIC_SOURCE_PATHS],
+        cwd=ROOT, capture_output=True, text=True, check=False,
+    )
+    if dirty.returncode == 1:
+        raise RuntimeError("uncommitted scientific source changes: commit before execution")
+    if dirty.returncode != 0:
+        raise RuntimeError("cannot verify scientific source worktree cleanliness")
+    untracked = subprocess.run(
+        ["git", "ls-files", "--others", "--exclude-standard", "--", *_SCIENTIFIC_SOURCE_PATHS],
+        cwd=ROOT, capture_output=True, text=True, check=False,
+    )
+    if untracked.returncode != 0 or untracked.stdout.strip():
+        raise RuntimeError("untracked scientific source files or Git index unavailable")
+    return revision.stdout.strip()
+
+
+def _scientific_run_signature(jobs, source_revision):
+    if not isinstance(source_revision, str) or len(source_revision) != 40:
+        raise ValueError("source revision must be a 40-character Git SHA")
+    if any(char not in "0123456789abcdef" for char in source_revision.lower()):
+        raise ValueError("source revision must be a hexadecimal Git SHA")
+    return hashlib.sha256(canonical({
+        "native_jobs": jobs,
+        "source_revision": source_revision.lower(),
+        "version": 2,
+    }).encode()).hexdigest()
+
+
 def write_json(path, payload):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -93,6 +137,14 @@ def worker(spec_path):
               "archived_previous_attempt": previous_attempt}
     write_json(result_dir / "native_process.json", record)
     try:
+        recorded_revision = spec.get("source_revision")
+        if recorded_revision is not None:
+            if not isinstance(recorded_revision, str):
+                raise TypeError("scientific source revision must be a string")
+            if _source_revision() != recorded_revision:
+                raise ValueError("scientific source revision changed since native plan creation")
+        elif command[1:3] == ["-m", "foundry_integration.rl_bgd_single"]:
+            raise ValueError("native scientific child lacks mandatory source revision")
         result = subprocess.run(command, cwd=ROOT, env=env, check=False)
         code = result.returncode
         if code == 0:
@@ -235,7 +287,8 @@ def main(argv=None):
     from simple_adp.runner.plan import RunIdentity, RunSpec, SuitePlan, manifest_compatibility_digest
     from simple_adp.runner.scheduler import SuiteCoordinator
     settings = RunnerSettings(cpu_only=args.cpu_only, run_hardness_screen=False)
-    signature = hashlib.sha256(canonical({"native_jobs": jobs, "version": 1}).encode()).hexdigest()
+    source_revision = _source_revision()
+    signature = _scientific_run_signature(jobs, source_revision)
     specs = []
     for j in selected:
         seed = int(j.get("seed", 0))
@@ -250,7 +303,8 @@ def main(argv=None):
                    .replace("{ROOT}", str(ROOT)) for s in j["command"]]
         spec_path = out / "controller" / "jobs" / identity.run_id / "native_spec.json"
         payload = {"run_id": identity.run_id, "scientific_job": j,
-                   "result_dir": str(native_result), "command": command}
+                   "result_dir": str(native_result), "command": command,
+                   "source_revision": source_revision}
         if spec_path.is_file():
             if json.loads(spec_path.read_text()) != payload:
                 raise ValueError("existing immutable native spec differs: " + str(spec_path))
@@ -266,7 +320,8 @@ def main(argv=None):
             command=(sys.executable, str(ROOT / "run_all_training.py"),
                      "__worker", str(spec_path.resolve())),
             device_capable=bool(j.get("gpu_capable", True))))
-    manifest = {"run_signature": signature, "runner_settings": settings.as_dict(),
+    manifest = {"run_signature": signature, "source_revision": source_revision,
+                "runner_settings": settings.as_dict(),
                 "job_count": len(specs), "jobs": [s.as_dict() for s in specs],
                 "native_jobs": selected, "results_dir": str(out / "results"),
                 "run_root": str(out / "controller")}
