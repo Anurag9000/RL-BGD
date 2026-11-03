@@ -669,7 +669,9 @@ class BGDRecurrentSACAgent(RecurrentSACAgent):
                     isinstance(item, dict)
                     for item in (predictive_payload, model_state, optimizer_state)
                 ):
-                    raise TypeError("predictive-surprise/model/optimizer states must be dictionaries")
+                    raise TypeError(
+                        "predictive-surprise/model/optimizer states must be dictionaries"
+                    )
                 self.predictive_surprise.load_state_dict(predictive_payload)
                 self.predictive_model.load_state_dict(model_state)
                 self.predictive_optimizer.load_state_dict(optimizer_state)
