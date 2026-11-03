@@ -39,6 +39,7 @@ from rl_bgd.utils.checkpoint_progress import (
     checkpoint_integer,
 )
 from rl_bgd.utils.checkpoint_transaction import transactional_state_load
+from rl_bgd.utils.config_validation import config_finite_float
 
 BayesianizationMode = Literal[
     "critic_only",
@@ -79,7 +80,8 @@ class BGDSACConfig:
             "actor_and_critic",
         }:
             raise ValueError(f"unsupported Bayesianization mode: {self.bayesianization}")
-        if self.posterior_std <= 0:
+        posterior_std = config_finite_float(self.posterior_std, name="posterior_std")
+        if posterior_std <= 0:
             raise ValueError("posterior_std must be positive")
         PosteriorBounds(
             self.sigma_min,

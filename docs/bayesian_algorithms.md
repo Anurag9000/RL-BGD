@@ -38,3 +38,18 @@ Target critics are Polyak-updated from posterior means only. Full posterior targ
 ## Generalized-Bayes interpretation
 
 The repository does not claim SAC losses are literal supervised likelihoods. BGD-SAC is treated as a generalized-Bayesian update using the SAC surrogate as an energy/loss. Replay evidence reuse and posterior tempering are separate research dimensions.
+
+## Stateful module sampling and numerical validation
+
+`BGDUpdater.step_module` evaluates each Monte Carlo sample with an independent
+copy of the module's registered buffers. Thus, training-mode BatchNorm
+running statistics and counters in the live module are not modified by
+counterfactual parameter samples. A failed sampled objective cannot leave
+sample-induced buffer changes. Posterior state, progress, and any partially
+synchronized live parameters are restored on local synchronization failure.
+
+The standalone `GeneralizedBayesConfig` is a finite, strictly positive
+evidence-temperature value object; `BGDConfig.evidence_temperature`
+remains the authoritative optimizer setting for SAC/PPO surrogate objectives.
+Bayesian SAC configurations reject non-finite posterior standard deviations
+before constructing agents.

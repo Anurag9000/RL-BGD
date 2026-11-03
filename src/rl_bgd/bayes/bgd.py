@@ -329,9 +329,13 @@ class BGDUpdater:
         module_buffers = dict(module.named_buffers()) if buffers is None else dict(buffers)
 
         def objective(params: Mapping[str, Tensor]) -> Tensor | BGDLoss:
+            # Isolate stateful buffers for each Monte Carlo sample.
+            sampled_buffers = {
+                name: value.detach().clone() for name, value in module_buffers.items()
+            }
             output = functional_call(
                 module,
-                (dict(params), module_buffers),
+                (dict(params), sampled_buffers),
                 args,
                 kwargs,
             )
@@ -346,6 +350,7 @@ class BGDUpdater:
         before_means = {name: value.clone() for name, value in self.posterior.means.items()}
         before_stds = {name: value.clone() for name, value in self.posterior.stds.items()}
         before_step_count = self.step_count
+        module_parameters_before: dict[str, Tensor] | None = None
         try:
             result = self.step(
                 objective,
@@ -353,6 +358,11 @@ class BGDUpdater:
                 retention=retention,
                 evidence_temperature=evidence_temperature,
             )
+            # Capture the local module only at the synchronization boundary.
+            # Failure during Monte Carlo sampling needs no module snapshot.
+            module_parameters_before = {
+                name: value.detach().clone() for name, value in module.named_parameters()
+            }
             self.posterior.sync_module(module)
         except Exception:
             with torch.no_grad():
@@ -360,6 +370,9 @@ class BGDUpdater:
                     self.posterior.means[name].copy_(value)
                 for name, value in before_stds.items():
                     self.posterior.stds[name].copy_(value)
+                if module_parameters_before is not None:
+                    for name, parameter in module.named_parameters():
+                        parameter.copy_(module_parameters_before[name])
             self.step_count = before_step_count
             raise
         return result
