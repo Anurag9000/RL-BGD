@@ -130,3 +130,18 @@ requirement remains visible, and duplicate cross-suite aliases are listed.
 The export does not yet prove exhaustive discovery of independent training
 runners not present in `SUITES`; those remain an explicit audit obligation.
 No numbers should be copied from another source revision.
+
+
+### Scientific fingerprint boundary
+
+The training fingerprint contains the native target, resolved method and
+environment, information-access protocol, and scientifically relevant runtime
+parameters. Seeds, output paths, physical model-device assignment,
+checkpoint/logging coordinates, and selected summary-metric names do not
+create new scientific training methods. The execution fingerprint retains
+suite/job/seed identity, and the full native result independently records
+the actual runtime settings. Different training horizon, objective,
+Bayesianization, replay/evidence mode or posterior hyperparameters remain
+distinct scientific configurations. This registry-level deduplication does
+not prove that all independently reachable runnable native scripts have
+been classified.

@@ -31,6 +31,30 @@ def canonical(value: object) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
 
+_NON_SCIENTIFIC_KWARGS = frozenset({
+    "device", "output_dir", "output_root", "log_dir", "save_dir",
+    "checkpoint_path", "checkpoint_interval",
+})
+
+
+def training_fingerprint(scientific_contract: dict[str, Any]) -> str:
+    """Fingerprint training semantics, not metrics or physical execution context."""
+    parameters = scientific_contract["kwargs"]
+    if not isinstance(parameters, dict):
+        raise TypeError("scientific kwargs must be a dictionary")
+    contract = {
+        "target": scientific_contract["target"],
+        "kwargs": {
+            name: value for name, value in parameters.items()
+            if name not in _NON_SCIENTIFIC_KWARGS
+        },
+        "algorithm": scientific_contract["algorithm"],
+        "environment": scientific_contract["environment"],
+        "protocol": scientific_contract["protocol"],
+    }
+    return hashlib.sha256(canonical(contract).encode()).hexdigest()
+
+
 def optional_dependency_blocker(extra: str | None) -> str | None:
     """Report missing benchmark prerequisites without importing heavy simulators."""
     if extra == "carl":
@@ -79,7 +103,7 @@ def inventory_records() -> list[dict[str, Any]]:
                 "primary_metric": job.primary_metric,
                 "secondary_metrics": job.secondary_metrics,
             }
-            science = hashlib.sha256(canonical(scientific_contract).encode()).hexdigest()
+            science = training_fingerprint(scientific_contract)
             for seed in job.seeds:
                 identity = f"{suite_name}__{job.job_id}__seed_{seed}"
                 records.append({

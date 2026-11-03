@@ -14,6 +14,7 @@ from foundry_integration.scientific_inventory import (
     coverage_summary,
     inventory_records,
     optional_dependency_blocker,
+    training_fingerprint,
 )
 from run_all_training import main
 
@@ -83,3 +84,21 @@ def test_optional_benchmark_blockers_are_reported_without_loading_simulators() -
         assert "metaworld" in optional_dependency_blocker("continual-world")
         assert "mujoco" in optional_dependency_blocker("continual-world")
     assert optional_dependency_blocker(None) is None
+
+
+def test_scientific_fingerprint_excludes_reporting_and_execution_coordinates() -> None:
+    base = {
+        "target": "rl_bgd.runners.synthetic:run",
+        "kwargs": {"steps": 40, "device": "cpu", "posterior_std": 0.2},
+        "algorithm": "BGD", "environment": "lqr", "protocol": "strict_task_agnostic",
+        "primary_metric": "final_return", "secondary_metrics": ["sigma_mean"],
+    }
+    another = {
+        **base, "kwargs": {**base["kwargs"], "device": "cuda"},
+        "primary_metric": "return_auc", "secondary_metrics": ["wall_seconds"],
+    }
+    assert training_fingerprint(base) == training_fingerprint(another)
+    changed_method = {
+        **base, "kwargs": {**base["kwargs"], "posterior_std": 0.4},
+    }
+    assert training_fingerprint(base) != training_fingerprint(changed_method)
