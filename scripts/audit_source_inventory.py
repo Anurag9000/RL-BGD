@@ -27,13 +27,19 @@ def main() -> int:
         encoding="utf-8",
     )
     os.replace(temporary, destination)
-    print(json.dumps({
-        "source_revision": report["git_revision"],
-        "tracked_file_count": report["tracked_file_count"],
-        "by_category": report["by_category"],
-        "static_problems": len(report["problems"]),
-        "output": str(destination),
-    }, indent=2, sort_keys=True))
+    print(
+        json.dumps(
+            {
+                "source_revision": report["git_revision"],
+                "tracked_file_count": report["tracked_file_count"],
+                "by_category": report["by_category"],
+                "static_problems": len(report["problems"]),
+                "output": str(destination),
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
     return 1 if args.fail_on_static_errors and report["problems"] else 0
 
 

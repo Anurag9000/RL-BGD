@@ -49,9 +49,9 @@ def test_source_inventory_reads_source_docs_config_and_pinned_vendor(
     assert indexed["configs/evaluation.yaml"]["top_level_config_keys"] == ["episodes"]
     assert indexed["metadata.json"]["top_level_config_keys"] == ["kind"]
     assert indexed["pyproject.toml"]["top_level_config_keys"] == ["project"]
-    assert indexed["docs/readme.md"]["markdown"][
-        "unresolved_relative_link_candidates"
-    ] == ["absent.md"]
+    assert indexed["docs/readme.md"]["markdown"]["unresolved_relative_link_candidates"] == [
+        "absent.md"
+    ]
     assert any(p["kind"] == "python_syntax" for p in report["problems"])
     assert report["evidence_level"] == "TRACKED_FILE_READ_AND_STATIC_PARSE_ONLY"
 

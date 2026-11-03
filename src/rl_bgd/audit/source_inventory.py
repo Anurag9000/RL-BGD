@@ -23,9 +23,7 @@ _TEXT_SUFFIXES = {".py", ".md", ".yml", ".yaml", ".toml", ".json", ".txt", ".sh"
 
 
 def _git_output(root: Path, *args: str) -> bytes:
-    result = subprocess.run(
-        ["git", *args], cwd=root, check=True, capture_output=True
-    )
+    result = subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
     return result.stdout
 
 
@@ -79,12 +77,14 @@ def _python_evidence(text: str, relative: str) -> dict[str, object]:
 
         def _visit_definition(self, node: ast.AST, name: str, kind: str) -> None:
             self.stack.append(name)
-            declarations.append({
-                "qualified_name": ".".join(self.stack),
-                "kind": kind,
-                "line": getattr(node, "lineno", 0),
-                "end_line": getattr(node, "end_lineno", 0),
-            })
+            declarations.append(
+                {
+                    "qualified_name": ".".join(self.stack),
+                    "kind": kind,
+                    "line": getattr(node, "lineno", 0),
+                    "end_line": getattr(node, "end_lineno", 0),
+                }
+            )
             self.generic_visit(node)
             self.stack.pop()
 
@@ -103,9 +103,7 @@ def _python_evidence(text: str, relative: str) -> dict[str, object]:
 
         def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
             module_name = node.module or ""
-            imports.update(
-                f"{'.' * node.level}{module_name}.{alias.name}" for alias in node.names
-            )
+            imports.update(f"{'.' * node.level}{module_name}.{alias.name}" for alias in node.names)
             self.generic_visit(node)
 
         def visit_Call(self, node: ast.Call) -> None:
@@ -118,8 +116,10 @@ def _python_evidence(text: str, relative: str) -> dict[str, object]:
         and isinstance(node.test, ast.Compare)
         and isinstance(node.test.left, ast.Name)
         and node.test.left.id == "__name__"
-        and any(isinstance(item, ast.Constant) and item.value == "__main__"
-                for item in node.test.comparators)
+        and any(
+            isinstance(item, ast.Constant) and item.value == "__main__"
+            for item in node.test.comparators
+        )
         for node in module.body
     )
     return {
@@ -172,18 +172,18 @@ def scan_tracked_repository(root: Path) -> dict[str, Any]:
                 record["utf8"] = "VALID"
             except UnicodeDecodeError as exc:
                 record["utf8"] = "INVALID"
-                problems.append({
-                    "path": name, "kind": "non_utf8_source", "detail": str(exc)
-                })
+                problems.append({"path": name, "kind": "non_utf8_source", "detail": str(exc)})
         if text is not None and relative.suffix == ".py":
             python = _python_evidence(text, name)
             record["python"] = python
             if python["syntax"] != "VALID":
-                problems.append({
-                    "path": name,
-                    "kind": "python_syntax",
-                    "detail": str(python["error"]),
-                })
+                problems.append(
+                    {
+                        "path": name,
+                        "kind": "python_syntax",
+                        "detail": str(python["error"]),
+                    }
+                )
         if text is not None and relative.suffix == ".md":
             record["markdown"] = _markdown_evidence(root, relative, text)
         if text is not None and relative.suffix == ".json":
@@ -193,16 +193,12 @@ def scan_tracked_repository(root: Path) -> dict[str, Any]:
                     sorted(str(key) for key in document) if isinstance(document, dict) else []
                 )
             except json.JSONDecodeError as exc:
-                problems.append({
-                    "path": name, "kind": "invalid_json", "detail": str(exc)
-                })
+                problems.append({"path": name, "kind": "invalid_json", "detail": str(exc)})
         if text is not None and relative.suffix == ".toml":
             try:
                 record["top_level_config_keys"] = sorted(tomllib.loads(text))
             except tomllib.TOMLDecodeError as exc:
-                problems.append({
-                    "path": name, "kind": "invalid_toml", "detail": str(exc)
-                })
+                problems.append({"path": name, "kind": "invalid_toml", "detail": str(exc)})
         if text is not None and relative.suffix in {".yaml", ".yml"}:
             try:
                 document = yaml.safe_load(text)
@@ -210,9 +206,7 @@ def scan_tracked_repository(root: Path) -> dict[str, Any]:
                     sorted(str(key) for key in document) if isinstance(document, dict) else []
                 )
             except yaml.YAMLError as exc:
-                problems.append({
-                    "path": name, "kind": "invalid_yaml", "detail": str(exc)
-                })
+                problems.append({"path": name, "kind": "invalid_yaml", "detail": str(exc)})
         records.append(record)
     try:
         revision = _git_output(root, "rev-parse", "HEAD").decode().strip()
@@ -224,9 +218,9 @@ def scan_tracked_repository(root: Path) -> dict[str, Any]:
         "git_revision": revision,
         "tracked_file_count": len(records),
         "by_category": dict(sorted(Counter(r["category"] for r in records).items())),
-        "by_extension": dict(sorted(Counter(
-            Path(str(r["path"])).suffix or "<none>" for r in records
-        ).items())),
+        "by_extension": dict(
+            sorted(Counter(Path(str(r["path"])).suffix or "<none>" for r in records).items())
+        ),
         "problems": problems,
         "records": records,
         "evidence_level": "TRACKED_FILE_READ_AND_STATIC_PARSE_ONLY",
