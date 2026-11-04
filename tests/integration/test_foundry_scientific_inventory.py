@@ -48,9 +48,9 @@ def test_oracle_boundary_sac_is_separate_from_task_agnostic_catalog() -> None:
         if record["suite"] == "baseline_core"
         and record["job_id"].startswith("oracle_boundary_sac_")
     ]
-    assert len(records) == 20
-    assert len({record["foundry_job_id"] for record in records}) == 4
-    assert len({record["scientific_fingerprint"] for record in records}) == 4
+    assert len(records) == 25
+    assert len({record["foundry_job_id"] for record in records}) == 5
+    assert len({record["scientific_fingerprint"] for record in records}) == 5
     assert {record["scientific_contract"]["protocol"] for record in records} == {"oracle_boundary"}
     assert {record["dataset"] for record in records} == {"oracle_recurring_lqr_regularized_v1"}
     assert {record["scientific_contract"]["kwargs"]["method"] for record in records} == {
@@ -60,6 +60,16 @@ def test_oracle_boundary_sac_is_separate_from_task_agnostic_catalog() -> None:
         "mas",
     }
     assert all(record["blocker"] is None for record in records)
+    sham = [row for row in records if row["job_id"].endswith("_sham")]
+    assert len(sham) == 5
+    assert all(
+        row["scientific_contract"]["kwargs"]["regularization_strength"] == 0.0
+        for row in sham
+    )
+    assert all(
+        row["scientific_contract"]["kwargs"]["regularization_strength"] == 1.0
+        for row in records if row["job_id"] != "oracle_boundary_sac_ewc_sham"
+    )
 
 
 def test_structured_quadratic_adapter_is_in_foundry_inventory() -> None:
@@ -196,9 +206,11 @@ def test_native_explicit_selectors_fail_closed(
         {"id": "known_a", "seed": 0, "method": "A", "dataset": "lqr"},
         {"id": "known_b", "seed": 1, "method": "B", "dataset": "lqr"},
     ]
-    with patch("foundry_integration.catalog.discover", return_value=catalog):
-        with pytest.raises(SystemExit) as error:
-            main(["inventory", *selectors])
+    with (
+        patch("foundry_integration.catalog.discover", return_value=catalog),
+        pytest.raises(SystemExit) as error,
+    ):
+        main(["inventory", *selectors])
     assert error.value.code == 2
     assert message in capsys.readouterr().err
 

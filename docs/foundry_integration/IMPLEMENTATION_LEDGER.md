@@ -236,3 +236,16 @@ without silently ignoring bad entries in a multi-value request. Mock-catalog
 CLI regression tests cover invalid jobs, invalid seeds, mixed valid/invalid
 selections, incompatible filters, and a valid selection. No scientific
 training is executed by these tests.
+
+## Oracle zero-penalty sham experimental control
+
+The existing boundary-regularized SAC runner accepts an additional explicit
+`regularization_strength` parameter, defaulting to the unchanged value
+`1.0`. At `0.0`, EWC remains the configured regularizer and oracle phase
+boundaries remain supplied, but its loss penalty is zero; consolidation
+computation is not bypassed. A five-seed `oracle_boundary_sac_ewc_sham`
+entry pairs this within-implementation control with the previously registered
+four oracle regularizers using the same benchmark protocol and metric. Tests
+verify zero-strength wiring and rejection of negative strengths without
+running an expensive research campaign. Its result must not be represented
+as a standalone Adam baseline or a boundary-free method.

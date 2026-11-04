@@ -106,7 +106,15 @@ def test_oracle_boundary_regularizers_are_never_task_agnostic() -> None:
         "oracle_boundary_sac_online_ewc",
         "oracle_boundary_sac_si",
         "oracle_boundary_sac_mas",
+        "oracle_boundary_sac_ewc_sham",
     }
+    sham = jobs["oracle_boundary_sac_ewc_sham"]
+    assert sham.kwargs["regularization_strength"] == 0.0
+    assert sham.kwargs["method"] == "ewc"
+    assert sham.protocol == "oracle_boundary"
+    assert sham.environment == "oracle_recurring_lqr_regularized_v1"
+    assert sham.comparison_group == "oracle_boundary_regularized_sac"
+    assert sham.primary_metric == "training.final_10_mean_return"
     for method in ("ewc", "online_ewc", "si", "mas"):
         job = jobs[f"oracle_boundary_sac_{method}"]
         assert job.kwargs == {

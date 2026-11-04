@@ -285,3 +285,13 @@ protocol with true phase boundaries, a dedicated benchmark identifier and
 comparison group. They are not duplicates of the no-boundary fixed-update
 SAC regularizers. Twenty new run instances are in the source-derived
 training inventory, not certified completed research.
+
+### Matched zero-strength oracle consolidation control
+
+The additional `oracle_boundary_sac_ewc_sham` entry uses the unchanged
+boundary-regularized training loop with `regularization_strength=0.0`.
+This disables the EWC loss penalty while preserving access to oracle phase
+boundaries, consolidation bookkeeping and the training-path overhead. It is
+explicitly **not** described as a matched Adam-SAC learner. With the original
+four EWC/Online-EWC/SI/MAS oracle modes, there are now five registered
+conditions and 25 seed-level instances in the oracle comparison group.

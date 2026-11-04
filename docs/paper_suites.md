@@ -217,3 +217,17 @@ differ. This four-way oracle comparison has no matched unregularized Adam
 control yet, so it does not establish improvement over an unconstrained SAC
 baseline. The twenty runs are cataloged but not executed as a scientific
 campaign.
+
+#### Zero-strength EWC sham control
+
+An additional `oracle_boundary_sac_ewc_sham` job runs the same native
+regularized SAC training path and oracle boundary schedule with EWC strength
+set explicitly to `0.0`. This suppresses the *optimization penalty* while
+retaining the EWC agent, boundary-driven consolidation calculations and their
+execution overhead. The runner now exposes `regularization_strength` (default
+`1.0`) as a provenance-bearing scientific parameter; the earlier four modes
+remain behaviorally unchanged. The five-seed sham is included in the same
+`oracle_boundary_regularized_sac` comparison family, with identical metric,
+stream, and seed settings. It provides a within-implementation no-penalty
+control, **not** a standalone Adam-SAC comparator or proof of equal compute.
+All five additional run records are registered, not executed.

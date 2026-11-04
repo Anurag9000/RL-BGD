@@ -25,6 +25,7 @@ from rl_bgd.utils.randomness import seed_everything
 def run_boundary_regularized_sac_recurring_lqr(
     *,
     method: RegularizationMethod = "ewc",
+    regularization_strength: float = 1.0,
     steps: int = 384,
     phase_steps: int = 128,
     seed: int = 81,
@@ -73,7 +74,7 @@ def run_boundary_regularized_sac_recurring_lqr(
         regularization_config=RegularizedSACConfig(
             method=method,
             target="actor_and_critic",
-            strength=1.0,
+            strength=regularization_strength,
             consolidation_interval_updates=1_000_000_000,
             importance_samples=16,
         ),
@@ -106,6 +107,7 @@ def run_boundary_regularized_sac_recurring_lqr(
     )
     return {
         "method": method,
+        "regularization_strength": regularization_strength,
         "training": training,
         "information_access": {
             "receives_task_id": False,
