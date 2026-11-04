@@ -88,6 +88,43 @@ def test_explicit_comparison_groups_prevent_cross_family_pairing() -> None:
     assert {job.comparison_group for job in ppo_jobs} == {"baseline_ppo_ucl"}
 
 
+def test_strict_task_agnostic_feedforward_and_recurrent_ppo_pairs() -> None:
+    jobs = {
+        job.job_id: job
+        for job in SUITES["task_agnostic_final"].jobs
+        if job.job_id.startswith("ta_ppo_")
+    }
+    assert set(jobs) == {
+        "ta_ppo_feedforward_adam",
+        "ta_ppo_feedforward_bgd",
+        "ta_ppo_recurrent_adam",
+        "ta_ppo_recurrent_bgd",
+    }
+    for family in ("feedforward", "recurrent"):
+        adam = jobs[f"ta_ppo_{family}_adam"]
+        bgd = jobs[f"ta_ppo_{family}_bgd"]
+        assert adam.target == bgd.target
+        assert adam.seeds == bgd.seeds == (0, 1, 2, 3, 4)
+        assert adam.kwargs["steps"] == bgd.kwargs["steps"] == 640
+        assert adam.kwargs["device"] == bgd.kwargs["device"] == "auto"
+        assert adam.kwargs["optimizer"] == "adam"
+        assert bgd.kwargs["optimizer"] == "bgd"
+        assert adam.protocol == bgd.protocol == "strict_task_agnostic"
+        assert adam.environment == bgd.environment
+        assert adam.comparison_group == bgd.comparison_group == f"ta_ppo_{family}"
+        assert adam.primary_metric == bgd.primary_metric == "training.final_10_mean_return"
+    assert jobs["ta_ppo_feedforward_adam"].environment != (
+        jobs["ta_ppo_recurrent_adam"].environment
+    )
+    assert jobs["ta_ppo_feedforward_adam"].target.endswith(
+        ":run_ppo_recurring_lqr"
+    )
+    assert jobs["ta_ppo_recurrent_adam"].target.endswith(
+        ":run_recurrent_ppo_recurring_lqr"
+    )
+    validate_suite_registry()
+
+
 def test_comparison_and_ablation_jobs_are_atomic() -> None:
     hidden_jobs = [job for job in SUITES["dev"].jobs if job.job_id.startswith("hidden_context_")]
     assert len(hidden_jobs) == 5

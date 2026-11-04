@@ -26,10 +26,6 @@ _MANUAL_RUNNER_CANDIDATE_REVIEW: dict[str, tuple[str, str]] = {
         "DECOMPOSED_SUITE_ARMS",
         "Loops over five registered hidden-context variant arms; wrapper is not an independent scientific configuration.",
     ),
-    "rl_bgd.runners.ppo_continual_lqr:run_ppo_recurring_lqr": (
-        "UNREGISTERED_TA_RESEARCH_RUNNER",
-        "Direct recurrent-free Adam/BGD PPO on a recurring LQR stream; needs explicit matched-configuration registration if included.",
-    ),
     "rl_bgd.runners.quadratic:run_quadratic": (
         "SYNTHETIC_EXPERIMENT_NEEDS_ADAPTER",
         "Valid posterior-learning stream but requires QuadraticRunConfig object, not JSON kwargs; a tested native adapter is needed.",
@@ -45,10 +41,6 @@ _MANUAL_RUNNER_CANDIDATE_REVIEW: dict[str, tuple[str, str]] = {
     "rl_bgd.runners.recurrent_bgd_stationary_lqr:run_recurrent_bgd_sac_lqr": (
         "UNREGISTERED_STATIONARY_ACCEPTANCE",
         "Stationary recurrent BGD-SAC learning acceptance; requires matched control/protocol registration.",
-    ),
-    "rl_bgd.runners.recurrent_ppo_continual_lqr:run_recurrent_ppo_recurring_lqr": (
-        "UNREGISTERED_TA_RESEARCH_RUNNER",
-        "Recurrent Adam/BGD PPO on hidden recurring LQR; not directly represented by SUITES targets.",
     ),
     "rl_bgd.runners.recurrent_sac_continual_lqr:run_recurrent_sac_recurring_lqr": (
         "INDIRECT_SUITE_ARM",

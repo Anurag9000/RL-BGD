@@ -41,6 +41,24 @@ def test_inventory_covers_every_declared_suite_and_training_category() -> None:
     assert summary["seed_expanded_records"] == len(records)
 
 
+def test_foundry_registers_both_distinct_matched_ppo_families() -> None:
+    rows = [
+        record for record in inventory_records()
+        if record["job_id"].startswith("ta_ppo_")
+        and record["suite"] == "task_agnostic_final"
+    ]
+    assert len(rows) == 20
+    assert len({record["foundry_job_id"] for record in rows}) == 4
+    assert len({record["scientific_fingerprint"] for record in rows}) == 4
+    assert {record["scientific_contract"]["protocol"] for record in rows} == {
+        "strict_task_agnostic"
+    }
+    assert {record["dataset"] for record in rows} == {
+        "recurring_lqr_ppo_feedforward_v1",
+        "recurring_lqr_ppo_recurrent_v1",
+    }
+
+
 def test_scientific_identity_is_seed_independent_and_execution_identity_is_not() -> None:
     records = inventory_records()
     a = records[0]

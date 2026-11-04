@@ -138,3 +138,22 @@ critic-only BGD settings, and seeds 0-4. The adaptive source arms additionally
 share the same EMA normalization and retention mapping. Thresholded event
 precision/recall/F1 is complemented by evaluator-only surprise AUROC, while
 predictive NLL additionally records its online model loss.
+
+## Strict task-agnostic PPO family registrations (November 2026)
+
+The `task_agnostic_final` suite now registers four previously standalone
+scientific runner arms: Adam and BGD feed-forward PPO on the source
+`run_ppo_recurring_lqr` stream, and Adam and BGD recurrent PPO on the source
+`run_recurrent_ppo_recurring_lqr` stream. Each family is matched within its
+own environment across seeds 0–4, with 640 environment steps and
+`training.final_10_mean_return` as the common primary outcome. The declared
+information-access protocol is strictly task-agnostic, without task IDs,
+oracle boundaries or privileged context as agent inputs.
+
+The two source runners use **different recurring-LQR anchor values and phase
+lengths**, so these registrations use different `comparison_group` and
+`environment` labels. They are not presented as a controlled causal
+feed-forward-versus-recurrent comparison; only Adam-versus-BGD **within each
+family** is paired. Training returns represent online performance, not a
+separate held-out evaluation. The new jobs are registry-defined and have not
+been run as multi-seed scientific evidence.

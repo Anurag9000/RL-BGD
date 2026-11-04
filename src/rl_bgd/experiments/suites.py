@@ -1321,6 +1321,70 @@ TASK_AGNOSTIC_FINAL = ExperimentSuite(
     name="task_agnostic_final",
     description="Cross-environment strict task-agnostic confirmation suite.",
     jobs=(
+        # These two PPO pairs are internally matched Adam/BGD controls.
+        # Feedforward and recurrent streams have different hidden schedules,
+        # so they deliberately use different comparison groups/benchmarks.
+        *tuple(
+            _job(
+                f"ta_ppo_feedforward_{optimizer}",
+                "H",
+                "rl_bgd.runners.ppo_continual_lqr:run_ppo_recurring_lqr",
+                kwargs={
+                    "steps": 640,
+                    "device": "auto",
+                    "optimizer": optimizer,
+                },
+                seeds=(0, 1, 2, 3, 4),
+                algorithm=("PPO-Adam" if optimizer == "adam" else "PPO-BGD"),
+                environment="recurring_lqr_ppo_feedforward_v1",
+                protocol="strict_task_agnostic",
+                config_path=None,
+                primary_metric="training.final_10_mean_return",
+                secondary_metrics=(
+                    "training.mean_episode_return",
+                    "training.episodes",
+                ),
+                comparison_group="ta_ppo_feedforward",
+                runtime_class="medium",
+                notes=(
+                    "Adam/BGD pair shares the feedforward PPO stream, network "
+                    "and rollout settings; it is not paired with recurrent PPO "
+                    "because the two source runners use different context schedules."
+                ),
+            )
+            for optimizer in ("adam", "bgd")
+        ),
+        *tuple(
+            _job(
+                f"ta_ppo_recurrent_{optimizer}",
+                "H",
+                "rl_bgd.runners.recurrent_ppo_continual_lqr:run_recurrent_ppo_recurring_lqr",
+                kwargs={
+                    "steps": 640,
+                    "device": "auto",
+                    "optimizer": optimizer,
+                },
+                seeds=(0, 1, 2, 3, 4),
+                algorithm=("Recurrent-PPO-Adam" if optimizer == "adam" else "Recurrent-PPO-BGD"),
+                environment="recurring_lqr_ppo_recurrent_v1",
+                protocol="strict_task_agnostic",
+                config_path=None,
+                primary_metric="training.final_10_mean_return",
+                secondary_metrics=(
+                    "training.mean_episode_return",
+                    "training.episodes",
+                    "training.recurrent_reset_count",
+                ),
+                comparison_group="ta_ppo_recurrent",
+                runtime_class="medium",
+                notes=(
+                    "Recurrent Adam/BGD pair shares the same hidden recurring "
+                    "LQR schedule and GRU architecture; boundary/context oracle "
+                    "inputs are unavailable to either learner."
+                ),
+            )
+            for optimizer in ("adam", "bgd")
+        ),
         *_hidden_context_jobs(
             prefix="ta_hidden",
             steps=512,

@@ -235,3 +235,15 @@ artifact schema and actual native target-call compatibility before promotion.
 The oracle-boundary method must remain isolated from strict task-agnostic
 comparison groups. Synthetic demos and batch wrappers must not inflate the
 scientific training-job count. No experiments were run to write this ledger.
+
+### Registered recurring-LQR PPO scientific arms
+
+Two formerly unregistered runner targets are now explicit five-seed jobs in
+`task_agnostic_final`: feed-forward PPO Adam/BGD and recurrent PPO Adam/BGD.
+The generated catalog includes four scientific configurations and twenty
+seed-expanded run records for these arms. Matching is **within** each model
+family, not across feed-forward and recurrent streams because their source
+context schedules differ. The removed manual-review census candidates were
+replaced by real SUITES jobs; unregistered diagnostic and standalone acceptance
+runners remain separately classified. These are declared training jobs, not
+completed benchmark executions.
