@@ -215,3 +215,14 @@ feedforward SAC and recurrent PPO studies. A bounded mocked call tests Adam
 agent construction and training arguments; no expensive benchmark campaign
 was executed. The runner census removes the obsolete unregistered BGD entry
 only because both source implementations are registered.
+
+## Source-registered oracle phase-boundary SAC controls
+
+The four available native EWC/Online-EWC/SI/MAS modes of the existing
+`run_boundary_regularized_sac_recurring_lqr` are registered as 20 seed-level
+jobs in `baseline_core`. The original runner and consolidation algorithm
+remain unchanged; only the suite registrations, coverage review, tests and
+documentation are updated. The jobs share an explicit `oracle_boundary`
+information-access contract and distinct environment/comparison-group
+labels, preventing accidental pooling with strict task-agnostic regularizers.
+No external benchmark campaign or expensive multi-seed run was launched.

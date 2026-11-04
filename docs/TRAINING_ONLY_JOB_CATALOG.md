@@ -275,3 +275,13 @@ replay capacity and phase-free information access. Each arm is registered
 under `stationary_core` for seeds 0–4 with a separate
 `stationary_recurrent_sac` comparison group. The ten source-derived records
 are registered only; no expensive multi-seed campaign is claimed.
+
+### Explicit oracle-boundary SAC regularizers
+
+The previously standalone `run_boundary_regularized_sac_recurring_lqr`
+function is now represented as four `baseline_core` job identities (EWC,
+Online EWC, SI, MAS) with seeds 0–4. All use an **oracle** consolidation
+protocol with true phase boundaries, a dedicated benchmark identifier and
+comparison group. They are not duplicates of the no-boundary fixed-update
+SAC regularizers. Twenty new run instances are in the source-derived
+training inventory, not certified completed research.

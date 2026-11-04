@@ -88,8 +88,45 @@ def test_explicit_comparison_groups_prevent_cross_family_pairing() -> None:
     baseline = SUITES["baseline_core"].jobs
     sac_jobs = [job for job in baseline if job.algorithm.startswith("SAC")]
     ppo_jobs = [job for job in baseline if job.algorithm.startswith("PPO")]
-    assert {job.comparison_group for job in sac_jobs} == {"baseline_sac_regularization"}
+    assert {job.comparison_group for job in sac_jobs} == {
+        "baseline_sac_regularization",
+        "oracle_boundary_regularized_sac",
+    }
     assert {job.comparison_group for job in ppo_jobs} == {"baseline_ppo_ucl"}
+
+
+def test_oracle_boundary_regularizers_are_never_task_agnostic() -> None:
+    jobs = {
+        job.job_id: job
+        for job in SUITES["baseline_core"].jobs
+        if job.job_id.startswith("oracle_boundary_sac_")
+    }
+    assert set(jobs) == {
+        "oracle_boundary_sac_ewc",
+        "oracle_boundary_sac_online_ewc",
+        "oracle_boundary_sac_si",
+        "oracle_boundary_sac_mas",
+    }
+    for method in ("ewc", "online_ewc", "si", "mas"):
+        job = jobs[f"oracle_boundary_sac_{method}"]
+        assert job.kwargs == {
+            "method": method,
+            "steps": 600,
+            "phase_steps": 120,
+            "device": "auto",
+        }
+        assert job.seeds == (0, 1, 2, 3, 4)
+        assert job.target.endswith(":run_boundary_regularized_sac_recurring_lqr")
+        assert job.primary_metric == "training.final_10_mean_return"
+        assert job.protocol == "oracle_boundary"
+        assert job.environment == "oracle_recurring_lqr_regularized_v1"
+        assert job.comparison_group == "oracle_boundary_regularized_sac"
+    assert all(
+        job.protocol != "oracle_boundary"
+        for job in SUITES["baseline_core"].jobs
+        if job.comparison_group == "baseline_sac_regularization"
+    )
+    validate_suite_registry()
 
 
 def test_strict_task_agnostic_feedforward_and_recurrent_ppo_pairs() -> None:

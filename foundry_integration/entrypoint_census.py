@@ -34,10 +34,6 @@ _MANUAL_RUNNER_CANDIDATE_REVIEW: dict[str, tuple[str, str]] = {
         "INDIRECT_SUITE_ARM",
         "Adam/BGD/adaptive-BGD modes are invoked by registered hidden-context comparison variants; standalone default budget is separate.",
     ),
-    "rl_bgd.runners.regularized_sac_lqr:run_boundary_regularized_sac_recurring_lqr": (
-        "ORACLE_BOUNDARY_CONTROL",
-        "Ground-truth switch steps trigger consolidation; must never be labelled strict task-agnostic or grouped as such.",
-    ),
     "rl_bgd.runners.replay_evidence:run_replay_evidence_demo": (
         "DIAGNOSTIC_DEMO",
         "Synthetic replay-reuse posterior diagnostic, not a standalone reinforcement-learning training condition.",

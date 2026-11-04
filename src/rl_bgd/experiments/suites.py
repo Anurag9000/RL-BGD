@@ -862,6 +862,39 @@ BASELINE_CORE = ExperimentSuite(
             seeds=(0, 1, 2, 3, 4),
             runtime_class="medium",
         ),
+        # Oracle phase-boundary regularizers are a distinct comparison family:
+        # the agent is explicitly told true phase transitions for consolidation.
+        *tuple(
+            _job(
+                f"oracle_boundary_sac_{method}",
+                "B",
+                "rl_bgd.runners.regularized_sac_lqr:run_boundary_regularized_sac_recurring_lqr",
+                kwargs={
+                    "method": method,
+                    "steps": 600,
+                    "phase_steps": 120,
+                    "device": "auto",
+                },
+                seeds=(0, 1, 2, 3, 4),
+                algorithm=f"SAC-{method.upper()}-Oracle",
+                environment="oracle_recurring_lqr_regularized_v1",
+                protocol="oracle_boundary",
+                config_path=None,
+                primary_metric="training.final_10_mean_return",
+                secondary_metrics=(
+                    "training.mean_episode_return",
+                    "training.episodes",
+                ),
+                comparison_group="oracle_boundary_regularized_sac",
+                runtime_class="medium",
+                notes=(
+                    "Receives true phase boundaries for consolidation but no "
+                    "task ID or context. Never compare as a strict task-agnostic "
+                    "baseline; different stream and boundary information."
+                ),
+            )
+            for method in ("ewc", "online_ewc", "si", "mas")
+        ),
         _job(
             "baseline_ppo_adam_oracle_control",
             "UCL",

@@ -197,3 +197,23 @@ The pair has its own `recurrent_stationary_lqr_sac_v1` environment label,
 `stationary_recurrent_sac` comparison group and five seeds 0–4. These ten
 run instances are source-registered, not a completed performance comparison.
 The established recurrent BGD-SAC function and CLI behavior are preserved.
+
+### Oracle-boundary regularized SAC source runners
+
+The `baseline_core` suite now registers the original
+`run_boundary_regularized_sac_recurring_lqr` runner as four independently
+seeded EWC, Online-EWC, SI and MAS jobs (seeds 0–4). Each runs 600 steps with
+120-step phases on the same original `oracle_recurring_lqr_regularized_v1`
+stream. `training.final_10_mean_return` is the common primary metric; the
+underlying runner already emits `receives_task_boundary: true`,
+`receives_task_id: false`, and the explicit
+`oracle_phase_boundary` consolidation trigger.
+
+These jobs use an `oracle_boundary` protocol and their own
+`oracle_boundary_regularized_sac` comparison group. They must **never** be
+reported as strict task-agnostic or mixed with update-count regularizers:
+the latter do not get phase boundaries, and the streams and horizon details
+differ. This four-way oracle comparison has no matched unregularized Adam
+control yet, so it does not establish improvement over an unconstrained SAC
+baseline. The twenty runs are cataloged but not executed as a scientific
+campaign.

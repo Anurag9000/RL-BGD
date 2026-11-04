@@ -41,6 +41,31 @@ def test_inventory_covers_every_declared_suite_and_training_category() -> None:
     assert summary["seed_expanded_records"] == len(records)
 
 
+def test_oracle_boundary_sac_is_separate_from_task_agnostic_catalog() -> None:
+    records = [
+        record
+        for record in inventory_records()
+        if record["suite"] == "baseline_core"
+        and record["job_id"].startswith("oracle_boundary_sac_")
+    ]
+    assert len(records) == 20
+    assert len({record["foundry_job_id"] for record in records}) == 4
+    assert len({record["scientific_fingerprint"] for record in records}) == 4
+    assert {record["scientific_contract"]["protocol"] for record in records} == {
+        "oracle_boundary"
+    }
+    assert {record["dataset"] for record in records} == {
+        "oracle_recurring_lqr_regularized_v1"
+    }
+    assert {record["scientific_contract"]["kwargs"]["method"] for record in records} == {
+        "ewc",
+        "online_ewc",
+        "si",
+        "mas",
+    }
+    assert all(record["blocker"] is None for record in records)
+
+
 def test_structured_quadratic_adapter_is_in_foundry_inventory() -> None:
     jobs = [
         row
