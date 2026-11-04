@@ -175,6 +175,10 @@ def worker(spec_path):
         result = subprocess.run(command, cwd=ROOT, env=env, check=False)
         code = result.returncode
         if code == 0:
+            # A job can run for hours: fail closed if source moved while the
+            # child ran, even if its native canonical artifacts are valid.
+            if recorded_revision is not None and _source_revision() != recorded_revision:
+                raise ValueError("scientific source revision changed during native execution")
             verified = _verify_scientific_child(command, native)
             if is_registered_native and verified is None:
                 raise ValueError("registered native job lacks strict canonical verification")

@@ -221,6 +221,32 @@ class FoundryNativeWorkerTest(unittest.TestCase):
             self.assertIn("source revision changed", result["exception"])
             self.assertEqual(len(list((results / "attempt_history").glob("*result.json"))), 1)
 
+    def test_worker_rejects_revision_change_during_native_child(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            results = root / "results"
+            spec = root / "spec.json"
+            spec.write_text(json.dumps({
+                "run_id": "changed-while-running",
+                "source_revision": "a" * 40,
+                "scientific_job": {"id": "example"},
+                "result_dir": str(results),
+                "command": [sys.executable, "-m", "json.tool"],
+            }))
+            with patch(
+                "run_all_training._source_revision",
+                side_effect=["a" * 40, "b" * 40],
+            ):
+                with patch("run_all_training.subprocess.run") as invoked:
+                    invoked.return_value.returncode = 0
+                    self.assertNotEqual(worker(spec), 0)
+                    invoked.assert_called_once()
+            self.assertFalse((results / "result.json").exists())
+            status = json.loads((results / "native_process.json").read_text())
+            self.assertEqual(status["status"], "failed")
+            self.assertIn("changed during native execution", status["exception"])
+
+
     def test_git_dirty_tracked_science_is_rejected(self):
         from types import SimpleNamespace
 

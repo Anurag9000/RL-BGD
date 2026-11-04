@@ -131,3 +131,15 @@ To configure native scientific experiments, update their explicit and tested
 suite registration; do not assume the generic Foundry flags remap native
 runner kwargs or provide CORA archives. Other supported adapters retain their
 existing CLI behavior.
+
+## Post-child source-revision validation
+
+Git source validation is now performed both **before launch** and, for
+zero-exit children, **after the subprocess returns but before native artifact
+verification or Foundry success publication**. If the committed source or
+worktree changes during an hours-long training subprocess, the worker writes
+failed status and withholds its success marker. This prevents a mixed-version
+training attempt from being certified solely under its prelaunch Git identity.
+The test simulates a changed revision across the two checks without launching
+research experiments. As with any point-in-time hash check, a transient source
+mutation made and reverted during execution is outside this guarantee.
