@@ -249,3 +249,13 @@ four oracle regularizers using the same benchmark protocol and metric. Tests
 verify zero-strength wiring and rejection of negative strengths without
 running an expensive research campaign. Its result must not be represented
 as a standalone Adam baseline or a boundary-free method.
+
+## Native scientific suite identity collision guard
+
+`validate_suite_registry` now rejects duplicate job identifiers within any
+suite, duplicate seeds within a job, and invalid non-integer/negative seeds.
+These checks protect the canonical `suite__job__seed` run-directory key before
+materialization or execution, preventing unrelated scientific configurations
+from colliding at one result path. Synthetic in-memory registry tests exercise
+duplicate job and seed cases without launching training, and the inventory
+validator retains its independent expanded-identity check.

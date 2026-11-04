@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,33 @@ from rl_bgd.experiments.suites import (
     materialize_suite,
     validate_suite_registry,
 )
+
+
+def test_suite_registry_rejects_duplicate_native_run_id_components(monkeypatch) -> None:
+    baseline = SUITES["smoke"]
+    monkeypatch.setitem(
+        SUITES,
+        "smoke",
+        replace(baseline, jobs=(baseline.jobs[0], baseline.jobs[0])),
+    )
+    with pytest.raises(RuntimeError, match="duplicate job IDs"):
+        validate_suite_registry()
+
+    monkeypatch.setitem(
+        SUITES,
+        "smoke",
+        replace(baseline, jobs=(replace(baseline.jobs[0], seeds=(0, 0)),)),
+    )
+    with pytest.raises(RuntimeError, match="duplicate seeds"):
+        validate_suite_registry()
+
+    monkeypatch.setitem(
+        SUITES,
+        "smoke",
+        replace(baseline, jobs=(replace(baseline.jobs[0], seeds=(-1,)),)),
+    )
+    with pytest.raises(RuntimeError, match="invalid seed"):
+        validate_suite_registry()
 
 
 def test_required_paper_suites_validate_against_real_targets() -> None:

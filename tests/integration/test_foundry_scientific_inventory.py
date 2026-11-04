@@ -63,12 +63,12 @@ def test_oracle_boundary_sac_is_separate_from_task_agnostic_catalog() -> None:
     sham = [row for row in records if row["job_id"].endswith("_sham")]
     assert len(sham) == 5
     assert all(
-        row["scientific_contract"]["kwargs"]["regularization_strength"] == 0.0
-        for row in sham
+        row["scientific_contract"]["kwargs"]["regularization_strength"] == 0.0 for row in sham
     )
     assert all(
         row["scientific_contract"]["kwargs"]["regularization_strength"] == 1.0
-        for row in records if row["job_id"] != "oracle_boundary_sac_ewc_sham"
+        for row in records
+        if row["job_id"] != "oracle_boundary_sac_ewc_sham"
     )
 
 

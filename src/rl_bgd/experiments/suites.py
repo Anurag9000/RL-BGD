@@ -1990,6 +1990,9 @@ def validate_suite_registry() -> None:
     for suite in SUITES.values():
         if not suite.jobs:
             raise RuntimeError(f"suite {suite.name} has no jobs")
+        job_ids = [job.job_id for job in suite.jobs]
+        if len(set(job_ids)) != len(job_ids):
+            raise RuntimeError(f"suite {suite.name} contains duplicate job IDs")
 
         context_contracts: dict[
             str,
@@ -2003,6 +2006,13 @@ def validate_suite_registry() -> None:
         for job in suite.jobs:
             if not job.seeds:
                 raise RuntimeError(f"job {job.job_id} has no seeds")
+            if len(set(job.seeds)) != len(job.seeds):
+                raise RuntimeError(f"job {job.job_id} contains duplicate seeds")
+            if any(
+                isinstance(seed, bool) or not isinstance(seed, int) or seed < 0
+                for seed in job.seeds
+            ):
+                raise RuntimeError(f"job {job.job_id} contains an invalid seed")
             if not job.primary_metric:
                 raise RuntimeError(f"job {job.job_id} lacks a primary metric")
 

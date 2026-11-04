@@ -231,3 +231,12 @@ remain behaviorally unchanged. The five-seed sham is included in the same
 stream, and seed settings. It provides a within-implementation no-penalty
 control, **not** a standalone Adam-SAC comparator or proof of equal compute.
 All five additional run records are registered, not executed.
+
+### Native run-identity collision rejection
+
+The registry validator rejects repeated job IDs within any suite, repeated
+seeds within any job, and invalid negative or non-integer seed values before
+suite manifests are materialized. Otherwise duplicate records could address
+the same `suite__job__seed` directory and overwrite, archive, or falsely
+resume one another. Validation is static and the regression tests only mutate
+an in-memory temporary registry; no additional training is launched.
