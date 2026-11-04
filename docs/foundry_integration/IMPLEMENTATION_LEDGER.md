@@ -156,3 +156,27 @@ counts. The artifact is generated without launching training, installing
 optional simulators, or claiming scientific results. The 30-day CI artifact
 is not a permanent repository snapshot; rerun inventory locally for later
 audits.
+
+## Source-adjudicated unregistered runner candidates (4 November 2026)
+
+The expanded AST census found 23 runner modules and 52 public callables.
+At this snapshot, 15 function definitions directly match declared `SUITES`
+targets; one registered analysis target is appropriately outside the runner
+package. The review queue, after excluding `main()` CLI forwarding wrappers,
+contains twelve source-inspected `run_*` entrypoints. Each is manually labelled
+with its observed role and source-grounded reason in
+`foundry_integration/entrypoint_census.py`.
+
+The machine report now exposes `unreviewed_runner_candidates` and
+`stale_manual_runner_reviews`. Native inventory tests reject either in the
+current repository so newly introduced or renamed unregistered entrypoints
+cannot disappear from review. Diagnostic functions, wrapper orchestration,
+indirectly registered methods and oracle-boundary controls are kept distinct
+from genuinely not-yet-registered task-agnostic or stationary research jobs.
+The detailed adjudication and required follow-up are in
+`docs/TRAINING_ONLY_JOB_CATALOG.md`.
+
+This is a manually curated **source-only** review, not a claim that the
+unregistered experiments were executed or that all allowable hyperparameter
+combinations are enumerable. No new job is added to `SUITES` without verified
+scientific comparability and native invocation contracts.

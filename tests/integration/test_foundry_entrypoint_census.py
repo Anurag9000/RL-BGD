@@ -62,6 +62,12 @@ def test_runner_definition_census_is_bidirectional_and_source_grounded() -> None
         for item in report["independent_runner_candidates"]
     )
     assert not report["suite_targets_absent_from_public_runner_definitions"]
+    assert not report["unreviewed_runner_candidates"]
+    assert not report["stale_manual_runner_reviews"]
+    assert all(
+        item["manual_review_role"] != "UNREVIEWED"
+        for item in report["independent_runner_candidates"]
+    )
     assert (
         "rl_bgd.analysis.mechanistic:run_seeded_mechanistic_analysis"
         in (report["registered_non_runner_targets"])
@@ -114,6 +120,10 @@ def test_unregistered_script_import_and_runner_definition_are_reconciled(
         item for item in callables if item["name"] == "main"
     )["classification"] == "CLI_MAIN_WRAPPER"
     assert report["schema_version"] == 2
+    assert set(report["unreviewed_runner_candidates"]) == {
+        "rl_bgd.runners.custom:run_custom",
+        "rl_bgd.runners.custom:run_hidden",
+    }
 
 
 def test_unregistered_runner_import_is_candidate_not_automatically_scheduled(

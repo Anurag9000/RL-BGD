@@ -203,3 +203,35 @@ excluded from the independent scientific-job candidate queue. Their
 underlying `run_*` functions and imported symbols remain visible. This
 prevents a script forwarding to `main()` from being counted as a distinct
 unregistered research model.
+
+## Adjudication of independently defined unregistered runner functions
+
+The 4 November 2026 two-way source census identifies these twelve distinct
+*function entrypoints*. This is **not** twelve new distinct scientific
+configurations: a single function may expose multiple legitimate experimental
+arms, and multiple wrappers may run the same underlying learner.
+
+| Native target | Source-derived classification | Remaining work, if any |
+|---|---|---|
+| `rl_bgd.runners.evidence_temperature_sweep:run_evidence_temperature_sweep` | `DECOMPOSED_SUITE_ARMS` | Delegates to per-temperature BGD-SAC runs already represented by evidence-temperature suite jobs; not a separate learner. |
+| `rl_bgd.runners.hidden_context_sac_comparison:run_hidden_context_sac_comparison` | `DECOMPOSED_SUITE_ARMS` | Loops over five registered hidden-context variant arms; wrapper is not an independent scientific configuration. |
+| `rl_bgd.runners.ppo_continual_lqr:run_ppo_recurring_lqr` | `UNREGISTERED_TA_RESEARCH_RUNNER` | Direct recurrent-free Adam/BGD PPO on a recurring LQR stream; needs explicit matched-configuration registration if included. |
+| `rl_bgd.runners.quadratic:run_quadratic` | `SYNTHETIC_EXPERIMENT_NEEDS_ADAPTER` | Valid posterior-learning stream but requires QuadraticRunConfig object, not JSON kwargs; a tested native adapter is needed. |
+| `rl_bgd.runners.recurrent_bgd_stationary_lqr:run_recurrent_adam_ppo_lqr` | `UNREGISTERED_STATIONARY_ACCEPTANCE` | Stationary recurrent Adam-PPO acceptance control; not a separately registered paper-suite job. |
+| `rl_bgd.runners.recurrent_bgd_stationary_lqr:run_recurrent_bgd_ppo_lqr` | `UNREGISTERED_STATIONARY_ACCEPTANCE` | Stationary recurrent BGD-PPO learning acceptance; requires matched control/protocol registration. |
+| `rl_bgd.runners.recurrent_bgd_stationary_lqr:run_recurrent_bgd_sac_lqr` | `UNREGISTERED_STATIONARY_ACCEPTANCE` | Stationary recurrent BGD-SAC learning acceptance; requires matched control/protocol registration. |
+| `rl_bgd.runners.recurrent_ppo_continual_lqr:run_recurrent_ppo_recurring_lqr` | `UNREGISTERED_TA_RESEARCH_RUNNER` | Recurrent Adam/BGD PPO on hidden recurring LQR; not directly represented by SUITES targets. |
+| `rl_bgd.runners.recurrent_sac_continual_lqr:run_recurrent_sac_recurring_lqr` | `INDIRECT_SUITE_ARM` | Adam/BGD/adaptive-BGD modes are invoked by registered hidden-context comparison variants; standalone default budget is separate. |
+| `rl_bgd.runners.regularized_sac_lqr:run_boundary_regularized_sac_recurring_lqr` | `ORACLE_BOUNDARY_CONTROL` | Ground-truth switch steps trigger consolidation; must never be labelled strict task-agnostic or grouped as such. |
+| `rl_bgd.runners.replay_evidence:run_replay_evidence_demo` | `DIAGNOSTIC_DEMO` | Synthetic replay-reuse posterior diagnostic, not a standalone reinforcement-learning training condition. |
+| `rl_bgd.runners.smoke:run_smoke` | `SMOKE_ONLY` | Small quadratic implementation check, not an independently claimed paper experiment. |
+
+The review is persisted in `foundry_integration/entrypoint_census.py` and
+checked by the inventory tests. `main()` forwarding functions are present
+in the full callable census but intentionally absent from this queue. The
+unregistered PPO/recurrent PPO and stationary recurrent acceptance families
+require matched budgets, seed semantics, comparison groups, primary metrics,
+artifact schema and actual native target-call compatibility before promotion.
+The oracle-boundary method must remain isolated from strict task-agnostic
+comparison groups. Synthetic demos and batch wrappers must not inflate the
+scientific training-job count. No experiments were run to write this ledger.

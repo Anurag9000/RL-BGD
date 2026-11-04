@@ -14,6 +14,61 @@ from typing import Any
 from rl_bgd.experiments.suites import SUITES
 
 
+# Source-inspected native runner candidates. These review labels never cause
+# automatic scheduling; they prevent unreviewed functions from being silently
+# assumed covered by the scientific registry.
+_MANUAL_RUNNER_CANDIDATE_REVIEW: dict[str, tuple[str, str]] = {
+    "rl_bgd.runners.evidence_temperature_sweep:run_evidence_temperature_sweep": (
+        "DECOMPOSED_SUITE_ARMS",
+        "Delegates to per-temperature BGD-SAC runs already represented by evidence-temperature suite jobs; not a separate learner.",
+    ),
+    "rl_bgd.runners.hidden_context_sac_comparison:run_hidden_context_sac_comparison": (
+        "DECOMPOSED_SUITE_ARMS",
+        "Loops over five registered hidden-context variant arms; wrapper is not an independent scientific configuration.",
+    ),
+    "rl_bgd.runners.ppo_continual_lqr:run_ppo_recurring_lqr": (
+        "UNREGISTERED_TA_RESEARCH_RUNNER",
+        "Direct recurrent-free Adam/BGD PPO on a recurring LQR stream; needs explicit matched-configuration registration if included.",
+    ),
+    "rl_bgd.runners.quadratic:run_quadratic": (
+        "SYNTHETIC_EXPERIMENT_NEEDS_ADAPTER",
+        "Valid posterior-learning stream but requires QuadraticRunConfig object, not JSON kwargs; a tested native adapter is needed.",
+    ),
+    "rl_bgd.runners.recurrent_bgd_stationary_lqr:run_recurrent_adam_ppo_lqr": (
+        "UNREGISTERED_STATIONARY_ACCEPTANCE",
+        "Stationary recurrent Adam-PPO acceptance control; not a separately registered paper-suite job.",
+    ),
+    "rl_bgd.runners.recurrent_bgd_stationary_lqr:run_recurrent_bgd_ppo_lqr": (
+        "UNREGISTERED_STATIONARY_ACCEPTANCE",
+        "Stationary recurrent BGD-PPO learning acceptance; requires matched control/protocol registration.",
+    ),
+    "rl_bgd.runners.recurrent_bgd_stationary_lqr:run_recurrent_bgd_sac_lqr": (
+        "UNREGISTERED_STATIONARY_ACCEPTANCE",
+        "Stationary recurrent BGD-SAC learning acceptance; requires matched control/protocol registration.",
+    ),
+    "rl_bgd.runners.recurrent_ppo_continual_lqr:run_recurrent_ppo_recurring_lqr": (
+        "UNREGISTERED_TA_RESEARCH_RUNNER",
+        "Recurrent Adam/BGD PPO on hidden recurring LQR; not directly represented by SUITES targets.",
+    ),
+    "rl_bgd.runners.recurrent_sac_continual_lqr:run_recurrent_sac_recurring_lqr": (
+        "INDIRECT_SUITE_ARM",
+        "Adam/BGD/adaptive-BGD modes are invoked by registered hidden-context comparison variants; standalone default budget is separate.",
+    ),
+    "rl_bgd.runners.regularized_sac_lqr:run_boundary_regularized_sac_recurring_lqr": (
+        "ORACLE_BOUNDARY_CONTROL",
+        "Ground-truth switch steps trigger consolidation; must never be labelled strict task-agnostic or grouped as such.",
+    ),
+    "rl_bgd.runners.replay_evidence:run_replay_evidence_demo": (
+        "DIAGNOSTIC_DEMO",
+        "Synthetic replay-reuse posterior diagnostic, not a standalone reinforcement-learning training condition.",
+    ),
+    "rl_bgd.runners.smoke:run_smoke": (
+        "SMOKE_ONLY",
+        "Small quadratic implementation check, not an independently claimed paper experiment.",
+    ),
+}
+
+
 def _has_main_guard(module: ast.Module) -> bool:
     return any(
         isinstance(node, ast.If)
@@ -153,6 +208,17 @@ def entrypoint_census(root: Path) -> dict[str, Any]:
     }
     missing_definitions = sorted(runner_suite_targets - defined_targets)
     non_runner_targets = sorted(declared - runner_suite_targets)
+    for item in independent_candidates:
+        review = _MANUAL_RUNNER_CANDIDATE_REVIEW.get(item["target"])
+        item["manual_review_role"] = review[0] if review else "UNREVIEWED"
+        item["manual_review_note"] = review[1] if review else None
+    actual_candidates = {item["target"] for item in independent_candidates}
+    unreviewed = sorted(
+        actual_candidates - _MANUAL_RUNNER_CANDIDATE_REVIEW.keys()
+    )
+    stale_reviews = sorted(
+        _MANUAL_RUNNER_CANDIDATE_REVIEW.keys() - actual_candidates
+    )
     return {
         "schema_version": 2,
         "runner_modules_scanned": len(runner_modules),
@@ -164,6 +230,9 @@ def entrypoint_census(root: Path) -> dict[str, Any]:
         "registered_non_runner_targets": non_runner_targets,
         "registered_non_runner_target_count": len(non_runner_targets),
         "independent_runner_candidates": independent_candidates,
+        "unreviewed_runner_candidates": unreviewed,
+        "stale_manual_runner_reviews": stale_reviews,
+        "manual_review_basis": "2026-11-04 source-only inspection, not runtime verification",
         "runner_modules": runner_modules,
         "suite_only_target_count": len(suite_only_targets),
         "suite_only_targets": suite_only_targets,
