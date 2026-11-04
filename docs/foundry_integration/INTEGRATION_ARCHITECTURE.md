@@ -22,3 +22,10 @@ scientific regression are NOT certified without a relevant environment,
 datasets and executed checks. A zero native subprocess exit code does not
 by itself certify scientific correctness. All blocked native routes must
 remain visible, not presented as runnable or trained.
+
+Native `--job` and `--seed` selectors are strictly validated against the
+source-derived catalog before planning. Unknown IDs/seeds, including unknown
+entries mixed with valid selectors, and mutually incompatible valid ID/seed
+filters are rejected with a non-zero CLI error; they are never silently
+ignored or treated as completed work. Inventory without selectors remains
+read-only and can still display blocked jobs.

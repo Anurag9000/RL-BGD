@@ -234,9 +234,21 @@ def main(argv=None):
     jobs = discover(ROOT, args)
     if len({(j["id"], int(j.get("seed", 0))) for j in jobs}) != len(jobs):
         raise RuntimeError("native catalog has duplicate scientific IDs/seeds")
+    # Never interpret an unknown requested job or seed as an empty, successful
+    # selection or silently discard the unknown member of a mixed selection.
+    known_ids = {j["id"] for j in jobs}
+    known_seeds = {int(j.get("seed", 0)) for j in jobs}
+    unknown_ids = sorted(set(args.job) - known_ids)
+    if unknown_ids:
+        p.error("unknown native --job identifiers: " + ", ".join(unknown_ids))
+    unknown_seeds = sorted(set(args.seed) - known_seeds)
+    if unknown_seeds:
+        p.error("unknown native --seed values: " + ", ".join(map(str, unknown_seeds)))
     selected = [j for j in jobs
                 if (not args.job or j["id"] in args.job)
                 and (not args.seed or j.get("seed", 0) in args.seed)]
+    if (args.job or args.seed) and not selected:
+        p.error("combined --job/--seed filters select no native runs")
     blocked = [j for j in selected if j.get("blocker")]
     if args.action != "inventory" and args.execute and not args.job:
         # Preserve every blocked route in inventory, schedule only executable ones.

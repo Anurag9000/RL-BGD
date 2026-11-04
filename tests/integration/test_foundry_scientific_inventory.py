@@ -51,12 +51,8 @@ def test_oracle_boundary_sac_is_separate_from_task_agnostic_catalog() -> None:
     assert len(records) == 20
     assert len({record["foundry_job_id"] for record in records}) == 4
     assert len({record["scientific_fingerprint"] for record in records}) == 4
-    assert {record["scientific_contract"]["protocol"] for record in records} == {
-        "oracle_boundary"
-    }
-    assert {record["dataset"] for record in records} == {
-        "oracle_recurring_lqr_regularized_v1"
-    }
+    assert {record["scientific_contract"]["protocol"] for record in records} == {"oracle_boundary"}
+    assert {record["dataset"] for record in records} == {"oracle_recurring_lqr_regularized_v1"}
     assert {record["scientific_contract"]["kwargs"]["method"] for record in records} == {
         "ewc",
         "online_ewc",
@@ -179,6 +175,46 @@ def test_rl_bgd_fails_closed_on_unconsumed_external_overrides() -> None:
     args.data = ["external_dataset=/tmp/unused"]
     with pytest.raises(ValueError, match="does not consume --data"):
         discover(ROOT, args)
+
+
+@pytest.mark.parametrize(
+    ("selectors", "message"),
+    [
+        (["--job", "missing"], "unknown native --job"),
+        (["--job", "known_a", "--job", "missing"], "unknown native --job"),
+        (["--seed", "999"], "unknown native --seed"),
+        (["--seed", "0", "--seed", "999"], "unknown native --seed"),
+        (["--job", "known_a", "--seed", "1"], "combined --job/--seed"),
+    ],
+)
+def test_native_explicit_selectors_fail_closed(
+    selectors: list[str],
+    message: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    catalog = [
+        {"id": "known_a", "seed": 0, "method": "A", "dataset": "lqr"},
+        {"id": "known_b", "seed": 1, "method": "B", "dataset": "lqr"},
+    ]
+    with patch("foundry_integration.catalog.discover", return_value=catalog):
+        with pytest.raises(SystemExit) as error:
+            main(["inventory", *selectors])
+    assert error.value.code == 2
+    assert message in capsys.readouterr().err
+
+
+def test_native_explicit_known_selection_is_accepted(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    catalog = [
+        {"id": "known_a", "seed": 0, "method": "A", "dataset": "lqr"},
+        {"id": "known_b", "seed": 1, "method": "B", "dataset": "lqr"},
+    ]
+    with patch("foundry_integration.catalog.discover", return_value=catalog):
+        assert main(["inventory", "--job", "known_b", "--seed", "1"]) == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output["selected"] == 1
+    assert output["jobs"][0]["id"] == "known_b"
 
 
 def test_inventory_export_distinguishes_methods_and_seed_expansions(

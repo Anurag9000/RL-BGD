@@ -226,3 +226,13 @@ documentation are updated. The jobs share an explicit `oracle_boundary`
 information-access contract and distinct environment/comparison-group
 labels, preventing accidental pooling with strict task-agnostic regularizers.
 No external benchmark campaign or expensive multi-seed run was launched.
+
+## Fail-closed explicit Foundry selection
+
+The native launcher now checks every requested `--job` and `--seed`
+against actual catalog entries before inventory export or scientific
+execution. It also rejects a combined selection that matches no runs,
+without silently ignoring bad entries in a multi-value request. Mock-catalog
+CLI regression tests cover invalid jobs, invalid seeds, mixed valid/invalid
+selections, incompatible filters, and a valid selection. No scientific
+training is executed by these tests.
