@@ -113,6 +113,48 @@ class FoundryNativeWorkerTest(unittest.TestCase):
             self.assertIn("nonempty argv array", status["exception"])
 
 
+    def test_registered_scientific_job_cannot_bypass_native_verification(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            spec = root / "spec.json"
+            spec.write_text(json.dumps({
+                "run_id": "wrong-wrapper",
+                "source_revision": "a" * 40,
+                "scientific_job": {
+                    "id": "stationary_core__stationary_sac_bgd",
+                    "source": "src/rl_bgd/experiments/suites.py:SUITES",
+                    "scientific_contract": {"target": "rl_bgd.runners.bgd_sac_lqr:run_bgd_sac_lqr"},
+                },
+                "result_dir": str(root / "results"),
+                "command": [sys.executable, "-m", "json.tool"],
+            }))
+            with patch("run_all_training.subprocess.run") as invoked:
+                self.assertNotEqual(worker(spec), 0)
+                invoked.assert_not_called()
+            self.assertFalse((root / "results/result.json").exists())
+            status = json.loads((root / "results/native_process.json").read_text())
+            self.assertIn("canonical wrapper argv", status["exception"])
+
+    def test_disguised_native_module_command_cannot_escape_verification(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            spec = root / "spec.json"
+            spec.write_text(json.dumps({
+                "run_id": "shifted-module",
+                "source_revision": "a" * 40,
+                "scientific_job": {"id": "test"},
+                "result_dir": str(root / "results"),
+                "command": [sys.executable, "-X", "dev", "-m",
+                            "foundry_integration.rl_bgd_single"],
+            }))
+            with patch("run_all_training.subprocess.run") as invoked:
+                self.assertNotEqual(worker(spec), 0)
+                invoked.assert_not_called()
+            status = json.loads((root / "results/native_process.json").read_text())
+            self.assertEqual(status["status"], "failed")
+            self.assertIn("canonical wrapper argv", status["exception"])
+
+
     def test_zero_exit_without_valid_native_artifacts_is_not_success(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

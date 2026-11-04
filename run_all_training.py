@@ -148,13 +148,23 @@ def worker(spec_path):
         record["command"] = command
         write_json(status_path, record)
 
+        native_module = "foundry_integration.rl_bgd_single"
+        is_native_command = command[1:3] == ["-m", native_module]
+        is_registered_native = (
+            native.get("source") == "src/rl_bgd/experiments/suites.py:SUITES"
+            or "scientific_contract" in native
+            or "scientific_fingerprint" in native
+        )
+        if (is_registered_native or native_module in command) and not is_native_command:
+            raise ValueError("registered native scientific job requires canonical wrapper argv")
+
         recorded_revision = spec.get("source_revision")
         if recorded_revision is not None:
             if not isinstance(recorded_revision, str):
                 raise TypeError("scientific source revision must be a string")
             if _source_revision() != recorded_revision:
                 raise ValueError("scientific source revision changed since native plan creation")
-        elif command[1:3] == ["-m", "foundry_integration.rl_bgd_single"]:
+        elif is_native_command:
             raise ValueError("native scientific child lacks mandatory source revision")
 
         env = os.environ.copy()
@@ -166,6 +176,8 @@ def worker(spec_path):
         code = result.returncode
         if code == 0:
             verified = _verify_scientific_child(command, native)
+            if is_registered_native and verified is None:
+                raise ValueError("registered native job lacks strict canonical verification")
             if verified is not None:
                 record["verified_native_run"] = verified
     except Exception as exc:

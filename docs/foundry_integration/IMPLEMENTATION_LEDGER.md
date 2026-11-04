@@ -95,3 +95,15 @@ than escaping before removing the old success indicator. Bounded regression
 tests cover changed configurations and invalid argv without invoking real
 training. An unreadable/invalid spec that cannot identify a result directory
 is necessarily outside this result-directory cleanup contract.
+
+## Native-wrapper preflight enforcement
+
+A Foundry job with RL-BGD's registered SUITES source/contract/fingerprint
+must invoke `python -m foundry_integration.rl_bgd_single` in the exact
+expected module position. The worker rejects noncanonical wrappers before
+launch, rather than accepting an arbitrary zero-exit command without
+canonical scientific artifact verification. A native module string shifted
+behind interpreter flags is also rejected; the generated native job catalog
+always uses the canonical argv. These are fail-closed contract checks for
+scheduler plans, not an arbitrary-code security boundary against malicious
+local users who can edit the scheduler or the repository.
