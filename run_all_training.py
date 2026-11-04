@@ -109,34 +109,45 @@ def _archive_old_worker_status(result_dir):
 def worker(spec_path):
     spec = json.loads(Path(spec_path).read_text())
     run_id = spec["run_id"]
-    if os.environ.get("SIMPLE_ADP_JOB_ID") not in (None, run_id):
-        raise RuntimeError("Foundry job identity mismatch")
     result_dir = Path(spec["result_dir"])
-    env = os.environ.copy()
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, (
-        str(ROOT / "src"), str(ROOT), env.get("PYTHONPATH"))))
-    env["FOUNDRY_NATIVE_JOB_ID"] = run_id
-    native = spec["scientific_job"]
-    config_payload = native.get("config_payload")
-    config_file = result_dir / "native_config.yaml"
-    if config_payload is not None:
-        import yaml
-        config_file.parent.mkdir(parents=True, exist_ok=True)
-        if config_file.exists():
-            if yaml.safe_load(config_file.read_text(encoding="utf-8")) != config_payload:
-                raise ValueError("resolved native config changed for existing run")
-        else:
-            config_file.write_text(yaml.safe_dump(config_payload, sort_keys=True), encoding="utf-8")
-    command = [part.replace("{CONFIG_FILE}", str(config_file)) for part in spec["command"]]
-    if not command or not all(isinstance(s, str) and s for s in command):
-        raise ValueError("native command must be an argv array")
     result_dir.mkdir(parents=True, exist_ok=True)
+
+    # An invalid config, command, revision or child launch is still a failed
+    # *attempt*. Clear stale success before any preflight step can reject it.
     previous_attempt = _archive_old_worker_status(result_dir)
-    record = {"job_id": run_id, "scientific_job": spec["scientific_job"],
-              "command": command, "status": "running",
+    raw_command = spec.get("command")
+    record = {"job_id": run_id, "scientific_job": spec.get("scientific_job"),
+              "command": raw_command, "status": "running",
               "archived_previous_attempt": previous_attempt}
-    write_json(result_dir / "native_process.json", record)
+    status_path = result_dir / "native_process.json"
+    write_json(status_path, record)
     try:
+        if os.environ.get("SIMPLE_ADP_JOB_ID") not in (None, run_id):
+            raise RuntimeError("Foundry job identity mismatch")
+        native = spec["scientific_job"]
+        if not isinstance(native, dict):
+            raise TypeError("scientific job must be an object")
+        if (not isinstance(raw_command, list) or not raw_command
+                or not all(isinstance(part, str) and part for part in raw_command)):
+            raise ValueError("native command must be a nonempty argv array")
+
+        config_payload = native.get("config_payload")
+        config_file = result_dir / "native_config.yaml"
+        if config_payload is not None:
+            import yaml
+            if config_file.exists():
+                if yaml.safe_load(config_file.read_text(encoding="utf-8")) != config_payload:
+                    raise ValueError("resolved native config changed for existing run")
+            else:
+                config_file.write_text(
+                    yaml.safe_dump(config_payload, sort_keys=True), encoding="utf-8"
+                )
+        command = [
+            part.replace("{CONFIG_FILE}", str(config_file)) for part in raw_command
+        ]
+        record["command"] = command
+        write_json(status_path, record)
+
         recorded_revision = spec.get("source_revision")
         if recorded_revision is not None:
             if not isinstance(recorded_revision, str):
@@ -145,6 +156,12 @@ def worker(spec_path):
                 raise ValueError("scientific source revision changed since native plan creation")
         elif command[1:3] == ["-m", "foundry_integration.rl_bgd_single"]:
             raise ValueError("native scientific child lacks mandatory source revision")
+
+        env = os.environ.copy()
+        env["PYTHONPATH"] = os.pathsep.join(filter(None, (
+            str(ROOT / "src"), str(ROOT), env.get("PYTHONPATH")
+        )))
+        env["FOUNDRY_NATIVE_JOB_ID"] = run_id
         result = subprocess.run(command, cwd=ROOT, env=env, check=False)
         code = result.returncode
         if code == 0:
@@ -155,7 +172,7 @@ def worker(spec_path):
         code = 1
         record["exception"] = f"{type(exc).__name__}: {exc}"
     record.update(return_code=code, status="completed" if code == 0 else "failed")
-    write_json(result_dir / "native_process.json", record)
+    write_json(status_path, record)
     if code == 0:
         write_json(result_dir / "result.json", record)
     return code

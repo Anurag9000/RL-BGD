@@ -84,3 +84,14 @@ training budget, or benchmark protocol is altered by this classification.
 The regression is a source-derived catalog contract test, not a live GPU
 pressure/admission test. A CUDA-required native configuration cannot safely
 migrate to CPU and must be evaluated separately before enabling such jobs.
+
+## Prelaunch retry-status isolation
+
+The worker now archives the prior attempt's `result.json` and
+`native_process.json` **before** validating its native configuration,
+argv, selected job identity or Git revision. Errors in these preflight
+checks are captured as a new failed `native_process.json` status, rather
+than escaping before removing the old success indicator. Bounded regression
+tests cover changed configurations and invalid argv without invoking real
+training. An unreadable/invalid spec that cannot identify a result directory
+is necessarily outside this result-directory cleanup contract.

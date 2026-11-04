@@ -63,6 +63,56 @@ class FoundryNativeWorkerTest(unittest.TestCase):
                 json.loads((results / "native_process.json").read_text())["status"], "failed"
             )
 
+    def test_config_preflight_failure_archives_stale_success(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            results = root / "results"
+            results.mkdir()
+            (results / "result.json").write_text('{"status": "completed"}')
+            (results / "native_process.json").write_text('{"status": "completed"}')
+            (results / "native_config.yaml").write_text("stale config")
+            spec = root / "spec.json"
+            spec.write_text(json.dumps({
+                "run_id": "changed-config",
+                "scientific_job": {"id": "example", "config_payload": {"eta": 0.1}},
+                "result_dir": str(results),
+                "command": [sys.executable, "-m", "json.tool"],
+            }))
+            yaml_stub = ModuleType("yaml")
+            yaml_stub.safe_load = lambda _: {"eta": 0.2}  # type: ignore[attr-defined]
+            with patch.dict(sys.modules, {"yaml": yaml_stub}):
+                with patch("run_all_training.subprocess.run") as invoked:
+                    self.assertNotEqual(worker(spec), 0)
+                    invoked.assert_not_called()
+            self.assertFalse((results / "result.json").exists())
+            history = results / "attempt_history"
+            self.assertEqual(len(list(history.glob("*result.json"))), 1)
+            self.assertEqual(len(list(history.glob("*native_process.json"))), 1)
+            status = json.loads((results / "native_process.json").read_text())
+            self.assertEqual(status["status"], "failed")
+            self.assertIn("resolved native config changed", status["exception"])
+
+    def test_invalid_argv_preflight_archives_stale_success(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            results = root / "results"
+            results.mkdir()
+            (results / "result.json").write_text('{"status": "completed"}')
+            spec = root / "spec.json"
+            spec.write_text(json.dumps({
+                "run_id": "invalid-argv", "scientific_job": {"id": "example"},
+                "result_dir": str(results), "command": [sys.executable, 123],
+            }))
+            with patch("run_all_training.subprocess.run") as invoked:
+                self.assertNotEqual(worker(spec), 0)
+                invoked.assert_not_called()
+            self.assertFalse((results / "result.json").exists())
+            self.assertEqual(len(list((results / "attempt_history").glob("*result.json"))), 1)
+            status = json.loads((results / "native_process.json").read_text())
+            self.assertEqual(status["status"], "failed")
+            self.assertIn("nonempty argv array", status["exception"])
+
+
     def test_zero_exit_without_valid_native_artifacts_is_not_success(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
