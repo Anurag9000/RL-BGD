@@ -115,6 +115,33 @@ def run_quadratic(
         "boundaries": boundaries,
     }
 
+def run_quadratic_suite(
+    *,
+    dimension: int = 20,
+    segment_steps: int = 50,
+    segments: int = 3,
+    eta: float = 0.2,
+    prior_std: float = 0.5,
+    mc_samples: int = 8,
+    temper_retention: float = 1.0,
+    seed: int = 0,
+    device: str = "auto",
+) -> dict[str, object]:
+    """JSON-kwargs adapter preserving the original quadratic run config."""
+    return run_quadratic(
+        QuadraticRunConfig(
+            dimension=dimension,
+            segment_steps=segment_steps,
+            segments=segments,
+            eta=eta,
+            prior_std=prior_std,
+            mc_samples=mc_samples,
+            temper_retention=temper_retention,
+            seed=seed,
+            device=device,
+        )
+    )
+
 
 def main() -> None:
     print(

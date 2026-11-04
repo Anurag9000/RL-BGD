@@ -170,3 +170,15 @@ by its native runner; it is not equated with feed-forward actor-and-value BGD.
 The recurrent jobs have a distinct benchmark label and
 `stationary_recurrent_ppo` comparison group so that cross-architecture
 pairing is not implied. Their ten planned run instances remain unexecuted.
+
+### Original continual-quadratic suite adapter
+
+The original `run_quadratic(QuadraticRunConfig)` function is preserved
+unchanged. `run_quadratic_suite` converts the launcher’s JSON kwargs into
+that frozen config and delegates to the same native training implementation.
+The `mechanism_analysis` suite registers the exact original default
+configuration as `continual_quadratic_original` at seeds 0–4, declaring
+`final_loss` as its primary output and uncertainty/effective-step diagnostics
+as secondary outputs. This is a **synthetic posterior-learning mechanism**,
+not an RL benchmark or a newly implemented BGD method. No paired comparison
+is implied and no multi-seed training is marked executed.

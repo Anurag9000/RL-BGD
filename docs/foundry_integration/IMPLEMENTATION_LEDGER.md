@@ -191,3 +191,15 @@ inventory without touching `SUITES`. Superseded pushes cancel older Foundry
 inventory runs, while the latest run writes and uploads a fresh audit artifact.
 This extends **static audit trigger coverage**; it does not mean independent
 runnable configurations are automatically scheduled or validated on GPU.
+
+## Original structured quadratic native runner adapter
+
+A thin `run_quadratic_suite` function now adapts the original
+`QuadraticRunConfig` dataclass to the stable JSON-keyword experiment
+launcher. The original algorithm, `main`, defaults and optimizer behavior
+are unchanged. `mechanism_analysis` registers five seeded native runs of the
+original configuration and exposes them through Foundry with strict canonical
+artifacts and source provenance. The census treats the original function as
+an indirect suite arm rather than double-scheduling it. A bounded CPU unit
+exercise and mocked delegation contract cover the adapter; expensive seeded
+mechanism campaigns were not executed.

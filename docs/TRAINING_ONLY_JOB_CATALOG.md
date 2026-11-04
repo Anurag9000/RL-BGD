@@ -255,3 +255,13 @@ under `stationary_core`, each across five seeds. The two share an exact
 recurrent environment and post-training return outcome, and occupy their
 own `stationary_recurrent_ppo` matched comparison group separate from
 feed-forward PPO controls. This adds ten **declared**, not executed, runs.
+
+### Exact structured quadratic runner coverage
+
+The `QuadraticRunConfig`-only native runner now has a tested keyword adapter,
+`rl_bgd.runners.quadratic:run_quadratic_suite`, in the scientific
+`mechanism_analysis` inventory. Its original default configuration is
+registered across five seeds. The AST census still lists the underlying
+`run_quadratic` function as an indirect suite arm to prevent mistaken
+double-counting; only the adapter is scheduled. This is a synthetic
+optimization stream with its own explicitly labelled protocol.

@@ -27,8 +27,8 @@ _MANUAL_RUNNER_CANDIDATE_REVIEW: dict[str, tuple[str, str]] = {
         "Loops over five registered hidden-context variant arms; wrapper is not an independent scientific configuration.",
     ),
     "rl_bgd.runners.quadratic:run_quadratic": (
-        "SYNTHETIC_EXPERIMENT_NEEDS_ADAPTER",
-        "Valid posterior-learning stream but requires QuadraticRunConfig object, not JSON kwargs; a tested native adapter is needed.",
+        "INDIRECT_SUITE_ARM",
+        "QuadraticRunConfig runner is represented by the registered run_quadratic_suite JSON-kwargs adapter; do not schedule it twice.",
     ),
     "rl_bgd.runners.recurrent_bgd_stationary_lqr:run_recurrent_bgd_sac_lqr": (
         "UNREGISTERED_STATIONARY_ACCEPTANCE",

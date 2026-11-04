@@ -1619,6 +1619,38 @@ MECHANISM_ANALYSIS = ExperimentSuite(
     description="Deterministic causal parameter-level mechanism suite.",
     jobs=(
         _job(
+            "continual_quadratic_original",
+            "SYN-Q1",
+            "rl_bgd.runners.quadratic:run_quadratic_suite",
+            kwargs={
+                "dimension": 20,
+                "segment_steps": 50,
+                "segments": 3,
+                "eta": 0.2,
+                "prior_std": 0.5,
+                "mc_samples": 8,
+                "temper_retention": 1.0,
+                "device": "auto",
+            },
+            seeds=(0, 1, 2, 3, 4),
+            algorithm="BGD-Diagonal-Quadratic",
+            environment="abrupt_continual_quadratic_v1",
+            protocol="synthetic_posterior_mechanism",
+            config_path=None,
+            primary_metric="final_loss",
+            secondary_metrics=(
+                "initial_loss",
+                "sigma_mean",
+                "effective_lr_mean",
+                "total_steps",
+            ),
+            runtime_class="analysis",
+            notes=(
+                "Preserves original QuadraticRunConfig defaults via a "
+                "JSON-kwargs adapter; synthetic posterior stream, not RL."
+            ),
+        ),
+        _job(
             "mechanistic_quadratic",
             "I-J",
             ("rl_bgd.analysis.mechanistic:run_seeded_mechanistic_analysis"),

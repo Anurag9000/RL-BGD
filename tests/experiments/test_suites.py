@@ -123,6 +123,28 @@ def test_strict_task_agnostic_feedforward_and_recurrent_ppo_pairs() -> None:
     validate_suite_registry()
 
 
+def test_original_structured_quadratic_has_explicit_suite_adapter() -> None:
+    jobs = {job.job_id: job for job in SUITES["mechanism_analysis"].jobs}
+    job = jobs["continual_quadratic_original"]
+    assert job.target == "rl_bgd.runners.quadratic:run_quadratic_suite"
+    assert job.hypothesis_id == "SYN-Q1"
+    assert job.seeds == (0, 1, 2, 3, 4)
+    assert job.primary_metric == "final_loss"
+    assert job.comparison_group is None
+    assert job.protocol == "synthetic_posterior_mechanism"
+    assert job.kwargs == {
+        "dimension": 20,
+        "segment_steps": 50,
+        "segments": 3,
+        "eta": 0.2,
+        "prior_std": 0.5,
+        "mc_samples": 8,
+        "temper_retention": 1.0,
+        "device": "auto",
+    }
+    validate_suite_registry()
+
+
 def test_comparison_and_ablation_jobs_are_atomic() -> None:
     hidden_jobs = [job for job in SUITES["dev"].jobs if job.job_id.startswith("hidden_context_")]
     assert len(hidden_jobs) == 5
