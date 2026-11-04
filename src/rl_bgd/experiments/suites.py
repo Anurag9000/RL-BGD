@@ -709,9 +709,44 @@ STATIONARY_CORE = ExperimentSuite(
             comparison_group="stationary_ppo",
             runtime_class="medium",
         ),
+        *tuple(
+            _job(
+                f"stationary_recurrent_ppo_{optimizer}",
+                "A",
+                (
+                    f"rl_bgd.runners.recurrent_bgd_stationary_lqr:"
+                    f"run_recurrent_{optimizer}_ppo_lqr"
+                ),
+                kwargs={
+                    "steps": 2_000,
+                    "device": "auto",
+                },
+                seeds=(0, 1, 2, 3, 4),
+                algorithm=(
+                    "Recurrent-PPO-Adam"
+                    if optimizer == "adam"
+                    else "Recurrent-PPO-BGD-Actor"
+                ),
+                environment="recurrent_stationary_lqr_ppo_v1",
+                protocol="stationary",
+                config_path=None,
+                primary_metric="post_return",
+                secondary_metrics=(
+                    "improvement",
+                    "training.mean_episode_return",
+                ),
+                comparison_group="stationary_recurrent_ppo",
+                runtime_class="medium",
+                notes=(
+                    "The native recurrent Adam and actor-BGD PPO runners share "
+                    "their recurrent acceptance environment, PPO budget and "
+                    "model architecture. Do not pair with feed-forward PPO."
+                ),
+            )
+            for optimizer in ("adam", "bgd")
+        ),
     ),
 )
-
 
 DEV = ExperimentSuite(
     name="dev",

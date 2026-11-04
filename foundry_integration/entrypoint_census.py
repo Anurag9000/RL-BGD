@@ -30,14 +30,6 @@ _MANUAL_RUNNER_CANDIDATE_REVIEW: dict[str, tuple[str, str]] = {
         "SYNTHETIC_EXPERIMENT_NEEDS_ADAPTER",
         "Valid posterior-learning stream but requires QuadraticRunConfig object, not JSON kwargs; a tested native adapter is needed.",
     ),
-    "rl_bgd.runners.recurrent_bgd_stationary_lqr:run_recurrent_adam_ppo_lqr": (
-        "UNREGISTERED_STATIONARY_ACCEPTANCE",
-        "Stationary recurrent Adam-PPO acceptance control; not a separately registered paper-suite job.",
-    ),
-    "rl_bgd.runners.recurrent_bgd_stationary_lqr:run_recurrent_bgd_ppo_lqr": (
-        "UNREGISTERED_STATIONARY_ACCEPTANCE",
-        "Stationary recurrent BGD-PPO learning acceptance; requires matched control/protocol registration.",
-    ),
     "rl_bgd.runners.recurrent_bgd_stationary_lqr:run_recurrent_bgd_sac_lqr": (
         "UNREGISTERED_STATIONARY_ACCEPTANCE",
         "Stationary recurrent BGD-SAC learning acceptance; requires matched control/protocol registration.",

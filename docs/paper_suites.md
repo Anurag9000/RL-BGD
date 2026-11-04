@@ -157,3 +157,16 @@ feed-forward-versus-recurrent comparison; only Adam-versus-BGD **within each
 family** is paired. Training returns represent online performance, not a
 separate held-out evaluation. The new jobs are registry-defined and have not
 been run as multi-seed scientific evidence.
+
+### Matched stationary recurrent PPO controls
+
+The `stationary_core` suite now also registers the existing
+`run_recurrent_adam_ppo_lqr` and `run_recurrent_bgd_ppo_lqr` methods.
+Both use the same recurrent LQR acceptance environment, GRU/PPO architecture,
+2,000-step budget and evaluation protocol, with seeds 0–4 and `post_return`
+as the primary metric. The BGD arm uses actor Bayesianization as defined
+by its native runner; it is not equated with feed-forward actor-and-value BGD.
+
+The recurrent jobs have a distinct benchmark label and
+`stationary_recurrent_ppo` comparison group so that cross-architecture
+pairing is not implied. Their ten planned run instances remain unexecuted.

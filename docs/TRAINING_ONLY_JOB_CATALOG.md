@@ -247,3 +247,11 @@ context schedules differ. The removed manual-review census candidates were
 replaced by real SUITES jobs; unregistered diagnostic and standalone acceptance
 runners remain separately classified. These are declared training jobs, not
 completed benchmark executions.
+
+### Registered stationary recurrent PPO controls
+
+Stationary recurrent Adam-PPO and actor-BGD-PPO are now explicitly registered
+under `stationary_core`, each across five seeds. The two share an exact
+recurrent environment and post-training return outcome, and occupy their
+own `stationary_recurrent_ppo` matched comparison group separate from
+feed-forward PPO controls. This adds ten **declared**, not executed, runs.

@@ -70,6 +70,12 @@ def test_explicit_comparison_groups_prevent_cross_family_pairing() -> None:
     assert by_id["stationary_sac_bgd"].comparison_group == "stationary_sac"
     assert by_id["stationary_ppo_adam"].comparison_group == "stationary_ppo"
     assert by_id["stationary_ppo_bgd"].comparison_group == "stationary_ppo"
+    assert by_id["stationary_recurrent_ppo_adam"].comparison_group == (
+        "stationary_recurrent_ppo"
+    )
+    assert by_id["stationary_recurrent_ppo_bgd"].comparison_group == (
+        "stationary_recurrent_ppo"
+    )
 
     carl = SUITES["carl_core"].jobs
     for mode in (
@@ -194,6 +200,18 @@ def test_stationary_suite_has_exact_matched_optimizer_controls() -> None:
     assert ppo_adam["update_epochs"] == ppo_bgd["update_epochs"] == 4
     assert ppo_adam["evaluation_seed"] == ppo_bgd["evaluation_seed"] == 30_000
 
+    recurrent_adam = jobs["stationary_recurrent_ppo_adam"]
+    recurrent_bgd = jobs["stationary_recurrent_ppo_bgd"]
+    assert recurrent_adam.kwargs == recurrent_bgd.kwargs == {
+        "steps": 2_000,
+        "device": "auto",
+    }
+    assert recurrent_adam.seeds == recurrent_bgd.seeds == (0, 1, 2, 3, 4)
+    assert recurrent_adam.target.endswith(":run_recurrent_adam_ppo_lqr")
+    assert recurrent_bgd.target.endswith(":run_recurrent_bgd_ppo_lqr")
+    assert recurrent_adam.primary_metric == recurrent_bgd.primary_metric == "post_return"
+    assert recurrent_adam.environment == recurrent_bgd.environment
+
 
 def test_stationary_and_mechanism_suites_have_replicate_coverage() -> None:
     stationary = SUITES["stationary_core"].jobs
@@ -202,6 +220,8 @@ def test_stationary_and_mechanism_suites_have_replicate_coverage() -> None:
         "stationary_sac_bgd",
         "stationary_ppo_adam",
         "stationary_ppo_bgd",
+        "stationary_recurrent_ppo_adam",
+        "stationary_recurrent_ppo_bgd",
     }
     assert all(job.hypothesis_id == "A" for job in stationary)
     assert all(

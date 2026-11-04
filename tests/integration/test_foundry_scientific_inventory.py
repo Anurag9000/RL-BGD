@@ -41,6 +41,20 @@ def test_inventory_covers_every_declared_suite_and_training_category() -> None:
     assert summary["seed_expanded_records"] == len(records)
 
 
+def test_registered_stationary_recurrent_ppo_adam_bgd_runs() -> None:
+    rows = [
+        record
+        for record in inventory_records()
+        if record["suite"] == "stationary_core"
+        and record["job_id"].startswith("stationary_recurrent_ppo_")
+    ]
+    assert len(rows) == 10
+    assert len({row["foundry_job_id"] for row in rows}) == 2
+    assert len({row["scientific_fingerprint"] for row in rows}) == 2
+    assert {row["scientific_contract"]["protocol"] for row in rows} == {"stationary"}
+    assert {row["dataset"] for row in rows} == {"recurrent_stationary_lqr_ppo_v1"}
+
+
 def test_foundry_registers_both_distinct_matched_ppo_families() -> None:
     rows = [
         record

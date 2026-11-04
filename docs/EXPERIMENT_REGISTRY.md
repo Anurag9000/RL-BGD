@@ -6,7 +6,7 @@ No expensive experiment is marked executed until raw run artifacts exist.
 |---|---|---|
 | SYN-Q1 | Positive curvature contracts posterior sigma | IMPLEMENTED / TESTED |
 | SYN-Q2 | E[g epsilon] approaches H sigma in small-sigma diagonal quadratic | IMPLEMENTED / TESTED |
-| A | Vanilla BGD can learn stationary RL tasks | IMPLEMENTED / TESTED + five-seed SAC/PPO Adam-vs-BGD `stationary_core` jobs defined; execution pending |
+| A | Vanilla BGD can learn stationary RL tasks | IMPLEMENTED / TESTED + five-seed SAC/PPO Adam-vs-BGD `stationary_core` jobs defined, including a separate matched recurrent PPO Adam/actor-BGD pair; execution pending |
 | B | BGD can reduce short-stream forgetting | EWC/Online-EWC/SI/MAS + matched unregularized SAC control are five-seed `baseline_core` jobs and the same four fixed-update regularizers are matched against Adam/BGD on strict task-agnostic CW10 **and CW20**; bounded dev comparators also IMPLEMENTED; execution pending |
 | C | Vanilla BGD loses late-life plasticity under repeated evidence | CONTROLLED late-shift runner + causal regression test + matched vanilla/tempered five-seed ablation jobs IMPLEMENTED; multi-seed execution pending |
 | D | Fixed tempering prevents trivial sigma collapse | IMPLEMENTED / TESTED mechanism + stationary retention sweep + matched recurring-LQR fixed-0.97 control against no/adaptive tempering; multi-seed execution pending |
