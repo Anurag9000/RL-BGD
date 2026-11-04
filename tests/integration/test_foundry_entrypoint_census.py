@@ -112,13 +112,12 @@ def test_unregistered_script_import_and_runner_definition_are_reconciled(
     assert not candidates["run_hidden"]["script_imported"]
     assert set(candidates) == {"run_custom", "run_hidden"}
     callables = report["runner_modules"][0]["public_callables"]
-    assert {item["name"] for item in callables} == {
-        "run_custom", "run_hidden", "helper", "main"
-    }
+    assert {item["name"] for item in callables} == {"run_custom", "run_hidden", "helper", "main"}
     assert all(item["name"] != "main" for item in report["independent_runner_candidates"])
-    assert next(
-        item for item in callables if item["name"] == "main"
-    )["classification"] == "CLI_MAIN_WRAPPER"
+    assert (
+        next(item for item in callables if item["name"] == "main")["classification"]
+        == "CLI_MAIN_WRAPPER"
+    )
     assert report["schema_version"] == 2
     assert set(report["unreviewed_runner_candidates"]) == {
         "rl_bgd.runners.custom:run_custom",
