@@ -43,9 +43,9 @@ def test_inventory_covers_every_declared_suite_and_training_category() -> None:
 
 def test_foundry_registers_both_distinct_matched_ppo_families() -> None:
     rows = [
-        record for record in inventory_records()
-        if record["job_id"].startswith("ta_ppo_")
-        and record["suite"] == "task_agnostic_final"
+        record
+        for record in inventory_records()
+        if record["job_id"].startswith("ta_ppo_") and record["suite"] == "task_agnostic_final"
     ]
     assert len(rows) == 20
     assert len({record["foundry_job_id"] for record in rows}) == 4

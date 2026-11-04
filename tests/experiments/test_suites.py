@@ -116,12 +116,8 @@ def test_strict_task_agnostic_feedforward_and_recurrent_ppo_pairs() -> None:
     assert jobs["ta_ppo_feedforward_adam"].environment != (
         jobs["ta_ppo_recurrent_adam"].environment
     )
-    assert jobs["ta_ppo_feedforward_adam"].target.endswith(
-        ":run_ppo_recurring_lqr"
-    )
-    assert jobs["ta_ppo_recurrent_adam"].target.endswith(
-        ":run_recurrent_ppo_recurring_lqr"
-    )
+    assert jobs["ta_ppo_feedforward_adam"].target.endswith(":run_ppo_recurring_lqr")
+    assert jobs["ta_ppo_recurrent_adam"].target.endswith(":run_recurrent_ppo_recurring_lqr")
     validate_suite_registry()
 
 
