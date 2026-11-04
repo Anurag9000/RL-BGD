@@ -72,6 +72,8 @@ def test_explicit_comparison_groups_prevent_cross_family_pairing() -> None:
     assert by_id["stationary_ppo_bgd"].comparison_group == "stationary_ppo"
     assert by_id["stationary_recurrent_ppo_adam"].comparison_group == ("stationary_recurrent_ppo")
     assert by_id["stationary_recurrent_ppo_bgd"].comparison_group == ("stationary_recurrent_ppo")
+    assert by_id["stationary_recurrent_sac_adam"].comparison_group == ("stationary_recurrent_sac")
+    assert by_id["stationary_recurrent_sac_bgd"].comparison_group == ("stationary_recurrent_sac")
 
     carl = SUITES["carl_core"].jobs
     for mode in (
@@ -234,6 +236,16 @@ def test_stationary_suite_has_exact_matched_optimizer_controls() -> None:
     assert recurrent_adam.primary_metric == recurrent_bgd.primary_metric == "post_return"
     assert recurrent_adam.environment == recurrent_bgd.environment
 
+    sac_adam = jobs["stationary_recurrent_sac_adam"]
+    sac_bgd = jobs["stationary_recurrent_sac_bgd"]
+    assert sac_adam.kwargs == sac_bgd.kwargs == {"steps": 800, "device": "auto"}
+    assert sac_adam.seeds == sac_bgd.seeds == (0, 1, 2, 3, 4)
+    assert sac_adam.target.endswith(":run_recurrent_adam_sac_lqr")
+    assert sac_bgd.target.endswith(":run_recurrent_bgd_sac_lqr")
+    assert sac_adam.environment == sac_bgd.environment
+    assert sac_adam.protocol == sac_bgd.protocol == "stationary"
+    assert sac_adam.primary_metric == sac_bgd.primary_metric == "post_return"
+
 
 def test_stationary_and_mechanism_suites_have_replicate_coverage() -> None:
     stationary = SUITES["stationary_core"].jobs
@@ -244,6 +256,8 @@ def test_stationary_and_mechanism_suites_have_replicate_coverage() -> None:
         "stationary_ppo_bgd",
         "stationary_recurrent_ppo_adam",
         "stationary_recurrent_ppo_bgd",
+        "stationary_recurrent_sac_adam",
+        "stationary_recurrent_sac_bgd",
     }
     assert all(job.hypothesis_id == "A" for job in stationary)
     assert all(
@@ -854,9 +868,7 @@ def test_uncertainty_suite_separates_detection_and_retention_comparisons() -> No
 
 def test_mechanistic_and_detection_metrics_are_scalar_safe() -> None:
     mechanism = next(
-        job
-        for job in SUITES["mechanism_analysis"].jobs
-        if job.job_id == "mechanistic_quadratic"
+        job for job in SUITES["mechanism_analysis"].jobs if job.job_id == "mechanistic_quadratic"
     )
     assert mechanism.secondary_metrics == (
         "perturbation_precision_spearman",

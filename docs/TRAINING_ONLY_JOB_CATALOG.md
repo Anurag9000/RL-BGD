@@ -265,3 +265,13 @@ registered across five seeds. The AST census still lists the underlying
 `run_quadratic` function as an indirect suite arm to prevent mistaken
 double-counting; only the adapter is scheduled. This is a synthetic
 optimization stream with its own explicitly labelled protocol.
+
+### Matched stationary recurrent SAC controls
+
+The original `run_recurrent_bgd_sac_lqr` stationary acceptance runner now
+has a real recurrent Adam-SAC comparator with identical model architecture,
+LQR horizon, optimizer learning-rate settings, training/evaluation budgets,
+replay capacity and phase-free information access. Each arm is registered
+under `stationary_core` for seeds 0–4 with a separate
+`stationary_recurrent_sac` comparison group. The ten source-derived records
+are registered only; no expensive multi-seed campaign is claimed.

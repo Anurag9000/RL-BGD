@@ -740,6 +740,37 @@ STATIONARY_CORE = ExperimentSuite(
             )
             for optimizer in ("adam", "bgd")
         ),
+        *tuple(
+            _job(
+                f"stationary_recurrent_sac_{optimizer}",
+                "A",
+                (f"rl_bgd.runners.recurrent_bgd_stationary_lqr:run_recurrent_{optimizer}_sac_lqr"),
+                kwargs={
+                    "steps": 800,
+                    "device": "auto",
+                },
+                seeds=(0, 1, 2, 3, 4),
+                algorithm=(
+                    "Recurrent-SAC-Adam" if optimizer == "adam" else "Recurrent-SAC-BGD-Critic"
+                ),
+                environment="recurrent_stationary_lqr_sac_v1",
+                protocol="stationary",
+                config_path=None,
+                primary_metric="post_return",
+                secondary_metrics=(
+                    "improvement",
+                    "training.mean_episode_return",
+                ),
+                comparison_group="stationary_recurrent_sac",
+                runtime_class="medium",
+                notes=(
+                    "Native recurrent SAC Adam and critic-BGD use identical "
+                    "environment, GRU widths, training budget and evaluation "
+                    "seeds; the optimizer and posterior are the controlled difference."
+                ),
+            )
+            for optimizer in ("adam", "bgd")
+        ),
     ),
 )
 

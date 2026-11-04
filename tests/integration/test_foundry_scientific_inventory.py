@@ -56,6 +56,20 @@ def test_structured_quadratic_adapter_is_in_foundry_inventory() -> None:
     )
 
 
+def test_matched_stationary_recurrent_sac_adam_bgd_inventory() -> None:
+    records = [
+        item
+        for item in inventory_records()
+        if item["suite"] == "stationary_core"
+        and item["job_id"].startswith("stationary_recurrent_sac_")
+    ]
+    assert len(records) == 10
+    assert len({item["foundry_job_id"] for item in records}) == 2
+    assert len({item["scientific_fingerprint"] for item in records}) == 2
+    assert {item["scientific_contract"]["protocol"] for item in records} == {"stationary"}
+    assert {item["dataset"] for item in records} == {"recurrent_stationary_lqr_sac_v1"}
+
+
 def test_registered_stationary_recurrent_ppo_adam_bgd_runs() -> None:
     rows = [
         record

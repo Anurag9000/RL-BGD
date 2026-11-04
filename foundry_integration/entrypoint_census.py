@@ -30,10 +30,6 @@ _MANUAL_RUNNER_CANDIDATE_REVIEW: dict[str, tuple[str, str]] = {
         "INDIRECT_SUITE_ARM",
         "QuadraticRunConfig runner is represented by the registered run_quadratic_suite JSON-kwargs adapter; do not schedule it twice.",
     ),
-    "rl_bgd.runners.recurrent_bgd_stationary_lqr:run_recurrent_bgd_sac_lqr": (
-        "UNREGISTERED_STATIONARY_ACCEPTANCE",
-        "Stationary recurrent BGD-SAC learning acceptance; requires matched control/protocol registration.",
-    ),
     "rl_bgd.runners.recurrent_sac_continual_lqr:run_recurrent_sac_recurring_lqr": (
         "INDIRECT_SUITE_ARM",
         "Adam/BGD/adaptive-BGD modes are invoked by registered hidden-context comparison variants; standalone default budget is separate.",

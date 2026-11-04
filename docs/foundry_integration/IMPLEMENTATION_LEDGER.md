@@ -203,3 +203,15 @@ artifacts and source provenance. The census treats the original function as
 an indirect suite arm rather than double-scheduling it. A bounded CPU unit
 exercise and mocked delegation contract cover the adapter; expensive seeded
 mechanism campaigns were not executed.
+
+## Matched native recurrent Adam/BGD SAC control
+
+The standalone stationary recurrent BGD-SAC acceptance runner now has a native
+Adam-SAC comparator using its exact LQR horizon, GRU/Q widths, SAC learning
+rates, train/evaluation seeds, replay budget and sequence windows. The original
+BGD runner is unchanged. Two explicit `stationary_core` source-derived jobs
+provide five-seed `stationary_recurrent_sac` matching, separated from
+feedforward SAC and recurrent PPO studies. A bounded mocked call tests Adam
+agent construction and training arguments; no expensive benchmark campaign
+was executed. The runner census removes the obsolete unregistered BGD entry
+only because both source implementations are registered.

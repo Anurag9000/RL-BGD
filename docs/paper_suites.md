@@ -182,3 +182,18 @@ configuration as `continual_quadratic_original` at seeds 0–4, declaring
 as secondary outputs. This is a **synthetic posterior-learning mechanism**,
 not an RL benchmark or a newly implemented BGD method. No paired comparison
 is implied and no multi-seed training is marked executed.
+
+### Matched recurrent SAC Adam/BGD stationary acceptance
+
+Two explicit `stationary_core` jobs now compare the existing recurrent
+critic-BGD SAC implementation with a new native recurrent Adam-SAC control.
+Both use the same LQR horizon (30), actor/critic recurrent widths (16),
+optimizer learning-rate settings, 800 environment steps, 64 random steps,
+sequence batch size 4, burn-in 4, unroll 8, replay capacity 2,000 and
+identical five-episode evaluation seeds. Only the BGD arm uses Bayesian
+critic posteriors and its corresponding evidence accounting.
+
+The pair has its own `recurrent_stationary_lqr_sac_v1` environment label,
+`stationary_recurrent_sac` comparison group and five seeds 0–4. These ten
+run instances are source-registered, not a completed performance comparison.
+The established recurrent BGD-SAC function and CLI behavior are preserved.

@@ -17,7 +17,7 @@ from rl_bgd.agents.ppo.recurrent_train import (
 )
 from rl_bgd.agents.sac.agent import SACConfig
 from rl_bgd.agents.sac.bgd_agent import BGDSACConfig
-from rl_bgd.agents.sac.recurrent_agent import RecurrentSACConfig
+from rl_bgd.agents.sac.recurrent_agent import RecurrentSACAgent, RecurrentSACConfig
 from rl_bgd.agents.sac.recurrent_bgd_agent import BGDRecurrentSACAgent
 from rl_bgd.agents.sac.recurrent_train import (
     RecurrentSACTrainConfig,
@@ -189,6 +189,80 @@ def run_recurrent_bgd_ppo_lqr(
     return {
         "algorithm": "recurrent_bgd_ppo",
         "bayesianization": bayesianization,
+        "steps": steps,
+        "pre_return": pre_return,
+        "post_return": post_return,
+        "improvement": post_return - pre_return,
+        "training": training,
+    }
+
+
+def run_recurrent_adam_sac_lqr(
+    *,
+    steps: int = 800,
+    seed: int = 102,
+    device: str = "auto",
+    checkpoint_path: str | None = None,
+    checkpoint_interval: int | None = None,
+    resume_from: str | None = None,
+    max_steps_this_call: int | None = None,
+) -> dict[str, object]:
+    """Matched recurrent Adam-SAC control for the existing BGD-SAC runner."""
+
+    seed_everything(seed, deterministic=True)
+    resolved = resolve_device(device)
+    env = LinearQuadraticControlEnv(
+        horizon=30,
+        device=resolved,
+    )
+    agent = RecurrentSACAgent(
+        1,
+        1,
+        action_low=env.action_space.low,
+        action_high=env.action_space.high,
+        sac_config=SACConfig(
+            actor_lr=1e-3,
+            critic_lr=1e-3,
+            alpha_lr=1e-3,
+        ),
+        recurrent_config=RecurrentSACConfig(
+            recurrent_hidden_dim=16,
+            encoder_hidden_dims=(16,),
+            q_hidden_dims=(16,),
+        ),
+        device=resolved,
+    )
+    pre_return = evaluate_recurrent_sac(
+        env,
+        agent,
+        episodes=5,
+        seed=70_000,
+    )
+    training = train_recurrent_sac(
+        env,
+        agent,
+        config=RecurrentSACTrainConfig(
+            total_steps=steps,
+            random_steps=64,
+            sequence_batch_size=4,
+            burn_in=4,
+            unroll=8,
+            replay_capacity=max(2_000, steps),
+            seed=seed,
+        ),
+        checkpoint_path=checkpoint_path,
+        checkpoint_interval=checkpoint_interval,
+        resume_from=resume_from,
+        max_steps_this_call=max_steps_this_call,
+    )
+    post_return = evaluate_recurrent_sac(
+        env,
+        agent,
+        episodes=5,
+        seed=70_000,
+    )
+    return {
+        "algorithm": "recurrent_adam_sac",
         "steps": steps,
         "pre_return": pre_return,
         "post_return": post_return,
