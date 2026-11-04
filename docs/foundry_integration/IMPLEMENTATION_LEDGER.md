@@ -143,3 +143,16 @@ training attempt from being certified solely under its prelaunch Git identity.
 The test simulates a changed revision across the two checks without launching
 research experiments. As with any point-in-time hash check, a transient source
 mutation made and reverted during execution is outside this guarantee.
+
+## Persisted CI audit evidence
+
+The Foundry native-contract workflow exports all source-derived training
+catalog and independent runner-census files as a named GitHub Actions artifact
+(`rl-bgd-native-scientific-inventory`, 30-day retention). The workflow log
+also shows all presently unregistered runner candidates, unmatched script
+imports and registered non-runner scientific targets, retaining enough evidence
+to review actual source omissions rather than relying solely on aggregate
+counts. The artifact is generated without launching training, installing
+optional simulators, or claiming scientific results. The 30-day CI artifact
+is not a permanent repository snapshot; rerun inventory locally for later
+audits.

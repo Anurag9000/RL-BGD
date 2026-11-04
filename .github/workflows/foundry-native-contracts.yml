@@ -47,3 +47,32 @@ jobs:
           report = json.loads(Path("artifacts/foundry_inventory/scientific_job_coverage.json").read_text())
           print(json.dumps(report, indent=2, sort_keys=True))
           PY
+      - name: Summarize independently reachable runner candidates
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path("artifacts/foundry_inventory/native_entrypoint_coverage.json").read_text())
+          excerpt = {
+              "schema_version": report["schema_version"],
+              "runner_modules_scanned": report["runner_modules_scanned"],
+              "runner_public_callable_count": report["runner_public_callable_count"],
+              "runner_callable_classifications": report["runner_callable_classifications"],
+              "registered_non_runner_targets": report["registered_non_runner_targets"],
+              "suite_targets_absent_from_public_runner_definitions": report["suite_targets_absent_from_public_runner_definitions"],
+              "independent_runner_candidates": report["independent_runner_candidates"],
+              "unmatched_import_candidates": report["unmatched_import_candidates"],
+          }
+          print(json.dumps(excerpt, indent=2, sort_keys=True))
+          PY
+      - name: Preserve scientific and entrypoint inventory evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: rl-bgd-native-scientific-inventory
+          path: |
+            artifacts/foundry_inventory/scientific_job_inventory.json
+            artifacts/foundry_inventory/scientific_job_inventory.csv
+            artifacts/foundry_inventory/scientific_job_coverage.json
+            artifacts/foundry_inventory/native_entrypoint_coverage.json
+          if-no-files-found: error
+          retention-days: 30
