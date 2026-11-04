@@ -214,9 +214,9 @@ def main(argv=None):
     p.add_argument("--job", action="append", default=[])
     p.add_argument("--seed", action="append", type=int, default=[])
     p.add_argument("--config", action="append", default=[],
-                   help="Native configuration or precomputed plan JSON")
+                   help="Native config or plan for supporting adapters (not RL-BGD SUITES)")
     p.add_argument("--data", action="append", default=[],
-                   help="DATASET=PATH; external authorized data")
+                   help="DATASET=PATH for adapters with external-data support (not RL-BGD SUITES)")
     p.add_argument("--limit", type=int, default=0)
     p.add_argument("--cpu-only", action="store_true")
     args = p.parse_args(argv)

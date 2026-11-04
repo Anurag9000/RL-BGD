@@ -119,3 +119,15 @@ functions not yet represented as suite targets. No unregistered entrypoint is
 automatically scheduled; scientific distinctness and compatibility must be
 established first. This is static AST evidence, not executed call-graph or
 benchmark validation.
+
+## Reject unconsumed RL-BGD input overrides
+
+The generic Foundry command line offers `--config` and `--data` for
+other repository adapters, but the RL-BGD `SUITES` adapter consumes neither.
+Previously they were silently ignored, which could falsely imply a different
+scientific configuration or input dataset was used. RL-BGD now rejects these
+arguments with explicit errors before inventory materialization or job launch.
+To configure native scientific experiments, update their explicit and tested
+suite registration; do not assume the generic Foundry flags remap native
+runner kwargs or provide CORA archives. Other supported adapters retain their
+existing CLI behavior.

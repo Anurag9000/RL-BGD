@@ -9,6 +9,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
+
 from foundry_integration.catalog import discover
 from foundry_integration.scientific_inventory import (
     coverage_summary,
@@ -81,6 +83,17 @@ def test_foundry_gpu_admission_respects_native_cpu_pin() -> None:
         job["gpu_capable"] and job["scientific_contract"]["kwargs"].get("device") == "auto"
         for job in jobs
     )
+
+
+def test_rl_bgd_fails_closed_on_unconsumed_external_overrides() -> None:
+    args = SimpleNamespace(seed=[], data=[], config=[], action="inventory", out="artifacts")
+    args.config = ["configs/custom.yaml"]
+    with pytest.raises(ValueError, match="does not support --config"):
+        discover(ROOT, args)
+    args.config = []
+    args.data = ["external_dataset=/tmp/unused"]
+    with pytest.raises(ValueError, match="does not consume --data"):
+        discover(ROOT, args)
 
 
 def test_inventory_export_distinguishes_methods_and_seed_expansions(

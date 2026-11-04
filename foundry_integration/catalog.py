@@ -42,6 +42,10 @@ def discover(root: Path, args):
         return results
 
     if name == "rl-bgd":
+        if args.config:
+            raise ValueError("RL-BGD SUITES catalog does not support --config overrides")
+        if data:
+            raise ValueError("RL-BGD SUITES catalog does not consume --data overrides")
         from foundry_integration.scientific_inventory import inventory_records
         for record in inventory_records():
             suite_name = record["suite"]
