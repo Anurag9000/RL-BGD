@@ -68,8 +68,7 @@ def test_foundry_gpu_admission_respects_native_cpu_pin() -> None:
     args = SimpleNamespace(seed=[], data=[], config=[], action="inventory", out="artifacts")
     jobs = discover(ROOT, args)
     cpu_pinned = [
-        job for job in jobs
-        if job["scientific_contract"]["kwargs"].get("device") == "cpu"
+        job for job in jobs if job["scientific_contract"]["kwargs"].get("device") == "cpu"
     ]
     assert cpu_pinned, "the native registry must exercise CPU-only admission"
     assert all(not job["gpu_capable"] for job in cpu_pinned)
