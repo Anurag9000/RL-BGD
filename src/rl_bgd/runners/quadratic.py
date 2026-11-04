@@ -115,6 +115,7 @@ def run_quadratic(
         "boundaries": boundaries,
     }
 
+
 def run_quadratic_suite(
     *,
     dimension: int = 20,

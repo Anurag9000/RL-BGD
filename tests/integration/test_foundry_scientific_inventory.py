@@ -45,15 +45,13 @@ def test_structured_quadratic_adapter_is_in_foundry_inventory() -> None:
     jobs = [
         row
         for row in inventory_records()
-        if row["suite"] == "mechanism_analysis"
-        and row["job_id"] == "continual_quadratic_original"
+        if row["suite"] == "mechanism_analysis" and row["job_id"] == "continual_quadratic_original"
     ]
     assert len(jobs) == 5
     assert len({item["scientific_fingerprint"] for item in jobs}) == 1
     assert len({item["execution_fingerprint"] for item in jobs}) == 5
     assert all(
-        item["scientific_contract"]["target"]
-        == "rl_bgd.runners.quadratic:run_quadratic_suite"
+        item["scientific_contract"]["target"] == "rl_bgd.runners.quadratic:run_quadratic_suite"
         for item in jobs
     )
 

@@ -258,16 +258,21 @@ def test_stationary_and_mechanism_suites_have_replicate_coverage() -> None:
         for job in stationary
     )
 
-    mechanisms = SUITES["mechanism_analysis"].jobs
-    assert len(mechanisms) == 1
-    assert mechanisms[0].seeds == (
+    mechanisms = {job.job_id: job for job in SUITES["mechanism_analysis"].jobs}
+    assert set(mechanisms) == {
+        "mechanistic_quadratic",
+        "continual_quadratic_original",
+    }
+    assert mechanisms["mechanistic_quadratic"].seeds == (
         150,
         151,
         152,
         153,
         154,
     )
-    assert mechanisms[0].seed_kwarg == "seed"
+    assert mechanisms["mechanistic_quadratic"].seed_kwarg == "seed"
+    assert mechanisms["continual_quadratic_original"].seeds == (0, 1, 2, 3, 4)
+    assert mechanisms["continual_quadratic_original"].seed_kwarg == "seed"
 
 
 def _resolved_jobs_by_id(
@@ -848,7 +853,11 @@ def test_uncertainty_suite_separates_detection_and_retention_comparisons() -> No
 
 
 def test_mechanistic_and_detection_metrics_are_scalar_safe() -> None:
-    mechanism = SUITES["mechanism_analysis"].jobs[0]
+    mechanism = next(
+        job
+        for job in SUITES["mechanism_analysis"].jobs
+        if job.job_id == "mechanistic_quadratic"
+    )
     assert mechanism.secondary_metrics == (
         "perturbation_precision_spearman",
         "curvature_signal_mean_relative_error",

@@ -19,6 +19,7 @@ def test_quadratic_runner_executes() -> None:
     assert len(result["boundaries"]) == 1
     assert result["sigma_mean"] > 0
 
+
 def test_quadratic_suite_adapter_retains_structured_defaults() -> None:
     from dataclasses import asdict
     from unittest.mock import patch
