@@ -10,7 +10,6 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
-
 from foundry_integration.catalog import discover
 from foundry_integration.scientific_inventory import (
     coverage_summary,
