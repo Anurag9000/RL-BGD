@@ -269,7 +269,11 @@ def main(argv=None):
             entrypoints = entrypoint_census(ROOT)
             catalog["entrypoint_coverage"] = {
                 key: value for key, value in entrypoints.items()
-                if key not in {"scripts", "unmatched_import_candidates", "suite_only_targets"}
+                if key not in {
+                    "scripts", "runner_modules", "unmatched_import_candidates",
+                    "independent_runner_candidates", "suite_only_targets",
+                    "suite_targets_absent_from_public_runner_definitions",
+                }
             }
             write_json(out / "native_entrypoint_coverage.json", entrypoints)
             from foundry_integration.scientific_inventory import (

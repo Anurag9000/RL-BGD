@@ -174,3 +174,20 @@ from consuming an advertised GPU process slot. `device="auto"` retains GPU
 capability and follows the Foundry CPU lane's CUDA visibility mask. This is a
 static scheduling-contract correction; physical CUDA occupancy, GPU OOM
 behavior, preemption and host/device migration are not certified by it.
+
+### Bidirectional native runner function census
+
+The `native_entrypoint_coverage.json` export now inspects each tracked,
+top-level **public function definition** in `src/rl_bgd/runners/*.py`,
+not merely functions imported by scripts. It records which symbols are exact
+`SUITES` training targets, script-imported but unregistered symbols, and
+unreferenced `run_*` definitions. It also reports suite targets lacking a
+local public runner definition for explicit audit, without assuming such
+targets are broken (module-level reexports or dynamic resolution are possible).
+
+The machine-readable `independent_runner_candidates` list is a **review
+queue**, not an automatic collection of new training jobs. Individual callable
+definitions can be helpers, wrappers, nested experiment modes or diagnostic
+functions; neither callability nor a `run_` prefix proves distinct scientific
+configurations or successful execution. Parameter-space exploration and dynamic
+callable resolution still require separate review.

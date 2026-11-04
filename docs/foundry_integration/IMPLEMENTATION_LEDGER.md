@@ -107,3 +107,15 @@ behind interpreter flags is also rejected; the generated native job catalog
 always uses the canonical argv. These are fail-closed contract checks for
 scheduler plans, not an arbitrary-code security boundary against malicious
 local users who can edit the scheduler or the repository.
+
+## Bidirectional source-runner static census
+
+The independent script-entrypoint audit now additionally parses top-level
+public functions declared in every present `src/rl_bgd/runners/*.py` file.
+It cross-references symbols in both directions against the explicit `SUITES`
+registry and standalone script imports. A reproducible review queue identifies
+script-imported unregistered callables and independently defined `run_*`
+functions not yet represented as suite targets. No unregistered entrypoint is
+automatically scheduled; scientific distinctness and compatibility must be
+established first. This is static AST evidence, not executed call-graph or
+benchmark validation.

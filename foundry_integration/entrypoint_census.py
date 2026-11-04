@@ -85,8 +85,78 @@ def entrypoint_census(root: Path) -> dict[str, Any]:
         if item["suite_coverage"] == "EXACT_SUITE_TARGET"
     }
     suite_only_targets = sorted(declared - exact_imports)
+
+    # A script-import census alone cannot discover callable training surfaces
+    # defined in a runner module but not imported by any standalone script.
+    # Read top-level definitions directly; do not import or execute modules.
+    runner_modules: list[dict[str, Any]] = []
+    defined_targets: set[str] = set()
+    independent_candidates: list[dict[str, Any]] = []
+    for module_path in sorted((root / "src" / "rl_bgd" / "runners").glob("*.py")):
+        module_name = f"rl_bgd.runners.{module_path.stem}"
+        syntax = ast.parse(
+            module_path.read_text(encoding="utf-8"), filename=str(module_path)
+        )
+        public_callables: list[dict[str, Any]] = []
+        for node in syntax.body:
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            if node.name.startswith("_"):
+                continue
+            target = f"{module_name}:{node.name}"
+            defined_targets.add(target)
+            registered = target in declared
+            imported = target in exact_imports or any(
+                item["module"] == module_name and item["symbol"] == node.name
+                for item in candidates
+            )
+            looks_like_training_entrypoint = node.name.startswith("run_")
+            classification = (
+                "REGISTERED_SUITE_TARGET"
+                if registered
+                else "SCRIPT_IMPORTED_UNREGISTERED"
+                if imported
+                else "RUN_PREFIX_UNREGISTERED"
+                if looks_like_training_entrypoint
+                else "OTHER_PUBLIC_CALLABLE"
+            )
+            record: dict[str, Any] = {
+                "target": target,
+                "name": node.name,
+                "line": node.lineno,
+                "classification": classification,
+                "script_imported": imported,
+            }
+            public_callables.append(record)
+            if classification in {
+                "SCRIPT_IMPORTED_UNREGISTERED",
+                "RUN_PREFIX_UNREGISTERED",
+            }:
+                independent_candidates.append({
+                    "path": module_path.relative_to(root).as_posix(),
+                    **record,
+                })
+        runner_modules.append({
+            "path": module_path.relative_to(root).as_posix(),
+            "module": module_name,
+            "public_callables": public_callables,
+        })
+    runner_classifications = Counter(
+        item["classification"]
+        for module in runner_modules
+        for item in module["public_callables"]
+    )
+    missing_definitions = sorted(declared - defined_targets)
     return {
-        "schema_version": 1,
+        "schema_version": 2,
+        "runner_modules_scanned": len(runner_modules),
+        "runner_public_callable_count": sum(
+            len(module["public_callables"]) for module in runner_modules
+        ),
+        "runner_callable_classifications": dict(sorted(runner_classifications.items())),
+        "suite_targets_absent_from_public_runner_definitions": missing_definitions,
+        "independent_runner_candidates": independent_candidates,
+        "runner_modules": runner_modules,
         "suite_only_target_count": len(suite_only_targets),
         "suite_only_targets": suite_only_targets,
         "first_party_scripts": len(records),
@@ -100,6 +170,8 @@ def entrypoint_census(root: Path) -> dict[str, Any]:
         "scripts": records,
         "limitations": [
             "same-module and unmatched imports are audit candidates, not proof of missing jobs",
+            "public runner callables and run_-prefixed definitions are static candidates, not executable configurations",
+            "suite targets may be dynamically exported and are not necessarily local function definitions",
             "runtime argument choices and dynamic invocation paths are not enumerated",
             "suite targets absent from standalone scripts may still be directly runnable",
             "no external data, benchmark or training execution was performed",
