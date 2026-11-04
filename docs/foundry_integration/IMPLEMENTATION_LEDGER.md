@@ -180,3 +180,14 @@ This is a manually curated **source-only** review, not a claim that the
 unregistered experiments were executed or that all allowable hyperparameter
 combinations are enumerable. No new job is added to `SUITES` without verified
 scientific comparability and native invocation contracts.
+
+## Source-change-triggered inventory refresh
+
+The native Foundry CI workflow now watches the entire first-party
+`src/rl_bgd/**` and `scripts/**` trees, both targeted census regression
+tests, and the bridge/registry documents. This is necessary because a new
+callable, changed native default, or new script import may alter the source
+inventory without touching `SUITES`. Superseded pushes cancel older Foundry
+inventory runs, while the latest run writes and uploads a fresh audit artifact.
+This extends **static audit trigger coverage**; it does not mean independent
+runnable configurations are automatically scheduled or validated on GPU.

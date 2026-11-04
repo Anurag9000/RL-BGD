@@ -4,13 +4,18 @@ on:
     branches: [main]
     paths:
       - "run_all_training.py"
-      - "src/rl_bgd/experiments/suites.py"
+      - "src/rl_bgd/**"
+      - "scripts/**"
       - "tests/integration/test_foundry_scientific_inventory.py"
+      - "tests/integration/test_foundry_entrypoint_census.py"
       - "foundry_integration/**"
       - "docs/foundry_integration/**"
       - "requirements-foundry.txt"
       - ".github/workflows/foundry-native-contracts.yml"
   workflow_dispatch:
+concurrency:
+  group: foundry-native-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   native-contracts:
     runs-on: ubuntu-latest
