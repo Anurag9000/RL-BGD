@@ -146,7 +146,11 @@ def entrypoint_census(root: Path) -> dict[str, Any]:
         for module in runner_modules
         for item in module["public_callables"]
     )
-    missing_definitions = sorted(declared - defined_targets)
+    runner_suite_targets = {
+        target for target in declared if target.startswith("rl_bgd.runners.")
+    }
+    missing_definitions = sorted(runner_suite_targets - defined_targets)
+    non_runner_targets = sorted(declared - runner_suite_targets)
     return {
         "schema_version": 2,
         "runner_modules_scanned": len(runner_modules),
@@ -155,6 +159,8 @@ def entrypoint_census(root: Path) -> dict[str, Any]:
         ),
         "runner_callable_classifications": dict(sorted(runner_classifications.items())),
         "suite_targets_absent_from_public_runner_definitions": missing_definitions,
+        "registered_non_runner_targets": non_runner_targets,
+        "registered_non_runner_target_count": len(non_runner_targets),
         "independent_runner_candidates": independent_candidates,
         "runner_modules": runner_modules,
         "suite_only_target_count": len(suite_only_targets),

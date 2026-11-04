@@ -61,6 +61,12 @@ def test_runner_definition_census_is_bidirectional_and_source_grounded() -> None
         for item in report["independent_runner_candidates"]
     )
     assert not report["suite_targets_absent_from_public_runner_definitions"]
+    assert "rl_bgd.analysis.mechanistic:run_seeded_mechanistic_analysis" in (
+        report["registered_non_runner_targets"]
+    )
+    assert report["registered_non_runner_target_count"] == len(
+        report["registered_non_runner_targets"]
+    )
     json.dumps(report, allow_nan=False)
 
 

@@ -191,3 +191,8 @@ definitions can be helpers, wrappers, nested experiment modes or diagnostic
 functions; neither callability nor a `run_` prefix proves distinct scientific
 configurations or successful execution. Parameter-space exploration and dynamic
 callable resolution still require separate review.
+
+The bidirectional audit **separates targets outside** `rl_bgd.runners`
+(e.g., `rl_bgd.analysis.mechanistic`) from registered runner targets that
+appear to lack local public definitions. A non-runner target is not a missing
+runner function, and its presence must not fail runner-coverage assertions.
