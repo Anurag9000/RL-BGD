@@ -64,6 +64,26 @@ def test_catalog_does_not_drop_analysis_named_training_jobs() -> None:
     assert len({(job["id"], job["seed"]) for job in jobs}) == len(jobs)
 
 
+def test_foundry_gpu_admission_respects_native_cpu_pin() -> None:
+    args = SimpleNamespace(seed=[], data=[], config=[], action="inventory", out="artifacts")
+    jobs = discover(ROOT, args)
+    cpu_pinned = [
+        job for job in jobs
+        if job["scientific_contract"]["kwargs"].get("device") == "cpu"
+    ]
+    assert cpu_pinned, "the native registry must exercise CPU-only admission"
+    assert all(not job["gpu_capable"] for job in cpu_pinned)
+    assert all(
+        job["gpu_capable"]
+        for job in jobs
+        if job["scientific_contract"]["kwargs"].get("device") != "cpu"
+    )
+    assert any(
+        job["gpu_capable"] and job["scientific_contract"]["kwargs"].get("device") == "auto"
+        for job in jobs
+    )
+
+
 def test_inventory_export_distinguishes_methods_and_seed_expansions(
     tmp_path: Path,
 ) -> None:

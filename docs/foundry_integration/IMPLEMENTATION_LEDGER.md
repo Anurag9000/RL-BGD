@@ -20,7 +20,7 @@
 
 ## Repository-specific integration
 
-Native `SUITES` exposes implemented paper jobs. A single-job wrapper calls `execute_suite` with exactly one selected job/seed. It now additionally checks that the selected native run ID, Git revision, fully resolved configuration, run metadata, and strict canonical artifacts match the requested job using the native artifact loader. The outer Foundry worker independently verifies the child's canonical run identity before publishing `result.json`. Exit code zero alone is insufficient. When a job is retried, old `result.json` and `native_process.json` indicators are moved into `attempt_history/` before launch, so a failed attempt cannot inherit a stale success marker. This preserves older process-status evidence without treating an old attempt as the new run. Ablation/analysis suites are excluded from the primary training inventory.
+Native `SUITES` exposes implemented paper jobs. A single-job wrapper calls `execute_suite` with exactly one selected job/seed. It now additionally checks that the selected native run ID, Git revision, fully resolved configuration, run metadata, and strict canonical artifacts match the requested job using the native artifact loader. The outer Foundry worker independently verifies the child's canonical run identity before publishing `result.json`. Exit code zero alone is insufficient. When a job is retried, old `result.json` and `native_process.json` indicators are moved into `attempt_history/` before launch, so a failed attempt cannot inherit a stale success marker. This preserves older process-status evidence without treating an old attempt as the new run. All declared suite families, including ablations, uncertainty analysis, mechanistic experiments and compute-training jobs, are represented in the registry-derived Foundry catalog; this does not imply scientific completion or exhaustiveness beyond the registered suites.
 
 ## Commands and safety
 
@@ -69,3 +69,18 @@ hash external datasets, system binaries, CUDA drivers, dynamic simulator
 packages or all runtime-dependent data. These remain separate provenance
 obligations and should not be described as scientifically validated merely
 because the scheduler signature matches.
+
+## Device-aware native admission
+
+Foundry's physical GPU/CPU lane assignment is not the same as a native
+scientific runner's model device. Each registered job now derives its
+`gpu_capable` admission flag from the **resolved** native runner
+configuration: `device="cpu"` is CPU-only, while an `auto` device remains
+GPU-capable. This prevents explicit CPU-pinned development/diagnostic jobs
+from occupying nominal GPU slots and distorting GPU-pressure scheduling.
+Foundry's unchanged launcher masks accelerators for jobs admitted to CPU;
+native `resolve_device("auto")` observes that mask. No scientific algorithm,
+training budget, or benchmark protocol is altered by this classification.
+The regression is a source-derived catalog contract test, not a live GPU
+pressure/admission test. A CUDA-required native configuration cannot safely
+migrate to CPU and must be evaluated separately before enabling such jobs.

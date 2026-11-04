@@ -61,6 +61,9 @@ def discover(root: Path, args):
                 execution_fingerprint=record["execution_fingerprint"],
                 scientific_contract=record["scientific_contract"],
                 optional_extra=record["optional_extra"],
+                # CPU-pinned scientific runners must never consume a Foundry GPU lane.
+                # Auto-device runners still honour the scheduler CUDA mask.
+                gpu_capable=record["scientific_contract"]["kwargs"].get("device") != "cpu",
             ))
         return results
 

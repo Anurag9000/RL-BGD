@@ -165,3 +165,12 @@ exports. This closes the *static enumeration of present script wrappers*
 without claiming complete reachability through dynamic entrypoints or
 full execution compatibility. Neither script names nor imported symbols
 are independently counted as trainable scientific configurations.
+
+### Foundry CPU-pinned vs GPU-capable native jobs
+
+Registered native jobs that resolve `device="cpu"` are now declared
+`gpu_capable=false` for Foundry admission, preventing CPU-pinned training
+from consuming an advertised GPU process slot. `device="auto"` retains GPU
+capability and follows the Foundry CPU lane's CUDA visibility mask. This is a
+static scheduling-contract correction; physical CUDA occupancy, GPU OOM
+behavior, preemption and host/device migration are not certified by it.
