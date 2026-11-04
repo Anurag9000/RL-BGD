@@ -114,6 +114,8 @@ def entrypoint_census(root: Path) -> dict[str, Any]:
             classification = (
                 "REGISTERED_SUITE_TARGET"
                 if registered
+                else "CLI_MAIN_WRAPPER"
+                if node.name == "main"
                 else "SCRIPT_IMPORTED_UNREGISTERED"
                 if imported
                 else "RUN_PREFIX_UNREGISTERED"

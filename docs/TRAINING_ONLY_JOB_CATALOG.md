@@ -196,3 +196,10 @@ The bidirectional audit **separates targets outside** `rl_bgd.runners`
 (e.g., `rl_bgd.analysis.mechanistic`) from registered runner targets that
 appear to lack local public definitions. A non-runner target is not a missing
 runner function, and its presence must not fail runner-coverage assertions.
+
+Top-level `main()` functions are explicitly classified as
+`CLI_MAIN_WRAPPER` and retained in the complete callable census, but
+excluded from the independent scientific-job candidate queue. Their
+underlying `run_*` functions and imported symbols remain visible. This
+prevents a script forwarding to `main()` from being counted as a distinct
+unregistered research model.

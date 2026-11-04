@@ -46,8 +46,9 @@ def test_runner_definition_census_is_bidirectional_and_source_grounded() -> None
         list((ROOT / "src" / "rl_bgd" / "runners").glob("*.py"))
     )
     assert len(runner_modules) == report["runner_modules_scanned"]
-    assert sum(len(record["public_callables"]) for record in runner_modules) == (
-        report["runner_public_callable_count"]
+    assert (
+        sum(len(record["public_callables"]) for record in runner_modules)
+        == (report["runner_public_callable_count"])
     )
     registered = {
         item["target"]
@@ -61,8 +62,9 @@ def test_runner_definition_census_is_bidirectional_and_source_grounded() -> None
         for item in report["independent_runner_candidates"]
     )
     assert not report["suite_targets_absent_from_public_runner_definitions"]
-    assert "rl_bgd.analysis.mechanistic:run_seeded_mechanistic_analysis" in (
-        report["registered_non_runner_targets"]
+    assert (
+        "rl_bgd.analysis.mechanistic:run_seeded_mechanistic_analysis"
+        in (report["registered_non_runner_targets"])
     )
     assert report["registered_non_runner_target_count"] == len(
         report["registered_non_runner_targets"]
@@ -90,14 +92,14 @@ def test_unregistered_script_import_and_runner_definition_are_reconciled(
         "    return 2\n"
         "def helper():\n"
         "    return 3\n"
+        "def main():\n"
+        "    return run_custom()\n"
         "def _internal():\n"
         "    return 4\n",
         encoding="utf-8",
     )
     report = entrypoint_census(tmp_path)
-    candidates = {
-        item["name"]: item for item in report["independent_runner_candidates"]
-    }
+    candidates = {item["name"]: item for item in report["independent_runner_candidates"]}
     assert candidates["run_custom"]["classification"] == "SCRIPT_IMPORTED_UNREGISTERED"
     assert candidates["run_custom"]["script_imported"]
     assert candidates["run_hidden"]["classification"] == "RUN_PREFIX_UNREGISTERED"
@@ -105,8 +107,12 @@ def test_unregistered_script_import_and_runner_definition_are_reconciled(
     assert set(candidates) == {"run_custom", "run_hidden"}
     callables = report["runner_modules"][0]["public_callables"]
     assert {item["name"] for item in callables} == {
-        "run_custom", "run_hidden", "helper"
+        "run_custom", "run_hidden", "helper", "main"
     }
+    assert all(item["name"] != "main" for item in report["independent_runner_candidates"])
+    assert next(
+        item for item in callables if item["name"] == "main"
+    )["classification"] == "CLI_MAIN_WRAPPER"
     assert report["schema_version"] == 2
 
 
