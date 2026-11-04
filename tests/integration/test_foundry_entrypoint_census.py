@@ -72,20 +72,20 @@ def test_unregistered_script_import_and_runner_definition_are_reconciled(
     scripts.mkdir(parents=True)
     runners.mkdir(parents=True)
     (scripts / "example.py").write_text(
-        "from rl_bgd.runners.custom import run_custom\\n"
-        "if __name__ == '__main__':\\n"
-        "    run_custom()\\n",
+        "from rl_bgd.runners.custom import run_custom\n"
+        "if __name__ == '__main__':\n"
+        "    run_custom()\n",
         encoding="utf-8",
     )
     (runners / "custom.py").write_text(
-        "def run_custom():\\n"
-        "    return 1\\n"
-        "def run_hidden():\\n"
-        "    return 2\\n"
-        "def helper():\\n"
-        "    return 3\\n"
-        "def _internal():\\n"
-        "    return 4\\n",
+        "def run_custom():\n"
+        "    return 1\n"
+        "def run_hidden():\n"
+        "    return 2\n"
+        "def helper():\n"
+        "    return 3\n"
+        "def _internal():\n"
+        "    return 4\n",
         encoding="utf-8",
     )
     report = entrypoint_census(tmp_path)
